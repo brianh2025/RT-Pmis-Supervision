@@ -6,6 +6,8 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Footer } from './components/Footer';
 import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { DiaryLog } from './pages/DiaryLog';
 
 function WelcomePage() {
   return (
@@ -17,28 +19,6 @@ function WelcomePage() {
   );
 }
 
-/** Placeholder dashboard — will be developed into the full PMIS portal */
-function Dashboard() {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'column',
-      gap: '1rem',
-      backgroundColor: 'var(--color-background-base)',
-      color: 'var(--color-text-main)',
-    }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.1em' }}>
-        專案監造管理系統
-      </h1>
-      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', letterSpacing: '0.1em' }}>
-        DASHBOARD — Coming Soon
-      </p>
-    </div>
-  );
-}
 
 function App() {
   return (
@@ -54,6 +34,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/diary/:projectId"
+                element={
+                  <ProtectedRoute>
+                    <DiaryLog />
                   </ProtectedRoute>
                 }
               />
