@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Sun, Cloud, CloudRain, BookOpen, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Sun, Cloud, CloudRain, BookOpen, RefreshCw, Printer } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './DiaryLog.css';
 
@@ -156,6 +156,16 @@ export function DiaryLog() {
                   {!log.work_items && !log.notes && (
                     <p className="no-data">無施工記事</p>
                   )}
+                </div>
+                <div className="diary-card-actions">
+                  <button 
+                    className="btn-print-card"
+                    title="匯出 A4 施工日誌"
+                    onClick={() => navigate(`/dashboard/diary/${projectId}/print/${log.log_date}`)}
+                  >
+                    <Printer size={16} />
+                    <span>列印</span>
+                  </button>
                 </div>
               </div>
             ))}

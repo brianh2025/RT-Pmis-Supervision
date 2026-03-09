@@ -8,6 +8,7 @@ import { Footer } from './components/Footer';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { DiaryLog } from './pages/DiaryLog';
+import { DiaryPrintView } from './pages/DiaryPrintView';
 
 function WelcomePage() {
   return (
@@ -42,6 +43,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DiaryLog />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/diary/:projectId/print/:logDate"
+                element={
+                  <ProtectedRoute>
+                    <DiaryPrintView />
                   </ProtectedRoute>
                 }
               />
