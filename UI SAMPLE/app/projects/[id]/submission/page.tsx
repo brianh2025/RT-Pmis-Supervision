@@ -48,7 +48,7 @@ export default function SubmissionPage({ params }: { params: { id: string } }) {
                         {toast}
                     </div>
                 )}
-                <header className="h-14 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
+                <header className="h-10 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
                     <div className="flex items-center gap-3">
                         <Link href={`/projects/${id}/dashboard`} className="text-slate-300 hover:text-slate-500 transition-colors">
                             <span className="material-icons-round text-lg">arrow_back</span>
@@ -65,11 +65,11 @@ export default function SubmissionPage({ params }: { params: { id: string } }) {
                     </button>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                     {/* Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                         {statCards.map((stat, i) => (
-                            <div key={i} className={`bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between animate-slide-up stagger-${i + 1}`}>
+                            <div key={i} className={`bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between animate-slide-up stagger-${i + 1}`}>
                                 <div>
                                     <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
                                     <p className={`text-2xl font-bold ${stat.label === '退件補正' ? 'text-red-500' : 'dark:text-white'}`}>{stat.val}</p>
@@ -83,7 +83,7 @@ export default function SubmissionPage({ params }: { params: { id: string } }) {
 
                     {/* Table */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-slide-up stagger-5">
-                        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-400 uppercase">
+                        <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                             <div className="col-span-4">材料名稱 / 編號</div>
                             <div className="col-span-3">供應商</div>
                             <div className="col-span-3">日期</div>
@@ -92,10 +92,10 @@ export default function SubmissionPage({ params }: { params: { id: string } }) {
                         {submissions.map((sub, i) => (
                             <div key={i} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                                 <div
-                                    className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-6 py-4 items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                                    className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 px-4 py-3 items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                                     onClick={() => setExpandedIdx(expandedIdx === i ? -1 : i)}
                                 >
-                                    <div className="col-span-4 flex items-center gap-3">
+                                    <div className="col-span-4 flex items-center gap-2">
                                         <span className={`material-icons-round text-slate-400 transition-transform duration-200 ${expandedIdx === i ? 'rotate-180' : ''}`}>expand_more</span>
                                         <div>
                                             <h3 className="text-sm font-bold dark:text-white">{sub.name}</h3>

@@ -14,11 +14,11 @@
   top: 0;
   z-index: 100;
   width: 100%;
-  height: 3rem; /* Reduced from 3.5rem */
+  height: 40px; /* High density reduced from 3rem */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.25rem; /* Reduced from 1.5rem */
+  padding: 0 0.8rem; /* High density reduced from 1.25rem */
   background: var(--color-surface-translucent);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -130,11 +130,11 @@
 /* ─── Main Content Area ───────────────────────────────── */
 .dash-main {
   flex: 1;
-  padding: 1rem 1.25rem; /* Reduced from 1.5rem 1.75rem */
+  padding: 0.75rem 1rem; /* High density */
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem; /* Slightly further reduced from 0.75rem */
+  gap: 0.5rem; /* High density gap */
 }
 
 .dash-page-header {
@@ -146,7 +146,7 @@
 }
 
 .dash-title {
-  font-size: 1.6rem; /* Increased from 1.4rem */
+  font-size: 1.2rem; /* Reduced for high density from 1.6rem */
   font-weight: 800;
   color: var(--color-text-main);
   letter-spacing: 0.05em;
@@ -171,7 +171,7 @@
 .dash-kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem; /* Reduced from 1rem */
+  gap: 0.5rem; /* High density */
 }
 
 .kpi-card {
@@ -179,11 +179,11 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-block-border);
-  border-radius: var(--radius-lg); /* Slightly smaller radius */
-  padding: 1rem; /* Reduced from 1.25rem */
+  border-radius: var(--radius-md); /* Smaller radius */
+  padding: 0.75rem; /* High density */
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Reduced from 1rem */
+  gap: 0.5rem; /* High density gap */
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -193,9 +193,9 @@
 }
 
 .kpi-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -213,7 +213,7 @@
 }
 
 .kpi-value {
-  font-size: 2.2rem; /* Increased from 2rem */
+  font-size: 1.5rem; /* High density size */
   font-weight: 800;
   line-height: 1;
   color: var(--color-text-main);
@@ -479,9 +479,9 @@
 /* ─── B Version Project Cards ───────────────────── */
 .dash-project-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem; /* High density */
+  margin-top: 0.5rem;
 }
 
 .dash-project-card {
@@ -513,7 +513,7 @@
 .card-accent-line.line-behind { background: linear-gradient(to right, #fb7185, #fda4af); }
 
 .dash-project-card-inner {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem; /* High density padding */
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -528,10 +528,10 @@
 }
 
 .card-title {
-  font-size: 0.95rem;
+  font-size: 0.85rem; /* High density typography */
   font-weight: 700;
   color: var(--color-text-main);
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.75rem 0; /* High density padding */
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -671,16 +671,16 @@
 /* ─── B Version Project Dashboard Stats ──────────────── */
 .b-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.5rem; /* Reduced from 0.75rem */
-  margin-bottom: 0.5rem; /* Reduced from 0.75rem */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* High density grid size */
+  gap: 0.4rem; /* High density */
+  margin-bottom: 0.4rem; /* High density */
 }
 
 .b-stat-card {
   background: var(--color-bg1) !important;
-  border-radius: 12px;
+  border-radius: 8px; /* High density */
   border: 1px solid var(--color-block-border);
-  padding: 0.75rem 1rem; /* Reduced from 1.25rem */
+  padding: 0.6rem 0.75rem; /* High density */
   transition: all 0.3s ease;
   animation: slide-up 0.4s ease both;
 }
@@ -725,8 +725,8 @@
 .b-stat-icon-wrapper.violet { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
 
 .b-stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.2rem; /* High density value */
+  font-weight: 800;
   color: var(--color-text-main);
   line-height: 1.2;
 }
@@ -746,9 +746,9 @@
 
 .b-content-panel {
   background: var(--color-bg1) !important;
-  border-radius: 12px;
+  border-radius: 8px; /* High density */
   border: 1px solid var(--color-block-border);
-  padding: 1rem; /* Reduced from 1.5rem */
+  padding: 0.75rem; /* High density */
   animation: slide-up 0.4s ease both;
 }
 

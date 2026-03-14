@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
 import { getProject } from "@/lib/mock-data";
+import { use, useState, useMemo } from "react";
 
 // Simulated imported log data (keyed by YYYY-MM-DD)
 const importedData: Record<string, { weather: string; summary: string; tags: string[]; progress: number }> = {
@@ -64,7 +65,7 @@ export default function ProjectDailyLog({ params }: { params: Promise<{ id: stri
                 {/* Header */}
                 <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100"
                     style={{ animation: "slide-down .3s ease both" }}>
-                    <div className="max-w-[1200px] mx-auto px-5 h-11 flex items-center justify-between gap-3">
+                    <div className="max-w-[1200px] mx-auto px-4 h-10 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Link href={`/projects/${id}/dashboard`}
                                 className="text-slate-300 hover:text-slate-500 transition-colors">
@@ -98,12 +99,12 @@ export default function ProjectDailyLog({ params }: { params: Promise<{ id: stri
                 )}
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="max-w-[1200px] mx-auto px-5 py-5">
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div className="max-w-[1200px] mx-auto px-4 py-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
                             {/* Left: Calendar */}
-                            <div className="lg:col-span-7 bg-white rounded-xl border border-slate-100 p-5" style={{ animation: "slide-up .4s ease both" }}>
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="lg:col-span-7 bg-white rounded-xl border border-slate-100 p-4" style={{ animation: "slide-up .4s ease both" }}>
+                                <div className="flex items-center justify-between mb-3">
                                     <button onClick={prevMonth} className="size-7 rounded-lg hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
                                         <span className="material-icons-round text-lg">chevron_left</span>
                                     </button>
@@ -165,15 +166,15 @@ export default function ProjectDailyLog({ params }: { params: Promise<{ id: stri
                             <div className="lg:col-span-5" style={{ animation: "slide-up .4s ease .1s both" }}>
                                 {selectedDay && selectedKey ? (
                                     <div className="bg-white rounded-xl border border-slate-100 overflow-hidden" style={{ animation: "scale-in .3s ease both" }}>
-                                        <div className="px-5 py-3 border-b border-slate-50 flex items-center justify-between">
-                                            <span className="text-[13px] text-slate-600">{toRoc(year, month, selectedDay)}</span>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-md ${selectedData ? "bg-emerald-50 text-emerald-500" : "bg-slate-50 text-slate-400"}`}>
-                                                {selectedData ? "已匯入" : "廠商尚未提送"}
+                                        <div className="px-4 py-2.5 border-b border-slate-50 flex items-center justify-between">
+                                            <span className="text-[13px] font-medium text-slate-700">{toRoc(year, month, selectedDay)}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-md ${selectedData ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"}`}>
+                                                {selectedData ? "已匯入" : "尚未提送"}
                                             </span>
                                         </div>
                                         {selectedData ? (
-                                            <div className="p-5 space-y-4">
-                                                <div className="flex items-center gap-3 text-[12px]">
+                                            <div className="p-4 space-y-3.5">
+                                                <div className="flex items-center gap-2.5 text-[12px]">
                                                     <span className="material-icons-round text-amber-400 text-base">sunny</span>
                                                     <span className="text-slate-500">{selectedData.weather}</span>
                                                 </div>
@@ -206,10 +207,10 @@ export default function ProjectDailyLog({ params }: { params: Promise<{ id: stri
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="p-8 text-center">
-                                                <span className="material-icons-round text-slate-200 text-4xl mb-2 block">cloud_off</span>
-                                                <p className="text-[12px] text-slate-400 mb-1">廠商尚未提送</p>
-                                                <p className="text-[10px] text-slate-300">系統將自動從共用雲端硬碟抓取包含此日期的 Excel 檔案</p>
+                                            <div className="p-6 text-center">
+                                                <span className="material-icons-round text-slate-200 text-3xl mb-2 block">cloud_off</span>
+                                                <p className="text-[12px] text-slate-400 mb-0.5">尚未提送</p>
+                                                <p className="text-[10px] text-slate-300">系統自動偵測雲端 Excel 資料</p>
                                                 <button
                                                     onClick={() => showToast("已手動觸發同步，請稍候…")}
                                                     className="mt-4 flex items-center gap-1 mx-auto px-3 py-1.5 bg-[#1565C0]/10 text-[#1565C0] rounded-md text-[10px] hover:bg-[#1565C0]/20 transition-colors">
@@ -226,9 +227,9 @@ export default function ProjectDailyLog({ params }: { params: Promise<{ id: stri
                                 )}
 
                                 {/* Month summary */}
-                                <div className="bg-white rounded-xl border border-slate-100 p-4 mt-3" style={{ animation: "slide-up .4s ease .15s both" }}>
-                                    <span className="text-[11px] text-slate-500 block mb-3">本月匯入統計</span>
-                                    <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-white rounded-xl border border-slate-100 p-3.5 mt-3" style={{ animation: "slide-up .4s ease .15s both" }}>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-1">本月匯入統計</span>
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div className="text-center">
                                             <span className="text-xl text-emerald-500">{importedCount}</span>
                                             <span className="block text-[9px] text-slate-400 mt-0.5">已匯入</span>

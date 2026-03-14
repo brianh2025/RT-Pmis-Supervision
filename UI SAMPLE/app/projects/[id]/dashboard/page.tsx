@@ -28,7 +28,7 @@ export default function ProjectDashboard({ params }: { params: Promise<{ id: str
                     </div>
                 )}
                 <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
-                    <div className="max-w-[1400px] mx-auto px-5 h-11 flex items-center justify-between gap-3">
+                    <div className="max-w-[1400px] mx-auto px-4 h-10 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Link href="/projects" className="text-slate-300 hover:text-slate-500 transition-colors">
                                 <span className="material-icons-round text-lg">arrow_back</span>
@@ -48,13 +48,13 @@ export default function ProjectDashboard({ params }: { params: Promise<{ id: str
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="max-w-[1400px] mx-auto px-5 py-5">
+                    <div className="max-w-[1400px] mx-auto px-4 py-4">
                         {/* Stats */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
                             {stats.map((s, i) => (
-                                <div key={i} className="bg-white rounded-xl border border-slate-100 p-4 group hover:shadow-md hover:shadow-slate-100/60 transition-all duration-300"
+                                <div key={i} className="bg-white rounded-xl border border-slate-100 p-3 group hover:shadow-md hover:shadow-slate-100/60 transition-all duration-300"
                                     style={{ opacity: 0, animation: `slide-up .4s ease ${i * 0.07}s both` }}>
-                                    <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-start justify-between mb-2.5">
                                         <span className="text-[10px] text-slate-400 uppercase tracking-wider">{s.label}</span>
                                         <div className={`size-7 rounded-lg ${s.accent} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                                             <span className="material-icons-round text-base">{s.icon}</span>
@@ -65,10 +65,10 @@ export default function ProjectDashboard({ params }: { params: Promise<{ id: str
                             ))}
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
                             {/* S-Curve */}
-                            <div className="lg:col-span-7 bg-white rounded-xl border border-slate-100 p-5" style={{ opacity: 0, animation: "slide-up .4s ease .3s both" }}>
-                                <div className="flex items-center justify-between mb-5">
+                            <div className="lg:col-span-7 bg-white rounded-xl border border-slate-100 p-4" style={{ opacity: 0, animation: "slide-up .4s ease .3s both" }}>
+                                <div className="flex items-center justify-between mb-4">
                                     <span className="text-[13px] text-slate-600 flex items-center gap-1.5">
                                         <span className="material-icons-round text-[#1565C0] text-base">trending_up</span>進度 S 曲線
                                     </span>
@@ -94,8 +94,8 @@ export default function ProjectDashboard({ params }: { params: Promise<{ id: str
                             </div>
 
                             {/* Progress Summary */}
-                            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-100 p-5" style={{ opacity: 0, animation: "slide-up .4s ease .35s both" }}>
-                                <span className="text-[13px] text-slate-600 flex items-center gap-1.5 mb-5">
+                            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-100 p-4" style={{ opacity: 0, animation: "slide-up .4s ease .35s both" }}>
+                                <span className="text-[13px] text-slate-600 flex items-center gap-1.5 mb-4">
                                     <span className="material-icons-round text-[#1565C0] text-base">pie_chart</span>進度摘要
                                 </span>
                                     <div className="space-y-6">

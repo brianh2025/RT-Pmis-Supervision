@@ -10,10 +10,10 @@ export function Quality() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <div className="dash-page-header">
+      <div style={{ marginBottom: '1rem', background: 'var(--color-bg2)', padding: '6px 16px', borderRadius: '10px', border: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="dash-title">品管管理</h1>
-          <p className="dash-subtitle">{loading ? '載入中...' : project?.name}</p>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-main)' }}>工程品質管理</span>
+          <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginLeft: '8px' }}>QUALITY CONTROL & ASSURANCE</span>
         </div>
       </div>
       <div style={{ marginTop: '32px', textAlign: 'center', padding: '64px 20px', background: 'var(--color-bg2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>

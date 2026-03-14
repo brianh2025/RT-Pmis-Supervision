@@ -34,20 +34,20 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
                     {toast}
                 </div>
             )}
-            <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-8 custom-scrollbar">
-                <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-down">
+            <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 custom-scrollbar">
+                <div className="max-w-7xl mx-auto space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 animate-slide-down">
                         <div className="flex items-center gap-3">
                             <Link href={`/projects/${id}/dashboard`} className="text-slate-300 hover:text-slate-500 transition-colors">
                                 <span className="material-icons-round text-lg">arrow_back</span>
                             </Link>
                             <div>
-                                <h1 className="text-xl lg:text-2xl font-bold dark:text-white flex items-center gap-2">
+                                <h1 className="text-lg font-bold dark:text-white flex items-center gap-2">
                                     <span className="material-icons-round text-[#1565C0] hidden lg:inline">analytics</span>
                                     進度分析
-                                    <span className="text-xs font-mono text-slate-400 bg-white dark:bg-slate-800 px-2 py-1 rounded ml-2">{id}</span>
+                                    <span className="text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded ml-2">{id}</span>
                                 </h1>
-                                <p className="text-sm text-slate-400 mt-1">{p.title}</p>
+                                <p className="text-[11px] text-slate-400">{p.title}</p>
                             </div>
                         </div>
                         <button onClick={() => showToast("正在產出 Excel 報表，請稍候…")} className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -56,10 +56,10 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* Stat cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         {stats.map((card, idx) => (
-                            <div key={idx} className={`bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-[#1565C0]/20 transition-all animate-slide-up stagger-${idx + 1}`}>
-                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <div key={idx} className={`bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-[#1565C0]/20 transition-all animate-slide-up stagger-${idx + 1}`}>
+                                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                                     <span className="material-icons-round text-6xl">{card.icon}</span>
                                 </div>
                                 <div className="flex justify-between items-start mb-4 relative z-10">
@@ -77,15 +77,15 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* Charts area */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-slide-up stagger-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 animate-slide-up stagger-5">
                         {/* S-Curve Chart (simulated) */}
-                        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <span className="material-icons-round text-[#1565C0]">trending_up</span>
+                        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <h3 className="text-[13px] font-bold mb-4 flex items-center gap-2">
+                                <span className="material-icons-round text-[#1565C0] text-base">trending_up</span>
                                 進度 S 曲線
                             </h3>
                             {/* Bar chart simulation */}
-                            <div className="flex items-end gap-3 h-48 mb-4">
+                            <div className="flex items-end gap-2 h-40 mb-3">
                                 {chartData.map((d, i) => (
                                     <div key={i} className="flex-1 flex flex-col items-center gap-1 group/bar relative">
                                         <div className="w-full flex gap-1 items-end" style={{ height: '180px' }}>
@@ -115,18 +115,18 @@ export default function AnalyticsPage({ params }: { params: { id: string } }) {
                         </div>
 
                         {/* Progress summary */}
-                        <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <span className="material-icons-round text-[#1565C0]">pie_chart</span>
+                        <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <h3 className="text-[13px] font-bold mb-4 flex items-center gap-2">
+                                <span className="material-icons-round text-[#1565C0] text-base">pie_chart</span>
                                 進度摘要
                             </h3>
-                            <div className="space-y-8">
+                            <div className="space-y-6">
                                 <div>
-                                    <div className="flex justify-between mb-2">
-                                        <span className="text-sm font-bold">施工累計進度</span>
-                                        <span className="text-sm font-bold text-[#1565C0]">實際 43% / 預定 60%</span>
+                                    <div className="flex justify-between mb-1.5">
+                                        <span className="text-[11px] font-bold">施工累計進度</span>
+                                        <span className="text-[11px] font-bold text-[#1565C0]">實際 43% / 預定 60%</span>
                                     </div>
-                                    <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
+                                    <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
                                         <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 rounded-full animate-progress" style={{ width: "60%" }} />
                                         <div className="absolute inset-0 bg-[#1565C0] rounded-full animate-progress" style={{ width: "43%", animationDelay: "0.2s" }} />
                                     </div>

@@ -56,9 +56,10 @@
   --color-background-base: #F8FAFC;
   --color-surface: #FFFFFF;
   --color-surface-hover: #F1F5F9;
-  --color-surface-border: #E2E8F0;
-  --color-block-border: #CBD1D8;
-  --color-surface-translucent: rgba(255, 255, 255, 0.85);
+  --color-surface-border: #CBD5E1; /* 加深邊框色以對抗強光 (Slate 300) */
+  --color-block-border: #94A3B8;   /* 區塊界線更明顯 (Slate 400) */
+  --color-surface-translucent: rgba(255, 255, 255, 0.9);
+  --color-background-soft: #F1F5F9; /* 背景增加微層次 */
   
   --color-text-main: #0F172A;
   --color-text-muted: #475569;
@@ -80,7 +81,8 @@ body {
   font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
   background-color: var(--color-background-base);
   color: var(--color-text-main);
-  line-height: 1.7; /* Slightly increased from 1.6 */
+  line-height: 1.6;
+  font-weight: 400; /* 預設不適用粗體 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;

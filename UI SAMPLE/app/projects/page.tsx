@@ -89,7 +89,7 @@ export default function ProjectsPage() {
                 {/* Topbar — very compact */}
                 <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100"
                     style={{ animation: mounted ? "slide-down .3s ease-out both" : "none" }}>
-                    <div className="max-w-[1600px] mx-auto px-5 h-11 flex items-center justify-between gap-3">
+                    <div className="max-w-[1600px] mx-auto px-4 h-10 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <span className="material-icons-round text-[#1565C0] text-lg">grid_view</span>
                             <span className="text-[13px] text-slate-700 tracking-tight">工程專案總覽</span>
@@ -110,8 +110,8 @@ export default function ProjectsPage() {
 
                 {/* Card Grid */}
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="max-w-[1600px] mx-auto px-5 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+                    <div className="max-w-[1600px] mx-auto px-4 py-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5">
                             {filtered.map((p, i) => {
                                 const s = statusStyle[p.color] || statusStyle.gray;
                                 const diff = p.prog - p.targetProg;
@@ -129,16 +129,16 @@ export default function ProjectsPage() {
                                         {/* Accent line */}
                                         <div className={`h-[3px] w-full bg-gradient-to-r ${accentLine[p.color] || accentLine.gray}`} />
 
-                                        <div className="px-4 pt-2.5 pb-3">
+                                        <div className="px-3.5 pt-2 pb-2.5">
 
                                             {/* === TOP: ID + Name === */}
                                             <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="text-[10px] font-mono text-slate-400 tracking-wide">{p.id}</span>
                                             </div>
-                                            <h3 className="text-[13px] text-slate-700 leading-snug line-clamp-1 group-hover:text-[#1565C0] transition-colors duration-200">{p.title}</h3>
+                                            <h3 className="text-[13px] text-slate-700 font-medium leading-snug line-clamp-1 group-hover:text-[#1565C0] transition-colors duration-200">{p.title}</h3>
 
                                             {/* === MIDDLE: Progress bars === */}
-                                            <div className="mt-3 mb-2.5 space-y-1.5">
+                                            <div className="mt-2.5 mb-2 space-y-1.5">
                                                 {/* Construction progress */}
                                                 <div>
                                                     <div className="flex items-center justify-between mb-[3px]">
@@ -176,7 +176,7 @@ export default function ProjectsPage() {
                                             </div>
 
                                             {/* === BOTTOM: Client + Status === */}
-                                            <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                                            <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-50/80">
                                                 <div className="flex items-center gap-1">
                                                     <span className="material-icons-outlined text-[13px] text-slate-300">domain</span>
                                                     <span className="text-[10px] text-slate-400">{p.client}</span>

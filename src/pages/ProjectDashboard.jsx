@@ -38,7 +38,7 @@ export function ProjectDashboard() {
   ];
 
   return (
-    <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+    <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
       <div className="dash-page-header">
         <div>
           <h1 className="dash-title">專案儀表板</h1>
@@ -103,7 +103,7 @@ export function ProjectDashboard() {
 
         {/* Progress Summary Panel */}
         <div className="b-content-panel" style={{ animationDelay: "0.35s" }}>
-          <h3 className="b-panel-title" style={{ marginBottom: '1.25rem' }}>
+          <h3 className="b-panel-title" style={{ marginBottom: '0.75rem' }}>
             <PieChart size={16} color="var(--color-primary)" />
             進度摘要
           </h3>

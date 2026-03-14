@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../hooks/useProject';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   ChevronLeft, 
@@ -47,6 +47,20 @@ export function ProjectLayout() {
   const { signOut } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { project, loading } = useProject(projectId);
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateWithSeconds = (date) => {
+    return new Intl.DateTimeFormat('zh-TW', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).format(date);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -108,8 +122,15 @@ export function ProjectLayout() {
         </div>
 
         <div className="pl-sidebar-footer">
-          <button className="pl-btn-logout" onClick={handleSignOut}>
-            <LogOut size={18} className="pl-nav-icon" />
+          {/* 帳號資訊統一置於左下 (Sidebar Footer) */}
+          <div className="pl-user-info-brief">
+            <div className="user-avatar-mini">
+              admin
+            </div>
+            {!isCollapsed && <span className="user-email-mini">admin@xiaoxiong.page</span>}
+          </div>
+          <button className="pl-btn-logout" onClick={handleSignOut} title="登出系統">
+            <LogOut size={16} className="pl-nav-icon" />
             {!isCollapsed && <span>登出</span>}
           </button>
         </div>
@@ -128,6 +149,17 @@ export function ProjectLayout() {
             </div>
           </div>
           <div className="pl-topbar-actions">
+            {/* 一般資訊（時間、天氣、教學鍵）統一置於右上 */}
+            <div className="topbar-info-group">
+               <span className="topbar-weather desktop-only" title="今日天氣：晴">
+                 <Sun size={16} color="var(--color-secondary)" />
+                 <span>26°C</span>
+               </span>
+               <span className="topbar-time desktop-only" id="topbar-live-time">
+                 {formatDateWithSeconds(time)}
+               </span>
+               <button className="btn-help-preheat" title="預留教學指引">?</button>
+            </div>
             <button
               className="btn-theme-toggle"
               onClick={toggleTheme}

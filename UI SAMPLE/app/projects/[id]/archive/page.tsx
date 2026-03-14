@@ -43,7 +43,7 @@ export default function ArchivePage({ params }: { params: { id: string } }) {
                         {toast}
                     </div>
                 )}
-                <header className="h-14 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
+                <header className="h-10 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
                     <div className="flex items-center gap-3">
                         <Link href={`/projects/${id}/dashboard`} className="text-slate-300 hover:text-slate-500 transition-colors">
                             <span className="material-icons-round text-lg">arrow_back</span>
@@ -60,9 +60,9 @@ export default function ArchivePage({ params }: { params: { id: string } }) {
                     </button>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                     {/* Category tabs */}
-                    <div className="flex gap-2 mb-6 overflow-x-auto pb-2 animate-fade-in">
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 animate-fade-in">
                         {categories.map((cat) => (
                             <button
                                 key={cat}
@@ -78,10 +78,10 @@ export default function ArchivePage({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* File grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {filtered.map((doc, i) => (
-                            <div key={doc.id} className={`group bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-[#1565C0]/20 transition-all cursor-pointer animate-slide-up stagger-${i + 1}`}>
-                                <div className="flex items-start gap-3">
+                            <div key={doc.id} className={`group bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-[#1565C0]/20 transition-all cursor-pointer animate-slide-up stagger-${i + 1}`}>
+                                <div className="flex items-start gap-2.5">
                                     <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 group-hover:scale-110 transition-transform">
                                         <span className="material-icons-round text-xl">{typeIcons[doc.type] || "description"}</span>
                                     </div>
@@ -93,7 +93,7 @@ export default function ArchivePage({ params }: { params: { id: string } }) {
                                         <span className="material-icons-round text-lg">download</span>
                                     </button>
                                 </div>
-                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                                     <div className="flex items-center gap-3 text-[10px] text-slate-400">
                                         <span>{doc.date}</span>
                                         <span>{doc.size}</span>

@@ -45,7 +45,7 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                         {toast}
                     </div>
                 )}
-                <header className="h-14 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
+                <header className="h-10 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 flex-shrink-0 animate-slide-down">
                     <div className="flex items-center gap-3">
                         <Link href={`/projects/${id}/dashboard`} className="text-slate-300 hover:text-slate-500 transition-colors">
                             <span className="material-icons-round text-lg">arrow_back</span>
@@ -66,12 +66,12 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                     {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                         {stats.map((stat, i) => (
-                            <div key={i} className={`bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-[#1565C0]/30 transition-all animate-slide-up stagger-${i + 1}`}>
-                                <div className="flex justify-between items-start mb-4">
+                            <div key={i} className={`bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-[#1565C0]/30 transition-all animate-slide-up stagger-${i + 1}`}>
+                                <div className="flex justify-between items-start mb-3">
                                     <span className="text-sm font-medium text-slate-500">{stat.label}</span>
                                     <div className={`p-1.5 rounded-lg ${stat.color} group-hover:scale-110 transition-transform`}>
                                         <span className="material-icons-round text-lg">{stat.icon}</span>
@@ -85,10 +85,10 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up stagger-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-slide-up stagger-5">
                         {/* Test records table */}
                         <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                                 <h2 className="font-bold flex items-center gap-2">
                                     <span className="material-icons-round text-[#1565C0] text-base">history</span>
                                     近期試驗紀錄
@@ -97,17 +97,17 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-slate-50 dark:bg-slate-800/20 text-xs font-bold text-slate-400 text-left border-b border-slate-100 dark:border-slate-800">
-                                            <th className="px-6 py-3">時間/狀態</th>
-                                            <th className="px-6 py-3">編號</th>
-                                            <th className="px-6 py-3">項目</th>
-                                            <th className="px-6 py-3 text-right">操作</th>
+                                        <tr className="bg-slate-50 dark:bg-slate-800/20 text-[11px] font-bold text-slate-400 text-left border-b border-slate-100 dark:border-slate-800 uppercase">
+                                            <th className="px-4 py-2">時間/狀態</th>
+                                            <th className="px-4 py-2">編號</th>
+                                            <th className="px-4 py-2">項目</th>
+                                            <th className="px-4 py-2 text-right">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {filtered.map((row, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${row.status === 'ok' ? 'bg-emerald-500' :
                                                                 row.status === 'fail' ? 'bg-red-500' :
@@ -116,10 +116,10 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                                                         <span className="font-medium">{row.date}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 font-mono text-xs text-slate-500">{row.code}</td>
-                                                <td className="px-6 py-4 font-bold text-slate-800 dark:text-white">{row.name}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => showToast(`正在開啟 ${row.code} 試驗報告…`)} className="text-xs text-[#1565C0] font-bold hover:underline">查看報告</button>
+                                                <td className="px-4 py-3 font-mono text-[11px] text-slate-500">{row.code}</td>
+                                                <td className="px-4 py-3 font-bold text-slate-800 dark:text-white text-xs">{row.name}</td>
+                                                <td className="px-4 py-3 text-right text-xs">
+                                                    <button onClick={() => showToast(`正在開啟 ${row.code} 試驗報告…`)} className="text-[#1565C0] font-bold hover:underline">查看報告</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -129,11 +129,11 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                         </div>
 
                         {/* Right column */}
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {/* Alert */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 animate-slide-up stagger-6">
-                                <h3 className="font-bold mb-4 flex items-center gap-2 text-orange-500">
-                                    <span className="material-icons-round">priority_high</span>
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 animate-slide-up stagger-6">
+                                <h3 className="font-bold mb-3 flex items-center gap-2 text-orange-500 text-sm">
+                                    <span className="material-icons-round text-lg">priority_high</span>
                                     待處理警示
                                 </h3>
                                 {alerts.map((alert, i) => (
@@ -145,12 +145,12 @@ export default function QualityPage({ params }: { params: { id: string } }) {
                             </div>
 
                             {/* Schedule */}
-                            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 animate-slide-up stagger-7">
-                                <h3 className="font-bold mb-4 flex items-center gap-2 text-purple-500">
-                                    <span className="material-icons-round">calendar_month</span>
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 animate-slide-up stagger-7">
+                                <h3 className="font-bold mb-3 flex items-center gap-2 text-purple-500 text-sm">
+                                    <span className="material-icons-round text-lg">calendar_month</span>
                                     今日排程
                                 </h3>
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {schedule.map((item, i) => (
                                         <div key={i} onClick={() => showToast(`查看行程詳情：${item.text} (${item.time})`)} className="flex gap-3 text-sm group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors">
                                             <span className="text-slate-400 font-mono text-xs pt-0.5">{item.time}</span>

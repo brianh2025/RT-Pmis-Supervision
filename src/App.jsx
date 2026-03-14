@@ -13,7 +13,7 @@ import { Submission } from './pages/Submission';
 import { Quality } from './pages/Quality';
 import { Archive } from './pages/Archive';
 import { Analytics } from './pages/Analytics';
-import { DiaryLog } from './pages/DiaryLog';
+import { DailyReportController } from './pages/DailyReport/DailyReportController';
 import { DiaryPrintView } from './pages/DiaryPrintView';
 
 function WelcomePage() {
@@ -57,7 +57,7 @@ function App() {
                 {/* Redirect /projects/:id to /projects/:id/dashboard */}
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<ProjectDashboard />} />
-                <Route path="diary" element={<DiaryLog />} />
+                <Route path="diary" element={<DailyReportController />} />
                 <Route path="diary/print/:logDate" element={<DiaryPrintView />} />
                 <Route path="submission" element={<Submission />} />
                 <Route path="quality" element={<Quality />} />

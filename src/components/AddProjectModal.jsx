@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -16,13 +16,27 @@ const EMPTY_FORM = {
 
 export function AddProjectModal({ onClose, onSuccess }) {
   const { user } = useAuth();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => {
+    const saved = localStorage.getItem('pmis_add_project_draft');
+    return saved ? JSON.parse(saved) : EMPTY_FORM;
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('pmis_add_project_draft', JSON.stringify(form));
+  }, [form]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const clearDraft = () => localStorage.removeItem('pmis_add_project_draft');
+
+  const handleClose = () => {
+    clearDraft();
+    onClose();
   };
 
   const handleSubmit = async (e) => {
@@ -47,13 +61,14 @@ export function AddProjectModal({ onClose, onSuccess }) {
       setError(`儲存失敗：${insertError.message}`);
       setSaving(false);
     } else {
+      clearDraft();
       onSuccess?.();
       onClose();
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleClose()}>
       <div className="modal-panel animate-slide-up">
         {/* Header */}
         <div className="modal-header">
@@ -64,7 +79,7 @@ export function AddProjectModal({ onClose, onSuccess }) {
               <p className="modal-subtitle">ADD PROJECT</p>
             </div>
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+          <button className="modal-close-btn" onClick={handleClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -118,7 +133,7 @@ export function AddProjectModal({ onClose, onSuccess }) {
           {error && <p className="form-error">{error}</p>}
 
           <div className="modal-actions">
-            <button type="button" className="btn-modal-cancel" onClick={onClose}>取消</button>
+            <button type="button" className="btn-modal-cancel" onClick={handleClose}>取消</button>
             <button type="submit" className="btn-modal-save" disabled={saving}>
               <Save size={15} />
               {saving ? '儲存中...' : '儲存工程'}
