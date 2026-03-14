@@ -20,7 +20,8 @@
   --color-surface: rgba(15, 23, 42, 0.6); /* Slate 900 translucent */
   --color-surface-translucent: rgba(15, 23, 42, 0.65);
   --color-surface-hover: #1E293B; /* Slate 800 */
-  --color-surface-border: rgba(255, 255, 255, 0.08); /* Faint border */
+  --color-surface-border: rgba(255, 255, 255, 0.08); /* Faint border for banners */
+  --color-block-border: rgba(255, 255, 255, 0.2); /* Darker border for blocks */
   
   --color-text-main: #F8FAFC; /* Slate 50 */
   --color-text-muted: #94A3B8; /* Slate 400 */
@@ -56,6 +57,7 @@
   --color-surface: #FFFFFF;
   --color-surface-hover: #F1F5F9;
   --color-surface-border: #E2E8F0;
+  --color-block-border: #CBD1D8;
   --color-surface-translucent: rgba(255, 255, 255, 0.85);
   
   --color-text-main: #0F172A;
@@ -78,11 +80,12 @@ body {
   font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
   background-color: var(--color-background-base);
   color: var(--color-text-main);
-  line-height: 1.6;
+  line-height: 1.7; /* Slightly increased from 1.6 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);
+  font-size: 16.5px; /* Slightly larger base font */
 }
 
 a {

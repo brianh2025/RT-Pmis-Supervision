@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import './DiaryPrintView.css';
 
 export function DiaryPrintView() {
-  const { projectId, logDate } = useParams();
+  const { id: projectId, logDate } = useParams();
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [log, setLog] = useState(null);
