@@ -14,20 +14,11 @@ import {
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
 
-const MENU_GROUPS = [
+const MENU_GROUPS_MAIN = [
   {
     label: "監造",
     items: [
       { icon: LayoutDashboard, label: "專案總覽", path: "dashboard" },
-      { icon: BookOpen, label: "施工日誌", path: "diary" },
-    ],
-  },
-  {
-    label: "文件",
-    items: [
-      { icon: Archive, label: "歸檔管理", path: "archive" },
-      { icon: FileCheck2, label: "送審管理", path: "submission" },
-      { icon: ShieldCheck, label: "品管管理", path: "quality" },
     ],
   },
 ];
@@ -103,15 +94,14 @@ export function Dashboard() {
         </div>
 
         <div className="pl-nav-scroll custom-scrollbar">
-          {MENU_GROUPS.map((group, idx) => (
+          {MENU_GROUPS_MAIN.map((group, idx) => (
             <div key={idx} className="pl-nav-group">
-              {!isCollapsed && <div className="pl-nav-group-label">{group.label}</div>}
               <div className="pl-nav-items">
                 {group.items.map((item, i) => {
-                  const isActive = item.path === 'dashboard';
+                  const isActive = true;
                   const Icon = item.icon;
                   return (
-                    <div key={i} className={`pl-nav-link ${isActive ? 'active' : ''}`} style={!isActive ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
+                    <div key={i} className={`pl-nav-link ${isActive ? 'active' : ''}`}>
                       <Icon size={20} className="pl-nav-icon" />
                       {!isCollapsed && <span className="pl-nav-label">{item.label}</span>}
                     </div>
@@ -120,6 +110,22 @@ export function Dashboard() {
               </div>
             </div>
           ))}
+
+          {!isCollapsed && (
+            <div style={{ padding: '12px 16px 8px', animation: 'slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(21,101,192,0.08) 0%, rgba(21,101,192,0.03) 100%)',
+                border: '1px solid rgba(21,101,192,0.15)',
+                borderRadius: 12,
+                padding: '12px 14px',
+              }}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>《 專案開始 》</p>
+                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.6 }}>
+                  在右方選取工程卡片<br />即可登入專案儀表板
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="pl-sidebar-footer">
@@ -140,10 +146,6 @@ export function Dashboard() {
             <button className="pl-mobile-toggle" onClick={() => setIsMobileOpen(true)}>
               <Menu size={24} />
             </button>
-            <div className="pl-project-badge">
-              <div className="status-dot active" />
-              案件總覽
-            </div>
           </div>
           <div className="pl-topbar-actions">
             <div className="topbar-info-group">
@@ -162,9 +164,9 @@ export function Dashboard() {
 
         <main className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main" style={{ padding: '12px 16px' }}>
-            <div className="dash-page-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                <div>
-                 <p className="dash-subtitle" style={{ fontSize: '11px', fontWeight: 700 }}>PROJECT OVERVIEW · 雲林轄區</p>
+                 <h1 className="dash-title" style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.01em' }}>雲林縣工程監造</h1>
                </div>
                <div className="dash-table-actions" style={{ display: 'flex', gap: '8px' }}>
                  <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>

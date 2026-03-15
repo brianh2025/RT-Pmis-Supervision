@@ -1,12 +1,14 @@
 .login-page {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   display: flex;
-  align-items: center; /* 完美垂直置中 */
+  align-items: center;
   justify-content: center;
-  padding: 1rem; /* 移除多餘頂部預留空白 */
-  overflow: hidden;
   background-color: var(--color-background-base);
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
   transition: background-color var(--transition-normal);
 }
 
@@ -42,6 +44,16 @@
 }
 
 /* Container & Back Button */
+.login-wrapper {
+  width: 100%;
+  max-width: 420px; /* Compress overall width slightly */
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(-8vh); /* 向上提昇以平衡重心 */
+}
+
 .login-container {
   position: relative;
   z-index: 10;
@@ -94,16 +106,18 @@
 /* Login Card */
 .login-card {
   width: 100%;
-  padding: 1.25rem; /* High density */
-  background: var(--color-surface-translucent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--color-surface-border);
-  box-shadow: var(--shadow-xl);
+  background: var(--color-surface);
   border-radius: var(--radius-2xl);
+  padding: 1.5rem 1.5rem; /* High density */
+  box-shadow: 
+    0 10px 40px -10px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--color-surface-border),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
-  gap: 0.85rem; /* High density gap */
+  gap: 1rem; /* Ultra dense */
 }
 
 /* Header */

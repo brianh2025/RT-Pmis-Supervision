@@ -38,11 +38,12 @@ function DailyReportContainer() {
     };
 
     return (
-        <div style={{ height: '100%', overflowY: 'auto', background: "#f1f5f9" }}>
-            <header style={{ padding: '24px 24px 16px', background: "#fff", borderBottom: '1px solid #e2e8f0' }}>
-                <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: "#0f172a" }}>監造日報系統</h1>
-                <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0 0" }}>專案代碼: {projectId}</p>
-            </header>
+        <div className="dash-page-wrapper">
+            <div className="dash-page-header">
+                <div>
+                    <h1 className="dash-title">施工日誌</h1>
+                </div>
+            </div>
 
             {viewMode === "list" && (
                 <DailyReportList 

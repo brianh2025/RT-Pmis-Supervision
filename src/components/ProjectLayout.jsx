@@ -16,7 +16,8 @@ import {
   Menu,
   Sun,
   Moon,
-  BookOpen
+  BookOpen,
+  LayoutGrid
 } from 'lucide-react';
 import './ProjectLayout.css';
 
@@ -24,7 +25,7 @@ const MENU_GROUPS = [
   {
     label: "監造",
     items: [
-      { icon: LayoutDashboard, label: "專案總覽", path: "dashboard" },
+      { icon: LayoutDashboard, label: "專案儀表板", path: "dashboard" },
       { icon: BookOpen, label: "施工日誌", path: "diary" },
     ],
   },
@@ -96,7 +97,6 @@ export function ProjectLayout() {
         <div className="pl-nav-scroll custom-scrollbar">
           {MENU_GROUPS.map((group, idx) => (
             <div key={idx} className="pl-nav-group">
-              {!isCollapsed && <div className="pl-nav-group-label">{group.label}</div>}
               <div className="pl-nav-items">
                 {group.items.map((item, i) => {
                   const targetPath = `/projects/${projectId}/${item.path}`;
@@ -119,6 +119,18 @@ export function ProjectLayout() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="pl-nav-back-area">
+          <Link
+            to="/dashboard"
+            className="pl-nav-link pl-nav-back-link"
+            title="返回專案總覽"
+          >
+            <LayoutGrid size={20} className="pl-nav-icon" />
+            {!isCollapsed && <span className="pl-nav-label">專案總覽</span>}
+            {isCollapsed && <div className="pl-nav-tooltip">專案總覽</div>}
+          </Link>
         </div>
 
         <div className="pl-sidebar-footer">

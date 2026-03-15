@@ -143,14 +143,31 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 24px;
 }
 
 .dash-title {
-  font-size: 1.2rem; /* Reduced for high density from 1.6rem */
-  font-weight: 800;
+  font-size: 1.4rem; /* 增加視覺份量 */
+  font-weight: 900;
   color: var(--color-text-main);
   letter-spacing: 0.05em;
   margin: 0;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 14px;
+}
+
+/* 增加專業感的主題色標記左線條 */
+.dash-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10%;
+  height: 80%;
+  width: 5px;
+  background: linear-gradient(180deg, #6366f1 0%, #38bdf8 100%);
+  border-radius: 4px;
 }
 
 .dash-subtitle {
@@ -677,17 +694,19 @@
 }
 
 .b-stat-card {
-  background: var(--color-bg1) !important;
-  border-radius: 8px; /* High density */
-  border: 1px solid var(--color-block-border);
-  padding: 0.6rem 0.75rem; /* High density */
-  transition: all 0.3s ease;
-  animation: slide-up 0.4s ease both;
+  background: #ffffff !important;  /* 強制純白，確保與任何底色都有對比 */
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 1.25rem;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .b-stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-color: var(--color-block-border);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .b-stat-header {
@@ -746,10 +765,11 @@
 
 .b-content-panel {
   background: var(--color-bg1) !important;
-  border-radius: 8px; /* High density */
-  border: 1px solid var(--color-block-border);
-  padding: 0.75rem; /* High density */
-  animation: slide-up 0.4s ease both;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .b-panel-header {
@@ -906,11 +926,21 @@
   left: 0;
   height: 100%;
   border-radius: 999px;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .b-bar-fg.blue { background: var(--color-primary); }
 .b-bar-fg.violet { background: #a78bfa; }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Shared Subpage Wrapper (Prevent Spacing Inconsistencies) ─── */
+.dash-page-wrapper {
+  padding: 8px 24px 24px 24px; /* 頂部極致貼合，左右舒適留白防呆 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
 }

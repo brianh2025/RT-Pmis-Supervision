@@ -38,11 +38,10 @@ export function ProjectDashboard() {
   ];
 
   return (
-    <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+    <div className="dash-page-wrapper">
       <div className="dash-page-header">
         <div>
           <h1 className="dash-title">專案儀表板</h1>
-          <p className="dash-subtitle">{project?.name}</p>
         </div>
       </div>
       

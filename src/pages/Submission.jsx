@@ -9,11 +9,10 @@ export function Submission() {
   const { project, loading } = useProject(id);
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '1rem', background: 'var(--color-bg2)', padding: '6px 16px', borderRadius: '10px', border: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="dash-page-wrapper">
+      <div className="dash-page-header">
         <div>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-main)' }}>送審文件管理</span>
-          <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginLeft: '8px' }}>DOCUMENT SUBMISSION</span>
+          <h1 className="dash-title">送審文件管理</h1>
         </div>
       </div>
       <div style={{ marginTop: '32px', textAlign: 'center', padding: '64px 20px', background: 'var(--color-bg2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>

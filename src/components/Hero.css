@@ -1,6 +1,6 @@
 .hero-section {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center; /* Center to prevent top gap */
   justify-content: center;
@@ -66,6 +66,7 @@
   justify-content: center;
   align-items: center;
   z-index: 10;
+  transform: translateY(-8vh); /* 將卡片向上提昇以縮減與頂部導覽列的距離 */
 }
 
 /* Portal Card */
@@ -75,7 +76,7 @@
   padding: 1.25rem; /* High density */
   display: flex;
   flex-direction: column;
-  gap: 0.85rem; /* High density */
+  gap: 0.6rem; /* High density */
   background: var(--color-surface-translucent);
   backdrop-filter: blur(32px) saturate(120%);
   -webkit-backdrop-filter: blur(32px) saturate(120%);

@@ -11,18 +11,31 @@ export function DailyReportList({ onSelectReport, onNewReport }) {
     const thisMonthReports = reports.filter(r => r.date.startsWith(month)).length;
 
     return (
-        <div style={{ padding: '20px 0', background: C.bg, minHeight: "100vh" }}>
+        <div style={{ background: 'transparent' }}>
             <div style={{ maxWidth: 1200, margin: '0 auto' }}>
                 {/* Quick Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
                     {[
                         { label: "日報總數", value: reports.length, color: C.primary },
                         { label: "本月填報", value: thisMonthReports, color: C.success },
                         { label: "缺報天數", value: 0, color: C.textMuted },
-                    ].map(s => (
-                        <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "14px 10px", textAlign: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: `1px solid ${C.border}` }}>
-                            <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
-                            <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>{s.label}</div>
+                    ].map((s, idx) => (
+                        <div key={s.label} style={{
+                            background: "#fff",
+                            borderRadius: 16,
+                            padding: "1.25rem",
+                            textAlign: "center",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.02)",
+                            border: "1px solid rgba(0,0,0,0.04)",
+                            animation: `slide-up 0.6s cubic-bezier(0.16,1,0.3,1) ${idx * 0.07}s both`,
+                            transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s",
+                            cursor: "default",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.06)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.02)"; }}
+                        >
+                            <div style={{ fontSize: 28, fontWeight: 900, color: s.color, lineHeight: 1.2 }}>{s.value}</div>
+                            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{s.label}</div>
                         </div>
                     ))}
                 </div>

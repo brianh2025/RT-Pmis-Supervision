@@ -9,11 +9,10 @@ export function Archive() {
   const { project, loading } = useProject(id);
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className="dash-page-wrapper">
       <div className="dash-page-header">
         <div>
           <h1 className="dash-title">歸檔管理</h1>
-          <p className="dash-subtitle">{loading ? '載入中...' : project?.name}</p>
         </div>
       </div>
       <div style={{ marginTop: '32px', textAlign: 'center', padding: '64px 20px', background: 'var(--color-bg2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
