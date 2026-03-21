@@ -94,23 +94,22 @@ export function DiaryLog() {
   const importedCount = Object.keys(importedData).length;
 
   return (
-    <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', backgroundColor: 'var(--color-bg1)' }}>
-      {/* Header mapped from B-version - 精簡標題 (移除案情摘要與重複日誌字樣) */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', background: 'var(--color-bg2)', padding: '6px 16px', borderRadius: '10px', border: '1px solid var(--color-block-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-main)' }}>施工紀錄檢索</span>
-            <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>MAPPING SYSTEM</span>
+    <div className="diary-log-page">
+      <header className="page-section-header">
+        <div className="header-left">
+          <span className="section-label">施工紀錄檢索</span>
+          <span className="section-sub-label">MAPPING SYSTEM</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>
+        <div className="header-actions">
+            <span className="status-badge success">
                 本月 {importedCount} 筆已匯入
             </span>
             <button 
                 onClick={() => setShowImportModal(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '24px', padding: '0 10px', borderRadius: '6px', background: 'var(--color-primary)', color: 'white', fontSize: '11px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
+                className="btn-dash-action"
             >
-                <CloudDownload size={13} />
-                <span className="hide-on-mobile">手動匯入</span>
+                <CloudDownload size={14} />
+                <span>手動匯入</span>
             </button>
         </div>
       </header>

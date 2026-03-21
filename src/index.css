@@ -1,72 +1,55 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
 :root {
-  /* Core Colors */
-  --color-primary: #0F52BA; /* Engineering Blue / Sapphire */
-  --color-primary-light: #4A88E1;
-  --color-primary-dark: #083478;
+  /* Core Colors - Vibrant & Premium */
+  --color-primary: #1565C0; 
+  --color-primary-light: #64B5F6;
+  --color-primary-dark: #0D47A1;
   
-  --color-secondary: #FFB300; /* Safety Amber */
-  --color-secondary-light: #FFD54F;
-  --color-secondary-dark: #FF8F00;
-
-  --color-success: #10B981;
-  --color-danger: #EF4444;
-  --color-warning: #F59E0B;
-  --color-info: #3B82F6;
-
-  /* Neutrals */
-  --color-background-base: #020617; /* Slate 950 obsidian */
-  --color-surface: rgba(15, 23, 42, 0.6); /* Slate 900 translucent */
-  --color-surface-translucent: rgba(15, 23, 42, 0.65);
-  --color-surface-hover: #1E293B; /* Slate 800 */
-  --color-surface-border: rgba(255, 255, 255, 0.08); /* Faint border for banners */
-  --color-block-border: rgba(255, 255, 255, 0.2); /* Darker border for blocks */
+  --color-secondary: #FFC107;
   
-  --color-text-main: #F8FAFC; /* Slate 50 */
-  --color-text-muted: #94A3B8; /* Slate 400 */
-  --color-text-inverse: #020617; /* Slate 950 */
+  /* Font Scaling System - Consolidated */
+  --fs-xs: 0.75rem;    /* 12px */
+  --fs-sm: 0.85rem;    /* 13.6px - Compact info */
+  --fs-base: 0.95rem;  /* 15.2px - Main content */
+  --fs-lg: 1.1rem;     /* 17.6px - Sub headers */
+  --fs-xl: 1.25rem;    /* 20px - Panel titles */
+  --fs-2xl: 1.5rem;    /* 24px - Section headers */
+  --fs-3xl: 2.25rem;   /* 36px - Hero titles */
 
-  /* Glowing orbs base */
-  --color-primary-glow: rgba(15, 82, 186, 0.3);
-  --color-secondary-glow: rgba(255, 179, 0, 0.15);
-
-  /* Shadows & Effects */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 20px rgba(15, 82, 186, 0.4);
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Borders */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-full: 9999px;
+  /* Neutrals: Deep Graphite & Stronger Glass for better contrast */
+  --color-background-base: #020408;
+  --color-surface: rgba(15, 23, 42, 0.85); /* 提升至 85% 不透明 */
+  --color-surface-hover: rgba(30, 41, 59, 0.95);
+  --color-surface-border: rgba(255, 255, 255, 0.15); /* 框線加深 */
+  --color-block-border: rgba(255, 255, 255, 0.25);  /* 區塊界線加強 */
+  
+  --color-text-main: #FFFFFF;
+  --color-text-muted: #94A3B8;
+  
+  --radius-xl: 1.25rem;
+  --radius-2xl: 2rem;
+  
+  --shadow-glow: 0 0 24px rgba(21, 101, 192, 0.35);
 }
 
-/* Light Theme Variables for Sunlight Readability */
 [data-theme="light"] {
-  --color-background-base: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-surface-hover: #F1F5F9;
-  --color-surface-border: #CBD5E1; /* 加深邊框色以對抗強光 (Slate 300) */
-  --color-block-border: #94A3B8;   /* 區塊界線更明顯 (Slate 400) */
-  --color-surface-translucent: rgba(255, 255, 255, 0.9);
-  --color-background-soft: #F1F5F9; /* 背景增加微層次 */
-  
+  --color-background-base: #F0F4F9;
+  --color-surface: rgba(255, 255, 255, 0.45);
+  --color-surface-hover: rgba(255, 255, 255, 0.8);
+  --color-surface-border: rgba(255, 255, 255, 0.3);
+  --color-block-border: rgba(0, 0, 0, 0.1);
   --color-text-main: #0F172A;
-  --color-text-muted: #475569;
-  --color-text-inverse: #FFFFFF;
+  --color-text-muted: #64748B;
+}
 
-  --color-primary-glow: rgba(15, 82, 186, 0.15);
-  --color-secondary-glow: rgba(255, 179, 0, 0.08);
+body {
+  font-family: 'Outfit', 'Noto Sans TC', system-ui, sans-serif;
+  font-size: var(--fs-base);
+  background-color: var(--color-background-base);
+  color: var(--color-text-main);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
 }
 
 * {
