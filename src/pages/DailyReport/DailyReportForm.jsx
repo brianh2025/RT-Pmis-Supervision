@@ -44,7 +44,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                         {I.back(C.text)}
                     </button>
                     <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: C.text }}>
-                        {existing ? "編輯日報表" : "新增日報表"}
+                        {existing ? "編輯施工日誌" : "新增施工日誌"}
                     </h2>
                 </div>
 
@@ -303,7 +303,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                         </button>
                     ) : (
                         <button onClick={() => { onSave(form); }} style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#059669,#10b981)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                            {I.check("#fff")} 儲存日報表
+                            {I.check("#fff")} 儲存施工日誌
                         </button>
                     )}
                 </div>

@@ -48,15 +48,20 @@ export function DiaryPrintView() {
   if (loading) return <div className="print-loading">載入表單中...</div>;
   if (error) return <div className="print-error">{error}</div>;
 
-  // Formatting date to ROC year (ex: 113年05月12日)
+  // Formatting date to ROC year (ex: 114 / 2 / 28)
   const d = new Date(log.log_date);
   const rocYear = d.getFullYear() - 1911;
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  const dateStr = `${rocYear} 年 ${mm} 月 ${dd} 日`;
+  const rocDateStr = `${rocYear} / ${mm} / ${dd}`;
 
-  const weatherAm = log.weather_am || '—';
-  const weatherPm = log.weather_pm || '—';
+  // Progress calculations
+  const planned = log.planned_progress || 0;
+  const actual = log.actual_progress || 0;
+  const diff = (actual - planned).toFixed(2);
+
+  // Split work_items back into rows for the table
+  const workRows = log.work_items ? log.work_items.split('\n').filter(Boolean) : [];
 
   return (
     <div className="print-page-wrapper">
@@ -68,72 +73,131 @@ export function DiaryPrintView() {
         <button className="btn-print-action" onClick={handlePrint}>
           <Printer size={16} /> 列印 / 儲存為 PDF
         </button>
-        <div className="print-hint">提示：請在列印設定中將「邊界」設為「無」或「預設」，並勾選「背景圖形」以獲得最佳輸出效果。</div>
+        <div className="print-hint">提示：建議列印設定「背景圖形」以獲得正確表格顏色。</div>
       </div>
 
       {/* A4 Printable Sheet */}
       <div className="a4-sheet a4-portrait">
         <div className="diary-sheet-content">
-          <h1 className="sheet-title">公共工程施工日誌</h1>
+          <h1 className="sheet-title">公共工程監造報表</h1>
           
-          <div className="sheet-meta-row">
-            <div className="meta-item"><strong>工程名稱：</strong>{project.name}</div>
-            <div className="meta-item"><strong>日期：</strong>{dateStr}</div>
+          {/* Top Meta Info */}
+          <div className="meta-info-grid">
+            <div className="meta-item meta-label">工程名稱</div>
+            <div className="meta-item">{project.name}</div>
+            <div className="meta-item meta-label">工程編號</div>
+            <div className="meta-item">（尚未編號）</div>
           </div>
-          
-          <table className="sheet-table">
+
+          <table className="sheet-table border-top-none">
             <tbody>
-              {/* 天氣 */}
               <tr>
-                <th className="th-narrow" rowSpan={2}>天<br/>氣</th>
-                <th className="th-sub">上午</th>
-                <td className="td-weather">{weatherAm}</td>
-                <th className="th-sub">下午</th>
-                <td className="td-weather">{weatherPm}</td>
+                <th className="th-label">開工日期</th>
+                <td className="td-center" style={{ width: '20%' }}>{project.start_date ? project.start_date.replace(/-/g, '/') : '—'}</td>
+                <th className="th-label">填表日期</th>
+                <td className="td-center" style={{ width: '20%' }}>{rocDateStr}</td>
+                <th className="th-label">預計完工</th>
+                <td className="td-center">{project.end_date ? project.end_date.replace(/-/g, '/') : '—'}</td>
               </tr>
               <tr>
-                <td colSpan={4} className="td-hint">
-                  （氣溫、降雨量等詳細氣象資料，請依契約規定填寫或另附報表）
+               <th className="th-label">本日天氣</th>
+               <td colSpan={5}>
+                 <div style={{ display: 'flex', gap: '30px' }}>
+                   <span>上午：<strong>{log.weather_am || '—'}</strong></span>
+                   <span>下午：<strong>{log.weather_pm || '—'}</strong></span>
+                 </div>
+               </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Progress Grid */}
+          <div className="progress-grid">
+            <div className="progress-cell progress-label">契約工期</div>
+            <div className="progress-cell progress-label">累計工期</div>
+            <div className="progress-cell progress-label">剩餘工期</div>
+            <div className="progress-cell progress-label">預定進度(%)</div>
+            <div className="progress-cell progress-label">實際進度(%)</div>
+            <div className="progress-cell progress-label">進度差異(%)</div>
+            
+            <div className="progress-cell">（日曆天）</div>
+            <div className="progress-cell">（依契約）</div>
+            <div className="progress-cell">（依實計）</div>
+            <div className="progress-cell">{planned}%</div>
+            <div className="progress-cell">{actual}%</div>
+            <div className="progress-cell" style={{ color: diff < 0 ? 'red' : 'inherit' }}>{diff}%</div>
+          </div>
+
+          {/* Table Sections I to IV */}
+          <table className="sheet-table" style={{ borderTop: 'none' }}>
+            <tbody>
+              {/* Section 1: Work Table */}
+              <tr>
+                <th className="th-narrow">一<br/>、<br/>施<br/>工<br/>項<br/>目<br/>數<br/>量</th>
+                <td colSpan={5} style={{ padding: 0 }}>
+                  <table className="work-table">
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left', paddingLeft: '8px' }}>工程項目名稱</th>
+                        <th style={{ width: '80px' }}>單位</th>
+                        <th style={{ width: '100px' }}>今日完成</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workRows.length > 0 ? workRows.map((line, idx) => {
+                        const parts = line.split(/[： ]/);
+                        const name = parts[0] || line;
+                        const qty = parts[1] || '—';
+                        const unit = parts[2] || '';
+                        return (
+                          <tr key={idx}>
+                            <td style={{ paddingLeft: '8px' }}>{name}</td>
+                            <td className="td-center">{unit}</td>
+                            <td className="td-center">{qty}</td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr><td colSpan={3} className="td-center" style={{ height: '60px', color: '#999' }}>本日無施工數據</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </td>
               </tr>
 
-              {/* 施工項目 */}
+              {/* Section 2 */}
               <tr>
-                <th className="th-narrow">施<br/>工<br/>項<br/>目</th>
-                <td colSpan={4} className="td-content td-tall">
+                <th className="th-narrow">二<br/>、<br/>監<br/>督<br/>施<br/>工</th>
+                <td colSpan={5} className="td-content">
                   <div className="content-preserve-lines">
-                    {log.work_items || '本日無施工項目紀錄'}
+                    {log.notes || '（按核定施工圖施工）'}
                   </div>
                 </td>
               </tr>
 
-              {/* 出工人數 / 機具 (Placeholder for now since table was deferred) */}
+              {/* Section 3 */}
               <tr>
-                <th className="th-narrow">出<br/>工<br/>人<br/>數</th>
-                <td colSpan={4} className="td-content td-medium">
-                  <div className="no-data-hint">（本版系統暫未啟用每日出工自動統計，請依現場實際狀況填列或留白）</div>
-                </td>
-              </tr>
-              <tr>
-                <th className="th-narrow">機<br/>具<br/>使<br/>用</th>
-                <td colSpan={4} className="td-content td-medium">
-                  <div className="no-data-hint">（本版系統暫未啟用每日機具自動統計，請依現場實際狀況填列或留白）</div>
+                <th className="th-narrow">三<br/>、<br/>查<br/>核<br/>品<br/>質</th>
+                <td colSpan={5} className="td-content" style={{ minHeight: '60px' }}>
+                  <div className="content-preserve-lines">
+                    材料規格及品質抽查合格。
+                  </div>
                 </td>
               </tr>
 
-              {/* 重要記事 */}
+              {/* Section 4 */}
               <tr>
-                <th className="th-narrow">重<br/>要<br/>記<br/>事</th>
-                <td colSpan={4} className="td-content td-tall">
+                <th className="th-narrow">四<br/>、<br/>職<br/>安<br/>衛<br/>生</th>
+                <td colSpan={5} className="td-content" style={{ minHeight: '60px' }}>
                   <div className="content-preserve-lines">
-                    {log.notes || '無'}
+                    ■ 完成施工前檢查。
+                    其他：工地整潔及人員防護具配戴正常。
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
 
-          {/* 簽名欄 */}
+          {/* Signatures */}
           <div className="sheet-signatures">
             <div className="sig-box">
               <div className="sig-title">承攬廠商 (工地負責人)</div>

@@ -46,13 +46,13 @@ export function DailyReportList({ onSelectReport, onNewReport }) {
                     background: C.primaryLight, color: C.primary, fontSize: 14, fontWeight: 700, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14,
                 }}>
-                    {I.plus(C.primary)} 新增日報表
+                    {I.plus(C.primary)} 新增施工日誌
                 </button>
 
                 {/* List */}
                 {reports.length === 0 ? (
                     <div style={{ textAlign: "center", color: C.textMuted, padding: "50px 0", fontSize: 14 }}>
-                        <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>尚無日報表，請新增
+                        <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>尚無施工日誌，請新增
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>

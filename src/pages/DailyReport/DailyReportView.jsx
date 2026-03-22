@@ -22,7 +22,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
                         {I.back(C.text)}
                     </button>
                     <div>
-                        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: C.text }}>日報表 {report.date}</h2>
+                        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: C.text }}>施工日誌 {report.date}</h2>
                         <div style={{ fontSize: 12, color: C.textMuted }}>編號：{report.reportNo}</div>
                     </div>
                 </div>
@@ -54,7 +54,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = C.bg}
                 onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-                    {I.edit(C.textMid)} 編輯此日報表
+                    {I.edit(C.textMid)} 編輯此施工日誌
                 </button>
 
                 {/* Tab pills */}

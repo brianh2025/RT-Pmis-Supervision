@@ -82,7 +82,7 @@ export function DiaryLog() {
         map[l.log_date] = {
             weather: weatherStr,
             summary: l.work_items || l.notes || '無施工記事',
-            tags: ['施工日誌'], 
+            tags: ['監造報表'], 
             progress: l.cumulative_progress || 0 // Assuming progress may exist
         };
     });
@@ -97,7 +97,7 @@ export function DiaryLog() {
     <div className="diary-log-page">
       <header className="page-section-header">
         <div className="header-left">
-          <span className="section-label">施工紀錄檢索</span>
+          <span className="section-label">監造報表檢索</span>
           <span className="section-sub-label">MAPPING SYSTEM</span>
         </div>
         <div className="header-actions">
@@ -227,17 +227,17 @@ export function DiaryLog() {
 
                             <div style={{ display: 'flex', gap: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-block-border)' }}>
                                 <button
-                                    onClick={() => navigate(`/projects/${projectId}/diary/print/${selectedKey}`)}
+                                    onClick={() => navigate(`/projects/${projectId}/supervision/print/${selectedKey}`)}
                                     style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--color-bg2)', borderRadius: '6px', fontSize: '11px', color: 'var(--color-text2)', border: '1px solid var(--color-block-border)', cursor: 'pointer', transition: 'all 0.2s' }}
                                 >
-                                    <Edit size={14} /> 檢視 / 編輯日誌
+                                    <Edit size={14} /> 檢視 / 編輯報表
                                 </button>
                             </div>
                         </div>
                     ) : (
                         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                             <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 12px' }} />
-                            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>尚未提送日誌</p>
+                            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>尚未提送報表</p>
                             <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>請等待系統同步或手動匯入</p>
                             <button
                                 onClick={() => setShowImportModal(true)}
@@ -250,7 +250,7 @@ export function DiaryLog() {
             ) : (
                 <div className="b-content-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
                     <Calendar size={36} color="var(--color-border)" style={{ marginBottom: '12px' }} />
-                    <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>點選左方日期查看日誌內容</p>
+                    <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>點選左方日期查看報表內容</p>
                 </div>
             )}
             

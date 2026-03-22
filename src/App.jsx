@@ -14,7 +14,9 @@ import { Quality } from './pages/Quality';
 import { Archive } from './pages/Archive';
 import { Analytics } from './pages/Analytics';
 import { DailyReportController } from './pages/DailyReport/DailyReportController';
+import { DiaryLog } from './pages/DiaryLog';
 import { DiaryPrintView } from './pages/DiaryPrintView';
+import { ProgressManagement } from './pages/ProgressManagement';
 
 function WelcomePage() {
   return (
@@ -58,7 +60,9 @@ function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<ProjectDashboard />} />
                 <Route path="diary" element={<DailyReportController />} />
-                <Route path="diary/print/:logDate" element={<DiaryPrintView />} />
+                <Route path="supervision" element={<DiaryLog />} />
+                <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
+                <Route path="progress" element={<ProgressManagement />} />
                 <Route path="submission" element={<Submission />} />
                 <Route path="quality" element={<Quality />} />
                 <Route path="archive" element={<Archive />} />

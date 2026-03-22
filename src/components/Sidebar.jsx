@@ -14,13 +14,16 @@ import {
   Sun,
   Moon,
   HelpCircle,
+  TrendingUp,
 } from 'lucide-react';
 
 const MENU_GROUPS_PROJECT = [
   {
     items: [
       { icon: Activity, label: "專案儀表板", path: "dashboard" },
+      { icon: ClipboardList, label: "監造報表", path: "supervision" },
       { icon: ClipboardList, label: "施工日誌", path: "diary" },
+      { icon: TrendingUp, label: "進度管理", path: "progress" },
     ],
   },
   {
