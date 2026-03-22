@@ -2,7 +2,8 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, DollarSign, Clock, TrendingUp, CreditCard, 
-  AlertCircle, PieChart, Info, Activity, Calendar
+  AlertCircle, PieChart, Info, Activity, Calendar,
+  FileText, Package, ClipboardCheck, CalendarPlus, PackageCheck
 } from 'lucide-react';
 
 import { useProject } from '../hooks/useProject';
@@ -45,163 +46,192 @@ export function ProjectDashboard() {
     { date: "2026/03/15", event: "現場照片：新增 12 張施工紀錄", type: "photo" },
   ];
 
+  // Mock data for dashboard extension panels
+  const planSubmissionStats = { totalRequired: 25, rejected: 1, underReview: 2, approved: 15 };
+  const planUnsub = planSubmissionStats.totalRequired - planSubmissionStats.approved - planSubmissionStats.rejected - planSubmissionStats.underReview;
+
+  const materialSubmissionStats = { totalRequired: 40, rejected: 0, underReview: 4, approved: 28 };
+  const matUnsub = materialSubmissionStats.totalRequired - materialSubmissionStats.approved - materialSubmissionStats.rejected - materialSubmissionStats.underReview;
+
+  const constructionInspectionStats = { weeklyComplete: true, thisWeekCount: 12, todayCount: 3 };
+  const materialInspectionStats = { weeklyComplete: false, thisWeekCount: 5, todayCount: 1 };
+
   return (
-    <div className="dash-page-wrapper">
-      <div className="dash-page-header" style={{ marginBottom: '16px' }}>
+    <div className="dash-page-wrapper" style={{ padding: '4px 8px' }}>
+      <div className="dash-page-header" style={{ marginBottom: '4px' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
             <span className={`status-badge ${project?.status || 'active'}`}>{project?.status === 'active' ? '執行中' : '已完工'}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{project?.id?.slice(0, 8).toUpperCase()}</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{project?.id?.slice(0, 8).toUpperCase()}</span>
           </div>
-          <h1 className="dash-title" style={{ fontSize: 'var(--fs-2xl)', lineHeight: 1.3, marginBottom: 0 }}>
+          <h1 className="dash-title" style={{ fontSize: '1.25rem', lineHeight: 1.2, margin: 0 }}>
             {project?.name || '專案載入中...'}
           </h1>
         </div>
       </div>
 
-      <div className="b-stat-grid">
-        {stats.map((s, i) => (
-          <div key={i} className="b-stat-card" style={{ animationDelay: `${i * 0.07}s` }}>
-            <div className="b-stat-header">
-              <span className="b-stat-label">{s.label}</span>
-              <div className={`b-stat-icon-wrapper ${s.accent}`}>
-                {s.icon}
-              </div>
+      <div className="stunning-bento-grid">
+        
+        {/* 1. ACTUAL VS PLANNED PROGRESS (Wide Card) */}
+        <div className="stunning-card stunning-card-wide">
+          <div className="stunning-card-header">
+            <div className="stunning-icon-box">
+              <TrendingUp size={16} />
             </div>
-            <div className="b-stat-value">{s.value}</div>
+            <h2 className="stunning-card-title">工程進度與財務追蹤</h2>
           </div>
-        ))}
-      </div>
-
-      <div className="b-dash-content-grid" style={{ alignItems: 'start' }}>
-        {/* 左直欄：S 曲線 + 基本資訊 */}
-        <div className="dash-col-left" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* S-Curve Panel */}
-          <div className="b-content-panel" style={{ animationDelay: "0.3s" }}>
-            <div className="b-panel-header">
-              <h3 className="b-panel-title">
-                <TrendingUp size={16} color="var(--color-primary)" />
-                進度 S 曲線
-              </h3>
-              <div className="b-panel-legend">
-                <div className="b-legend-item">
-                  <div className="b-legend-dot" style={{ background: 'var(--color-surface-border)' }} /> 預定
-                </div>
-                <div className="b-legend-item">
-                  <div className="b-legend-dot" style={{ background: 'var(--color-primary)' }} /> 實際
-                </div>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span>施工進度</span>
+                <span className={diff < 0 ? 'neon-red' : 'neon-green'} style={{ fontWeight: 800 }}>
+                  實: {actual}% / 預: {planned}%
+                </span>
+              </div>
+              <div className="stunning-progress-wrap">
+                <div className="stunning-planned-bar" style={{ width: `${planned}%` }}></div>
+                <div className="stunning-actual-bar" style={{ width: `${actual}%` }}>{actual}%</div>
               </div>
             </div>
-            
-            <div className="s-curve-chart">
-              {sCurveData.map((d, i) => (
-                <div key={i} className="s-curve-col">
-                  <div className="s-curve-bars">
-                    <div 
-                      className="s-curve-bar-planned" 
-                      style={{ height: `${(d.p / 100) * 100}%`, transitionDelay: `${i * 80}ms` }} 
-                    />
-                    <div 
-                      className="s-curve-bar-actual" 
-                      style={{ height: `${(d.a / 100) * 100}%`, transitionDelay: `${i * 80 + 40}ms` }} 
-                    />
-                  </div>
-                  <span className="s-curve-month">{d.m}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* New: Project Info Panel */}
-          <div className="b-content-panel" style={{ animationDelay: "0.4s" }}>
-            <h3 className="b-panel-title">
-              <Info size={16} color="var(--color-primary)" />
-              工程基本資訊
-            </h3>
-            <div className="project-info-list" style={{ marginTop: '1rem' }}>
-              <div className="info-row">
-                <span className="info-label">工程編號</span>
-                <span className="info-value">{project.id.slice(0, 8).toUpperCase()}</span>
+            <div style={{ flex: '1 1 300px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span>請款金額進度</span>
+                <span className="neon-blue" style={{ fontWeight: 800 }}>{paymentProg}%</span>
               </div>
-              <div className="info-row">
-                <span className="info-label">主辦單位</span>
-                <span className="info-value">雲林縣政府</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">承攬單位</span>
-                <span className="info-value">{project.contractor || '尚未指定'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">當前狀態</span>
-                <span className={`status-badge ${project.status}`}>{project.status === 'active' ? '執行中' : '已完工'}</span>
+              <div className="stunning-progress-wrap">
+                <div className="stunning-actual-bar" style={{ width: `${paymentProg}%`, background: 'linear-gradient(90deg, #4c1d95, #8b5cf6, #c084fc)' }}>{paymentProg}%</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 右直欄：進度財務 + 最近活動 */}
-        <div className="dash-col-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Progress Summary Panel */}
-          <div className="b-content-panel" style={{ animationDelay: "0.35s" }}>
-            <h3 className="b-panel-title" style={{ marginBottom: '1.25rem' }}>
-              <PieChart size={16} color="var(--color-primary)" />
-              進度與財務摘要
-            </h3>
-            
-            <div className="b-progress-details">
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div className="b-prog-item-header">
-                  <span className="b-prog-label">施工累計進度</span>
-                  <span className={`b-prog-val ${diff < 0 ? 'red' : 'blue'}`}>
-                    實 {actual}% / 預 {planned}%
-                  </span>
-                </div>
-                <div className="b-layered-bar">
-                  <div className="b-bar-bg" style={{ width: `${planned}%` }} />
-                  <div className="b-bar-fg blue" style={{ width: `${actual}%` }} />
-                </div>
-                {diff < 0 && (
-                  <div className="b-prog-warn">
-                    <AlertCircle size={14} />
-                    <span>進度落後 {Math.abs(diff)}%</span>
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <div className="b-prog-item-header">
-                  <span className="b-prog-label">請款金額進度</span>
-                  <span className="b-prog-val violet">{paymentProg}%</span>
-                </div>
-                <div className="b-layered-bar">
-                  <div className="b-bar-fg violet" style={{ width: `${paymentProg}%` }} />
-                </div>
-              </div>
+        {/* 2. PLAN SUBMISSION STATUS */}
+        <div className="stunning-card">
+          <div className="stunning-card-header">
+            <div className="stunning-icon-box">
+              <FileText size={16} />
+            </div>
+            <h2 className="stunning-card-title">計畫書送審管制狀態</h2>
+          </div>
+          <div className="neon-stats-grid">
+            <div className="neon-stat-box neon-yellow">
+              <span className="neon-val">{planUnsub}/{planSubmissionStats.totalRequired}</span>
+              <span className="neon-label">未提送/應提送</span>
+            </div>
+            <div className="neon-stat-box neon-blue">
+              <span className="neon-val">{planSubmissionStats.underReview}</span>
+              <span className="neon-label">審查中</span>
+            </div>
+            <div className="neon-stat-box neon-red">
+              <span className="neon-val">{planSubmissionStats.rejected}</span>
+              <span className="neon-label">已審退</span>
+            </div>
+            <div className="neon-stat-box neon-green">
+              <span className="neon-val">{planSubmissionStats.approved}</span>
+              <span className="neon-label">已核定</span>
+            </div>
+          </div>
+          <div style={{ marginTop: '0.75rem', display: 'flex' }}>
+            <button className="btn-cyber primary" style={{ width: '100%' }}>
+              <FileText size={14} /> 進入管制總表
+            </button>
+          </div>
+        </div>
+
+        {/* 3. MATERIAL SUBMISSION STATUS */}
+        <div className="stunning-card">
+          <div className="stunning-card-header">
+            <div className="stunning-icon-box">
+              <Package size={16} />
+            </div>
+            <h2 className="stunning-card-title">材料送審管制狀態</h2>
+          </div>
+          <div className="neon-stats-grid">
+            <div className="neon-stat-box neon-yellow">
+              <span className="neon-val">{matUnsub}/{materialSubmissionStats.totalRequired}</span>
+              <span className="neon-label">未提送/應提送</span>
+            </div>
+            <div className="neon-stat-box neon-blue">
+              <span className="neon-val">{materialSubmissionStats.underReview}</span>
+              <span className="neon-label">審查中</span>
+            </div>
+            <div className="neon-stat-box neon-red">
+              <span className="neon-val">{materialSubmissionStats.rejected}</span>
+              <span className="neon-label">已審退</span>
+            </div>
+            <div className="neon-stat-box neon-green">
+              <span className="neon-val">{materialSubmissionStats.approved}</span>
+              <span className="neon-label">已核定</span>
+            </div>
+          </div>
+          <div style={{ marginTop: '0.75rem', display: 'flex' }}>
+            <button className="btn-cyber primary" style={{ width: '100%' }}>
+              <Package size={14} /> 進入管制總表
+            </button>
+          </div>
+        </div>
+
+        {/* 4. CONSTRUCTION INSPECTION STATUS */}
+        <div className="stunning-card sci-fi-tracker">
+          <div className="stunning-card-header" style={{ marginBottom: 0 }}>
+            <div className="stunning-icon-box">
+              <ClipboardCheck size={16} />
+            </div>
+            <h2 className="stunning-card-title">施工檢驗停留點查驗</h2>
+          </div>
+          
+          <div className="sci-fi-status-row">
+            <span className="sci-fi-text">每週抽查執行狀態</span>
+            <div className={`sci-fi-indicator ${constructionInspectionStats.weeklyComplete ? 'orb-green' : 'orb-red'}`}>
+              <div className="sci-fi-orb" />
+              {constructionInspectionStats.weeklyComplete ? 'ACTIVE' : 'INACTIVE'}
             </div>
           </div>
 
-
-
-          {/* New: Recent Activities Panel */}
-          <div className="b-content-panel" style={{ animationDelay: "0.45s" }}>
-            <div className="b-panel-header">
-              <h3 className="b-panel-title">
-                <Activity size={16} color="var(--color-primary)" />
-                最近活動
-              </h3>
-              <button className="btn-text" onClick={() => navigate(`/projects/${id}/diary`)}>查看更多</button>
+          <div className="inspection-counters">
+            <div className="counter-box">
+              <div className="c-val highlight-val">{constructionInspectionStats.thisWeekCount}</div>
+              <div className="c-label">本週查驗總件數</div>
             </div>
-            <div className="activity-timeline" style={{ marginTop: '1rem' }}>
-              {recentActivities.map((act, i) => (
-                <div key={i} className="timeline-item">
-                  <div className="timeline-dot" />
-                  <div className="timeline-content">
-                    <div className="timeline-date">{act.date}</div>
-                    <div className="timeline-text">{act.event}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="counter-box">
+              <div className="c-val">{constructionInspectionStats.todayCount}</div>
+              <div className="c-label">今日查驗件數</div>
             </div>
+          </div>
+
+          <div className="cool-btn-group">
+            <button className="btn-cyber">進入管制總表</button>
+            <button className="btn-cyber primary" onClick={() => alert('已模擬新增至 Google 日曆！')}>
+              <CalendarPlus size={14} /> 同步日曆
+            </button>
+          </div>
+        </div>
+
+        {/* 5. MATERIAL INSPECTION STATUS */}
+        <div className="stunning-card sci-fi-tracker">
+          <div className="stunning-card-header">
+            <div className="stunning-icon-box">
+              <PackageCheck size={16} />
+            </div>
+            <h2 className="stunning-card-title">材料進場查驗管制</h2>
+          </div>
+
+          <div className="inspection-counters">
+            <div className="counter-box">
+              <div className="c-val highlight-val">{materialInspectionStats.thisWeekCount}</div>
+              <div className="c-label">本週進場總件數</div>
+            </div>
+            <div className="counter-box">
+              <div className="c-val">{materialInspectionStats.todayCount}</div>
+              <div className="c-label">今日進場件數</div>
+            </div>
+          </div>
+
+          <div className="cool-btn-group">
+            <button className="btn-cyber">進入管制總表</button>
+            <button className="btn-cyber primary" onClick={() => alert('已模擬新增至 Google 日曆！')}>
+              <CalendarPlus size={14} /> 同步日曆
+            </button>
           </div>
         </div>
       </div>
