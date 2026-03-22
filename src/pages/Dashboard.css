@@ -1256,3 +1256,313 @@
   height: 100%;
   overflow-y: auto;
 }
+
+/* ═══════════════════════════════════════════════════════
+   極致密度覆蓋（一頁顯示 2~4 個專案）
+   ═══════════════════════════════════════════════════════ */
+
+.dash-main {
+  padding: 8px 12px !important;
+  gap: 6px !important;
+}
+
+.dash-page-header {
+  margin-bottom: 2px !important;
+}
+
+.dash-kpi-grid-custom {
+  gap: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+/* ─── 極致緊湊專案卡片 ─── */
+.dash-project-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding-bottom: 8px !important;
+}
+
+.dash-project-card-compact {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  min-height: 72px;
+  max-height: 90px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-surface-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  opacity: 0;
+  animation: slideUpFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dash-project-card-compact:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 4px 16px rgba(21,101,192,0.2);
+}
+
+/* 左側縱向色條 */
+.card-accent-side {
+  width: 4px;
+  flex-shrink: 0;
+  border-radius: 10px 0 0 10px;
+}
+
+/* 右側主體 */
+.card-compact-body {
+  flex: 1;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 上排：文字區 + 圓環 */
+.card-compact-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-compact-top > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-meta-compact {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+
+.card-title-compact {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color 0.2s;
+}
+
+.dash-project-card-compact:hover .card-title-compact {
+  color: var(--color-primary);
+}
+
+.card-contractor-compact {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 下排：進度條 + 差值 */
+.card-compact-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-compact-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+}
+
+/* KPI 卡改緊湊 */
+.kpi-card {
+  padding: 8px 10px !important;
+  gap: 6px !important;
+}
+
+.kpi-icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.kpi-value {
+  font-size: 1.1rem !important;
+}
+
+.kpi-label-zh {
+  font-size: 0.72rem !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   標題列：垂直色條 + 標題 + 按鈕同一列
+   ═══════════════════════════════════════════════════ */
+
+.dash-page-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;        /* 桌機不換行 */
+  gap: 8px !important;
+  margin-bottom: 4px !important;
+}
+
+/* 行動版：允許換行，按鈕顯示在標題下方 */
+@media (max-width: 768px) {
+  .dash-page-header {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  .btn-back-to-list {
+    order: -1;          /* 移到標題上方 */
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 4px;
+    padding: 8px 14px;
+  }
+}
+
+
+/* 色條 + 標題 左側群組 */
+.dash-title-block {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* 垂直色條 */
+.dash-title-accent {
+  display: block;
+  width: 4px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 100%;
+}
+
+.dash-title {
+  font-size: var(--fs-2xl) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  background: linear-gradient(135deg, var(--color-text-main) 30%, var(--color-primary-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 !important;
+  /* 支援長文字換行與兩行省略截斷 */
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .dash-title {
+    font-size: 1.15rem !important;
+  }
+}
+
+/* 按鈕群組 */
+.dash-table-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   工程列表標題：與卡片內文對齊
+   卡片內文起始位置 = 左色條 4px + body padding-left 10px = 14px
+   ═══════════════════════════════════════════════════ */
+
+.dash-section-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: baseline !important;
+  margin-bottom: 6px !important;
+  padding: 0 0 0 14px;  /* 對齊卡片內文（色條4px + body padding 10px） */
+}
+
+.dash-section-h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  letter-spacing: -0.01em;
+  margin: 0;
+  /* 動畫 */
+  opacity: 0;
+  animation: sectionTitleReveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+/* 工程列表標題動畫 */
+@keyframes sectionTitleReveal {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.dash-section-count {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  opacity: 0;
+  animation: sectionTitleReveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+}
+
+/* 全局左右對齊：dash-main 內所有直接子元素 padding = 0，由 dash-main 統一控制 */
+.dash-main > * {
+  /* 確保所有子元素以 dash-main 的 12px 為對齊基準 */
+  box-sizing: border-box;
+}
+
+/* ─── 專案頁右上：回到工程列表按鈕 ─── */
+.btn-back-to-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-surface-border);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-back-to-list:hover {
+  background: rgba(21, 101, 192, 0.08);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(21, 101, 192, 0.15);
+}
+
+.btn-back-to-list:active {
+  transform: translateY(0);
+}
+

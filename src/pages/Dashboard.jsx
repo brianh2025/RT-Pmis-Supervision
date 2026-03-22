@@ -20,6 +20,32 @@ const STATUS_CONFIG = {
   suspended: { label: '暫停中', colorClass: 'status-suspended' },
 };
 
+/** 圓形進度環元件 */
+function CircularProgress({ value = 0, size = 48, strokeWidth = 5, color = 'var(--color-primary)' }) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke="var(--color-surface-border)" strokeWidth={strokeWidth} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke={color} strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size/2} ${size/2})`}
+        style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1)' }}
+      />
+      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
+        fontSize={size < 44 ? 8 : 10} fontWeight="700"
+        fill="var(--color-text-main)">
+        {value}%
+      </text>
+    </svg>
+  );
+}
+
 export function Dashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -76,6 +102,7 @@ export function Dashboard() {
         onClick={() => setIsMobileOpen(false)}
       />
 
+      {/* Sidebar 整合所有工具（傳入 isDarkMode、toggleTheme、time、formatDate） */}
       <Sidebar 
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
@@ -83,37 +110,38 @@ export function Dashboard() {
         setIsMobileOpen={setIsMobileOpen}
         projectId={null}
         onSignOut={handleSignOut}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        time={time}
+        formatDate={formatDateWithSeconds}
       />
 
       <div className="pl-main-wrapper">
-        <Topbar 
-          setIsMobileOpen={setIsMobileOpen}
-          project={null}
-          loading={loading}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
-          time={time}
-          formatDate={formatDateWithSeconds}
-        />
+        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
+        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} />
 
         <main className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
+              {/* 標題列：垂直色條 + 標題 + 按鈕同一列 */}
               <div className="dash-page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <h1 className="dash-title" style={{ fontSize: 'var(--fs-3xl)', fontWeight: 800, letterSpacing: '-0.02em' }}>雲林縣工程監造</h1>
-                  {showWelcome && (
-                    <span className="welcome-msg-inline animate-fade-out" style={{ fontSize: 'var(--fs-xs)' }}>
-                      歡迎進行監造作業。
-                    </span>
-                  )}
+                <div className="dash-title-block">
+                  <span className="dash-title-accent" />
+                  <div>
+                    <h1 className="dash-title">雲林縣工程監造</h1>
+                    {showWelcome && (
+                      <span className="welcome-msg-inline animate-fade-out">
+                        歡迎進行監造作業。
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="dash-table-actions" style={{ display: 'flex', gap: '6px' }}>
+                <div className="dash-table-actions">
                   <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>
-                    <PlusCircle size={14} />
+                    <PlusCircle size={13} />
                     <span>新增工程</span>
                   </button>
                   <button className="btn-dash-action btn-dash-excel" onClick={() => setShowExcelModal(true)}>
-                    <FileSpreadsheet size={14} />
+                    <FileSpreadsheet size={13} />
                     <span>Excel 匯入</span>
                   </button>
                 </div>
@@ -123,64 +151,86 @@ export function Dashboard() {
 
             <section className="dash-kpi-grid-custom">
               <div className="kpi-card kpi-blue" style={{ animationDelay: '0.1s' }}>
-                <div className="kpi-icon"><Building2 size={20} /></div>
+                <div className="kpi-icon"><Building2 size={18} /></div>
                 <div className="kpi-content">
                   <span className="kpi-value">{loading ? '—' : activeCount}</span>
                   <span className="kpi-label-zh">執行中工程</span>
                 </div>
               </div>
               <div className="kpi-card kpi-red" style={{ animationDelay: '0.2s' }}>
-                <div className="kpi-icon"><AlertCircle size={20} /></div>
+                <div className="kpi-icon"><AlertCircle size={18} /></div>
                 <div className="kpi-content">
                   <span className="kpi-value" style={{ color: 'var(--color-danger)' }}>{loading ? '—' : behindCount}</span>
                   <span className="kpi-label-zh">落後工程</span>
                 </div>
               </div>
-              <div className="kpi-card kpi-highlight" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', padding: '16px', animationDelay: '0.3s' }}>
+              <div className="kpi-card kpi-highlight" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', padding: '10px 12px', animationDelay: '0.3s' }}>
                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>總覽進度 Overall</div>
-                    <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
-                       <div><div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>計畫進度</div><div style={{ fontWeight: 700, fontSize: '18px' }}>{avgPlannedProgress}%</div></div>
-                       <div><div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>實際進度</div><div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--color-primary)' }}>{avgProgress}%</div></div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>總覽進度 Overall</div>
+                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+                       <div><div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>計畫進度</div><div style={{ fontWeight: 700, fontSize: '16px' }}>{avgPlannedProgress}%</div></div>
+                       <div><div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>實際進度</div><div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-primary)' }}>{avgProgress}%</div></div>
                     </div>
                  </div>
-                 <div style={{ width: '60px', height: '60px', position: 'relative' }}>
-                    <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                       <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-surface-border)" strokeWidth="10" />
-                       <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-primary)" strokeWidth="10" strokeLinecap="round" strokeDasharray="264" strokeDashoffset={264 - (avgProgress * 2.64)} style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
-                    </svg>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 800 }}>{avgProgress}%</div>
-                 </div>
+                 <CircularProgress value={avgProgress} size={52} strokeWidth={5} />
               </div>
             </section>
 
-            <div className="dash-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>工程列表</h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>共 {projects.length} 個項目</span>
+            {/* 工程列表標題：與卡片內文對齊（左側色條 4px + body padding 10px = 14px） */}
+            <div className="dash-section-header">
+              <h2 className="dash-section-h2">工程列表</h2>
+              <span className="dash-section-count">共 {projects.length} 個項目</span>
             </div>
 
             <div className="dash-project-grid">
               {projects.map((p, index) => {
                 const lp = p.latest_progress;
                 const prog = lp ? lp.actual_progress : 0;
+                const planned = lp ? lp.planned_progress : 0;
+                const diff = prog - planned;
                 return (
-                  <div key={p.id} className="dash-project-card" onClick={() => navigate(`/projects/${p.id}/dashboard`)} style={{ animationDelay: `${0.4 + index * 0.05}s` }}>
-                    <div className="card-accent" style={{ background: p.status === 'active' ? 'var(--color-primary)' : 'var(--color-text-muted)' }} />
-                    <div className="card-body">
-                      <div className="card-meta">{p.id.slice(0,8).toUpperCase()}</div>
-                      <h3 className="card-title">{p.name}</h3>
-                      <div className="card-progress">
-                        <div className="progress-label">
-                          <span>施工進度</span>
-                          <span className="progress-percent">{prog}%</span>
+                  <div
+                    key={p.id}
+                    className="dash-project-card dash-project-card-compact"
+                    onClick={() => navigate(`/projects/${p.id}/dashboard`)}
+                    style={{ animationDelay: `${0.3 + index * 0.04}s` }}
+                  >
+                    {/* 左側色條 */}
+                    <div className="card-accent-side" style={{
+                      background: p.status === 'active' ? 'var(--color-primary)' :
+                                  p.status === 'suspended' ? 'var(--color-warning)' : 'var(--color-text-muted)'
+                    }} />
+
+                    {/* 右側內容 */}
+                    <div className="card-compact-body">
+                      {/* 上排：名稱 + 狀態 */}
+                      <div className="card-compact-top">
+                        <div>
+                          <div className="card-meta-compact">{p.id.slice(0,8).toUpperCase()}</div>
+                          <div className="card-title-compact">{p.name}</div>
+                          <div className="card-contractor-compact">{p.contractor || '未指定單位'}</div>
                         </div>
-                        <div className="progress-bar-bg">
-                          <div className="progress-bar-fill" style={{ width: `${prog}%` }} />
-                        </div>
+                        {/* 圓形進度環 */}
+                        <CircularProgress
+                          value={prog}
+                          size={48}
+                          strokeWidth={5}
+                          color={diff < -5 ? 'var(--color-error)' : 'var(--color-primary)'}
+                        />
                       </div>
-                      <div className="card-footer">
-                         <span className="contractor">{p.contractor || '未指定單位'}</span>
-                         <span className={`status-badge ${p.status}`}>{STATUS_CONFIG[p.status]?.label}</span>
+
+                      {/* 下排：進度條（差值標示） */}
+                      <div className="card-compact-progress">
+                        <div className="card-compact-progress-labels">
+                          <span>計畫 {planned}% · 實際 {prog}%</span>
+                          <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                            {diff >= 0 ? '+' : ''}{diff}%
+                          </span>
+                        </div>
+                        <div className="layered-progress-bar" style={{ height: '5px' }}>
+                          <div className="bar-planned" style={{ width: `${planned}%` }} />
+                          <div className="bar-actual" style={{ width: `${prog}%` }} />
+                        </div>
                       </div>
                     </div>
                   </div>

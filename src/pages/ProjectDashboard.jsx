@@ -4,6 +4,7 @@ import {
   ArrowLeft, DollarSign, Clock, TrendingUp, CreditCard, 
   AlertCircle, PieChart, Info, Activity, Calendar
 } from 'lucide-react';
+
 import { useProject } from '../hooks/useProject';
 import './Dashboard.css';
 
@@ -47,7 +48,7 @@ export function ProjectDashboard() {
   return (
     <div className="dash-page-wrapper">
       <div className="dash-page-header" style={{ marginBottom: '16px' }}>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <span className={`status-badge ${project?.status || 'active'}`}>{project?.status === 'active' ? '執行中' : '已完工'}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{project?.id?.slice(0, 8).toUpperCase()}</span>
@@ -57,7 +58,7 @@ export function ProjectDashboard() {
           </h1>
         </div>
       </div>
-      
+
       <div className="b-stat-grid">
         {stats.map((s, i) => (
           <div key={i} className="b-stat-card" style={{ animationDelay: `${i * 0.07}s` }}>

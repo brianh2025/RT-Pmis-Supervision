@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;   /* 統一左右邊距 12px */
   position: relative;
 }
 
@@ -246,7 +246,7 @@
 
 /* Sidebar Footer */
 .pl-sidebar-footer {
-  padding: 6px 8px 8px 8px;
+  padding: 6px 12px 8px 12px;  /* 統一左右 12px */
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -339,12 +339,67 @@
   z-index: 10;
 }
 
+/* 桌機版：有返回資訊時顯示 32px 返回列 */
+@media (min-width: 1025px) {
+  .pl-topbar.has-back {
+    display: flex;
+    height: 32px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--color-surface-border);
+    background: var(--color-surface);
+  }
+  /* 桌機版一般狀態（無 back）完全隱藏 */
+  .pl-topbar.pl-topbar-mobile-only {
+    display: none;
+  }
+}
+
+/* 返回按鈕 */
+.pl-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pl-back-btn:hover {
+  background: rgba(21, 101, 192, 0.08);
+  color: var(--color-primary-light);
+}
+
+/* 行動版：has-back 時顯示（與漢堡鍵並排） */
+@media (max-width: 1024px) {
+  .pl-topbar.has-back {
+    display: flex;
+    height: 40px;
+  }
+  .pl-topbar.pl-topbar-mobile-only {
+    display: flex;
+  }
+}
+
+
 .pl-topbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
   flex: 1;
   min-width: 0;
+}
+
+.pl-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .pl-project-badge {
@@ -451,6 +506,14 @@
   position: relative;
 }
 
+/* 桌機版：右側頂部與 Sidebar logo 齊高（40px） */
+@media (min-width: 1025px) {
+  .pl-content-area {
+    padding-top: 40px;
+  }
+}
+
+
 /* Mobile Handle */
 .pl-mobile-toggle {
   display: none;
@@ -493,3 +556,268 @@
     display: block;
   }
 }
+
+/* ─── Sidebar Infobar（整合工具區：時間/天氣/深淺/?) ─── */
+.pl-sidebar-infobar {
+  border-top: 1px solid var(--color-surface-border);
+  border-bottom: 1px solid var(--color-surface-border);
+  background: var(--color-surface-hover);
+  padding: 5px 10px;
+  flex-shrink: 0;
+}
+
+.pl-sidebar-infobar.collapsed {
+  padding: 5px 4px;
+}
+
+.pl-infobar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.pl-infobar-weather {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.pl-infobar-time {
+  flex: 1;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+  color: var(--color-text-muted);
+  background: var(--color-background-soft);
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--color-surface-border);
+  white-space: nowrap;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pl-infobar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.pl-infobar-btn:hover {
+  background: var(--color-surface-border);
+  color: var(--color-text-main);
+}
+
+.pl-infobar-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pl-infobar-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pl-infobar-btn-icon:hover {
+  background: var(--color-surface-border);
+  color: var(--color-primary);
+}
+
+/* Topbar — 桌機版隱藏（工具已移至 Sidebar），行動版保留 */
+.pl-topbar-mobile-only {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .pl-topbar-mobile-only {
+    display: flex;
+  }
+}
+
+/* 縮減 nav 連結間距 */
+.pl-nav-link {
+  padding: 5px 10px !important;
+  margin-bottom: 1px !important;
+}
+
+.pl-nav-scroll {
+  gap: 1px !important;
+}
+
+/* ─── 總覽行（nav link + 天氣+深淺+? 同列）─── */
+.pl-nav-row-with-tools {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* 右側工具群（天氣/深淺/?) */
+.pl-nav-row-tools {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px 0 4px;
+  flex-shrink: 0;
+}
+
+.pl-tool-weather {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.pl-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.pl-tool-btn:hover {
+  background: var(--color-surface-border);
+  color: var(--color-text-main);
+}
+
+/* 折疊狀態圖示按鈕 */
+.pl-tool-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: transparent;
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pl-tool-btn-icon:hover {
+  background: var(--color-surface-border);
+  color: var(--color-primary);
+}
+
+/* ─── Sidebar 時間列（登入按鈕正上方）─── */
+.pl-sidebar-time-row {
+  border-top: 1px solid var(--color-surface-border);
+  padding: 6px 12px;   /* 統一左右 12px */
+  flex-shrink: 0;
+}
+
+.pl-sidebar-time-row.collapsed {
+  padding: 4px 6px;
+  text-align: center;
+}
+
+/* 日期文字：改黑、加大、加粗 */
+.pl-sidebar-time-text {
+  display: block;
+  font-size: 0.82rem;
+  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-text-main);   /* 改深色 */
+  -webkit-text-fill-color: var(--color-text-main); /* 覆蓋之前漸層 */
+  background: transparent;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-surface-border);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* 保留邊框脈衝動畫 */
+  animation: timePulse 2.5s ease-in-out infinite;
+}
+
+@keyframes timeSweep {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes timePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(96,165,250,0.0); border-color: rgba(96,165,250,0.2); }
+  50%       { box-shadow: 0 0 8px 2px rgba(96,165,250,0.25); border-color: rgba(96,165,250,0.5); }
+}
+
+.pl-sidebar-time-icon {
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+/* ─── 「總覽」 nav link active 去除底色，只保留左側指示線 ─── */
+.pl-nav-row-with-tools .pl-nav-link.active {
+  background: transparent !important;
+}
+
+/* 全局 active 保留左指示線但背景變更透明度 */
+.pl-nav-link.active {
+  background: rgba(21, 101, 192, 0.06) !important;
+}
+
+/* =========================================================================
+   Sidebar Right Variant (專案內頁面專用)
+   ========================================================================= */
+.project-layout-container.sidebar-right {
+  flex-direction: row-reverse;
+}
+
+.project-layout-container.sidebar-right .pl-sidebar {
+  border-right: none;
+  border-left: 1px solid var(--color-surface-border);
+}
+
+/* 處理行動版 Sidebar: 改由右側滑出 */
+@media (max-width: 1024px) {
+  .project-layout-container.sidebar-right .pl-sidebar {
+    left: auto;
+    right: -260px;
+  }
+  .project-layout-container.sidebar-right .pl-sidebar.mobile-open {
+    left: auto;
+    right: 0;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.1); /* 陰影方向改向左 */
+  }
+}
+

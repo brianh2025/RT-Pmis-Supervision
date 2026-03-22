@@ -1,4 +1,4 @@
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../hooks/useProject';
@@ -12,6 +12,7 @@ export function ProjectLayout() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { id: projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { project, loading } = useProject(projectId);
@@ -35,8 +36,26 @@ export function ProjectLayout() {
     navigate('/', { replace: true });
   };
 
+  // ── 依路由決定返回按鈕 ──────────────────────────────────
+  const relPath = location.pathname.replace(`/projects/${projectId}/`, '');
+  let backInfo = null;
+
+  if (relPath === 'dashboard') {
+    // 專案儀表板 → 返回工程總覽
+    backInfo = {
+      label: '工程總覽',
+      onClick: () => navigate('/dashboard'),
+    };
+  } else if (relPath !== '') {
+    // diary / submission / quality / archive / analytics → 返回專案儀表板
+    backInfo = {
+      label: '專案儀表板',
+      onClick: () => navigate(`/projects/${projectId}/dashboard`),
+    };
+  }
+
   return (
-    <div className="project-layout-container">
+    <div className="project-layout-container sidebar-right">
       <div 
         className={`pl-mobile-overlay ${isMobileOpen ? 'active' : ''}`}
         onClick={() => setIsMobileOpen(false)}
@@ -49,17 +68,16 @@ export function ProjectLayout() {
         setIsMobileOpen={setIsMobileOpen}
         projectId={projectId}
         onSignOut={handleSignOut}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        time={time}
+        formatDate={formatDateWithSeconds}
       />
 
       <div className="pl-main-wrapper">
         <Topbar 
           setIsMobileOpen={setIsMobileOpen}
-          project={project}
-          loading={loading}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
-          time={time}
-          formatDate={formatDateWithSeconds}
+          backInfo={backInfo}
         />
         
         <main className="pl-content-area custom-scrollbar">
