@@ -9,13 +9,11 @@ export function Quality() {
   const { project, loading } = useProject(id);
 
   return (
-    <div className="dash-page-wrapper">
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="dash-page-header">
-        <div>
-          <h1 className="dash-title">工程品質管理</h1>
-        </div>
+        <h1 className="dash-title">工程品質管理</h1>
       </div>
-      <div style={{ marginTop: '32px', textAlign: 'center', padding: '64px 20px', background: 'var(--color-bg2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+      <div style={{ textAlign: 'center', padding: '64px 20px', background: 'var(--color-bg2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
         <Construction size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
         <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>品管管理功能建置中</h3>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: '24px' }}>此模組預計於下一階段開放</p>

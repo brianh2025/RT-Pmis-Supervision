@@ -74,7 +74,9 @@
 
 .logo-text {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
   font-weight: 700;
   font-size: 1.125rem;
   letter-spacing: -0.025em;

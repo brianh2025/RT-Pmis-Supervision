@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { Card, SH, I, ProgressBar, WEATHER_OPTIONS, DOC_TYPES, today, C } from './utils';
 
-const inpStyle = { 
-    width: "100%", padding: "9px 12px", borderRadius: 9, border: `1.5px solid ${C.border}`, 
-    fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box", 
-    background: "#fff", fontFamily: "inherit", transition: "border-color .15s" 
+const inpStyle = {
+    width: "100%", padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.border}`,
+    fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box",
+    background: "#fff", fontFamily: "inherit", transition: "border-color .15s"
 };
-const tisStyle = { ...inpStyle, padding: "8px 10px", fontSize: 12 };
-const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 4, display: "block" };
-const Field = ({ label, children }) => <div style={{ marginBottom: 13 }}><label style={lblStyle}>{label}</label>{children}</div>;
-
+const tisStyle = { ...inpStyle, padding: "8px 16px", fontSize: 12 };
+const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 8, display: "block" };
+const Field = ({ label, children }) => <div style={{ marginBottom: 16 }}><label style={lblStyle}>{label}</label>{children}</div>;
 export function DailyReportForm({ existing, onSave, onBack, projectId, project }) {
     const emptyReport = {
         id: `dr-${Date.now()}`, project_id: projectId, date: today(),
@@ -38,7 +37,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
 
     return (
         <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90, paddingTop: 20 }}>
-            <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
+            <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px' }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                     <button onClick={onBack} style={{ padding: 6, background: "none", border: "none", cursor: "pointer", color: C.text }}>
                         {I.back(C.text)}
@@ -291,7 +290,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
 
             {/* Bottom nav */}
             <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", gap: 10, zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
-                <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+                <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     {tabIdx > 0 && (
                         <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "#fff", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             ← 上一頁

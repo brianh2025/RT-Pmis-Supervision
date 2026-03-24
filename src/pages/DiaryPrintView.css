@@ -5,20 +5,25 @@
   color: #000;         /* absolute black for printing */
   padding-bottom: 2rem;
   font-family: '微軟正黑體', 'PingFang TC', sans-serif;
+  overflow-x: auto;
+  display: grid;
+  place-items: center;
 }
 
 .print-screen-controls {
   position: sticky;
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 100;
   background: var(--color-surface-translucent);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--color-surface-border);
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
 }
 
 .btn-print-action {

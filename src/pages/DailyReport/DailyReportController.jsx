@@ -38,11 +38,9 @@ function DailyReportContainer() {
     };
 
     return (
-        <div className="dash-page-wrapper">
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="dash-page-header">
-                <div>
-                    <h1 className="dash-title">施工日誌</h1>
-                </div>
+                <h1 className="dash-title">施工日誌</h1>
             </div>
 
             {viewMode === "list" && (

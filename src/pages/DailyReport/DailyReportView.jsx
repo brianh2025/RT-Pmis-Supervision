@@ -16,7 +16,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
 
     return (
         <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 40, paddingTop: 20 }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}>
+            <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 20px' }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                     <button onClick={onBack} style={{ padding: 6, background: "none", border: "none", cursor: "pointer", color: C.text }}>
                         {I.back(C.text)}

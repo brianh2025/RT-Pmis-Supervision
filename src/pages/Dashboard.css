@@ -38,7 +38,9 @@
 
 .dash-brand-text {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
   line-height: 1.1;
 }
 
@@ -203,11 +205,11 @@
 /* ─── Main Content Area ───────────────────────────────── */
 .dash-main {
   flex: 1;
-  padding: 0.75rem 1rem; /* High density */
+  padding: 8px 12px; /* High density */
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* High density gap */
+  gap: 6px; /* High density gap */
 }
 
 .dash-page-header {
@@ -424,7 +426,7 @@
 }
 
 .dash-table th {
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1rem;
   text-align: left;
   font-size: 0.72rem;
   font-weight: 700;
@@ -444,7 +446,7 @@
 }
 
 .dash-row td {
-  padding: 0.875rem 1.25rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--color-surface-border);
   vertical-align: middle;
   color: var(--color-text-main);
@@ -984,7 +986,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.5rem;
   background: rgba(21, 101, 192, 0.08);
   color: var(--color-primary);
 }
@@ -1118,47 +1119,7 @@
   to { opacity: 0; transform: translateX(10px); visibility: hidden; }
 }
 
-/* 極致間隙優化 覆蓋全域 */
-.dashboard-page {
-  padding: 0 !important;
-}
-
-.dash-main {
-  padding: 12px 16px !important;
-  gap: 16px !important;
-}
-
-.dash-kpi-grid-custom {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px !important;
-  margin-bottom: 16px !important;
-}
-
-.dash-project-grid {
-  gap: 8px !important;
-}
-
-.b-dash-content-grid {
-  gap: 8px !important;
-}
-
-.pl-content-area {
-  padding: 0 !important;
-}
-
-/* 共用面板內容收整 */
-.b-panel-header {
-  margin-bottom: 2px !important;
-}
-
-.progress-details {
-  gap: 4px !important;
-}
-
-.s-curve-chart {
-  height: 90px !important; 
-}
+/* 極致間隙優化 — 合併區塊 */
 
 .s-curve-month {
   font-size: 0.65rem;
@@ -1261,18 +1222,27 @@
    極致密度覆蓋（一頁顯示 2~4 個專案）
    ═══════════════════════════════════════════════════════ */
 
-.dash-main {
-  padding: 8px 12px !important;
+.dash-kpi-grid-custom {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 6px !important;
+  margin-bottom: 6px !important;
 }
 
-.dash-page-header {
+.b-dash-content-grid {
+  gap: 8px !important;
+}
+
+.b-panel-header {
   margin-bottom: 2px !important;
 }
 
-.dash-kpi-grid-custom {
-  gap: 6px !important;
-  margin-bottom: 6px !important;
+.progress-details {
+  gap: 4px !important;
+}
+
+.s-curve-chart {
+  height: 90px !important;
 }
 
 /* ─── 極致緊湊專案卡片 ─── */
@@ -1534,6 +1504,7 @@
 .dash-main > * {
   /* 確保所有子元素以 dash-main 的 12px 為對齊基準 */
   box-sizing: border-box;
+  padding: 0 !important;
 }
 
 /* ─── 專案頁右上：回到工程列表按鈕 ─── */
@@ -1809,6 +1780,7 @@
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2));
   color: #38bdf8;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  margin: 0 !important;
 }
 
 .stunning-card-title {

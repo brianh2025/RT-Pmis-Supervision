@@ -60,7 +60,7 @@ export const ProgressBar = ({ value, planned, color, height = 7 }) => (
     </div>
 );
 
-export const Card = ({ children, style = {}, p = "18px", mb = 12 }) => (
+export const Card = ({ children, style = {}, p = "16px", mb = 16 }) => (
     <div style={{ background: C.card, borderRadius: 14, padding: p, marginBottom: mb, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: `1px solid ${C.border}`, ...style }}>
         {children}
     </div>

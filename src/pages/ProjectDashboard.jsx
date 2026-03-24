@@ -57,7 +57,7 @@ export function ProjectDashboard() {
   const materialInspectionStats = { weeklyComplete: false, thisWeekCount: 5, todayCount: 1 };
 
   return (
-    <div className="dash-page-wrapper" style={{ padding: '4px 8px' }}>
+    <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="dash-page-header" style={{ marginBottom: '4px' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
