@@ -1,20 +1,22 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Building2, 
-  ChevronLeft, 
-  ChevronRight, 
-  LogOut, 
-  Activity, 
-  Archive, 
-  Send, 
-  ShieldCheck, 
+import {
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Activity,
+  Archive,
+  Send,
+  ShieldCheck,
   ClipboardList,
+  ClipboardCheck,
   LayoutDashboard,
   Sun,
   Moon,
   HelpCircle,
   TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 
 const MENU_GROUPS_PROJECT = [
@@ -24,6 +26,7 @@ const MENU_GROUPS_PROJECT = [
       { icon: ClipboardList, label: "監造報表", path: "supervision" },
       { icon: ClipboardList, label: "施工日誌", path: "diary" },
       { icon: TrendingUp, label: "進度管理", path: "progress" },
+      { icon: ClipboardCheck, label: "材料管制", path: "material" },
     ],
   },
   {
@@ -31,6 +34,7 @@ const MENU_GROUPS_PROJECT = [
       { icon: Archive, label: "歸檔管理", path: "archive" },
       { icon: Send, label: "送審管理", path: "submission" },
       { icon: ShieldCheck, label: "品管管理", path: "quality" },
+      { icon: BarChart3, label: "統計分析", path: "analytics" },
     ],
   },
 ];

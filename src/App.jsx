@@ -17,6 +17,7 @@ import { DailyReportController } from './pages/DailyReport/DailyReportController
 import { DiaryLog } from './pages/DiaryLog';
 import { DiaryPrintView } from './pages/DiaryPrintView';
 import { ProgressManagement } from './pages/ProgressManagement';
+import { MaterialControl } from './pages/MaterialControl';
 
 function WelcomePage() {
   return (
@@ -63,6 +64,7 @@ function App() {
                 <Route path="supervision" element={<DiaryLog />} />
                 <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
                 <Route path="progress" element={<ProgressManagement />} />
+                <Route path="material" element={<MaterialControl />} />
                 <Route path="submission" element={<Submission />} />
                 <Route path="quality" element={<Quality />} />
                 <Route path="archive" element={<Archive />} />

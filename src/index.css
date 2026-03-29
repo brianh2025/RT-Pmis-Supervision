@@ -31,6 +31,21 @@
   --radius-2xl: 2rem;
   
   --shadow-glow: 0 0 24px rgba(21, 101, 192, 0.35);
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --transition-normal: 0.25s ease;
+
+  /* Semantic Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Alias tokens (used by MaterialControl, ProjectLayout, Analytics, Dashboard) */
+  --color-text1: #e2e8f0;
+  --color-text2: #94a3b8;
+  --color-bg1: rgba(15, 23, 42, 0.6);
+  --color-bg2: rgba(30, 41, 59, 0.8);
+  --color-bg2-rgb: 30, 41, 59;
+  --color-border: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="light"] {
@@ -41,6 +56,19 @@
   --color-block-border: rgba(0, 0, 0, 0.1);
   --color-text-main: #0F172A;
   --color-text-muted: #64748B;
+
+  /* Semantic Colors (light mode) */
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  /* Alias tokens (light mode) */
+  --color-text1: #1e293b;
+  --color-text2: #475569;
+  --color-bg1: rgba(248, 250, 252, 0.8);
+  --color-bg2: rgba(241, 245, 249, 0.9);
+  --color-bg2-rgb: 241, 245, 249;
+  --color-border: rgba(0, 0, 0, 0.08);
 }
 
 body {

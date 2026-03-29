@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/User/Desktop//**)",
+      "Read(//c/Users/User/Desktop/**)",
+      "Bash(wc -l \"/e/RT-Pmis-Supervision/Manus_v1/client/src/pages/\"*.tsx)"
+    ]
+  }
+}
