@@ -21,12 +21,12 @@ export function DailyReportList({ onSelectReport, onNewReport }) {
                         { label: "缺報天數", value: 0, color: C.textMuted },
                     ].map((s, idx) => (
                         <div key={s.label} style={{
-                            background: "#fff",
+                            background: "var(--color-surface)",
                             borderRadius: 16,
                             padding: "1.25rem",
                             textAlign: "center",
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.02)",
-                            border: "1px solid rgba(0,0,0,0.04)",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                            border: "1px solid var(--color-surface-border)",
                             animation: `slide-up 0.6s cubic-bezier(0.16,1,0.3,1) ${idx * 0.07}s both`,
                             transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s",
                             cursor: "default",
@@ -58,8 +58,8 @@ export function DailyReportList({ onSelectReport, onNewReport }) {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                         {[...reports].reverse().map(r => (
                             <button key={r.id} onClick={() => onSelectReport(r)} style={{
-                                width: "100%", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14,
-                                padding: "16px", textAlign: "left", boxShadow: "0 1px 5px rgba(0,0,0,0.05)", cursor: "pointer",
+                                width: "100%", background: "var(--color-surface)", border: `1px solid var(--color-surface-border)`, borderRadius: 14,
+                                padding: "16px", textAlign: "left", boxShadow: "0 1px 5px rgba(0,0,0,0.1)", cursor: "pointer",
                                 transition: "all 0.15s"
                             }}
                             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; }}

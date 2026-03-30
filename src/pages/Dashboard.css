@@ -1222,12 +1222,84 @@
    極致密度覆蓋（一頁顯示 2~4 個專案）
    ═══════════════════════════════════════════════════════ */
 
-.dash-kpi-grid-custom {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 6px !important;
-  margin-bottom: 6px !important;
+/* ─── Banner + 篩選徽章同一列 ─── */
+.dash-banner-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
+
+.dash-banner-filter-row .report-reminder-banner {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* ─── 狀態篩選徽章列 ─── */
+.dash-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.dash-filter-bar::-webkit-scrollbar { display: none; }
+
+.dash-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg2);
+  color: var(--color-text2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.dash-filter-chip:hover {
+  border-color: var(--chip-color, var(--color-primary-light));
+  color: var(--chip-color, var(--color-primary-light));
+  background: var(--color-surface-hover);
+}
+
+.dash-filter-chip.active {
+  background: color-mix(in srgb, var(--chip-color, var(--color-primary)), transparent 88%);
+  border-color: color-mix(in srgb, var(--chip-color, var(--color-primary)), transparent 50%);
+  color: var(--chip-color, var(--color-primary-light));
+}
+
+.dash-filter-chip.has-alert .chip-count {
+  background: rgba(239,68,68,0.15);
+  color: var(--color-danger);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+.chip-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.dash-filter-loading {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+}
+
+/* 舊 KPI grid 保留定義但不再使用 */
+.dash-kpi-grid-custom { display: none; }
 
 .b-dash-content-grid {
   gap: 8px !important;
@@ -1260,8 +1332,7 @@
   gap: 0 !important;
   padding: 0 !important;
   border-radius: 10px !important;
-  min-height: 72px;
-  max-height: 90px;
+  min-height: 68px;
   overflow: hidden;
   cursor: pointer;
   background: var(--color-surface);
@@ -1319,13 +1390,14 @@
 }
 
 .card-title-compact {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--color-text-main);
-  line-height: 1.3;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   transition: color 0.2s;
 }
 

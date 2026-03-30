@@ -4,7 +4,7 @@ import { Card, SH, I, ProgressBar, WEATHER_OPTIONS, DOC_TYPES, today, C } from '
 const inpStyle = {
     width: "100%", padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.border}`,
     fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box",
-    background: "#fff", fontFamily: "inherit", transition: "border-color .15s"
+    background: "var(--color-bg2)", fontFamily: "inherit", transition: "border-color .15s"
 };
 const tisStyle = { ...inpStyle, padding: "8px 16px", fontSize: 12 };
 const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 8, display: "block" };

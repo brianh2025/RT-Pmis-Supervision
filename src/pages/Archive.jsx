@@ -149,7 +149,7 @@ export function Archive() {
   );
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflow: 'auto' }}>
+    <div className="archive-root">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <div>
@@ -164,7 +164,7 @@ export function Archive() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '16px', flex: 1 }}>
+      <div className="archive-grid">
         {/* Left: Category Tree */}
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-surface-border)', borderRadius: '10px', padding: '10px 0', height: 'fit-content' }}>
           <div style={{ padding: '0 12px 8px', fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.08em' }}>文件分類</div>
@@ -177,7 +177,7 @@ export function Archive() {
                   background: active ? 'var(--color-bg2)' : 'transparent',
                   borderLeft: active ? '2px solid var(--color-primary)' : '2px solid transparent',
                   transition: 'all 0.15s' }}>
-                <span style={{ fontSize: '12px', color: active ? 'var(--color-primary-light)' : 'var(--color-text2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: active ? 'var(--color-primary-light)' : 'var(--color-text2)', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
                   {cat.icon ? <span>{cat.icon}</span> : <FolderOpen size={12} />}
                   {cat.label}
                 </span>
@@ -190,7 +190,7 @@ export function Archive() {
         </div>
 
         {/* Right: Document List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="archive-doc-list">
           {/* Search */}
           <div style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />

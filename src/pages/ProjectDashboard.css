@@ -63,7 +63,7 @@
 .stunning-bento-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .stunning-card-wide { grid-column: span 2; }
@@ -71,8 +71,8 @@
 .stunning-card {
   background: var(--color-surface);
   border: 1px solid var(--color-surface-border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 10px 12px;
   transition: border-color 0.2s;
 }
 
@@ -81,13 +81,13 @@
 .stunning-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .stunning-icon-box {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   background: rgba(21,101,192,0.15);
   color: var(--color-primary-light);
@@ -146,8 +146,8 @@
 }
 
 .neon-stat-box {
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 7px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -158,7 +158,7 @@
 .neon-red    { background: rgba(239,68,68,0.06);   border: 1px solid rgba(239,68,68,0.15); }
 .neon-green  { background: rgba(16,185,129,0.08);  border: 1px solid rgba(16,185,129,0.2); }
 
-.neon-val { font-size: 1.1rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.neon-val { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 .neon-yellow .neon-val { color: var(--color-warning); }
 .neon-blue   .neon-val { color: var(--color-primary-light); }
 .neon-red    .neon-val { color: var(--color-danger); }
@@ -166,15 +166,15 @@
 .neon-label { font-size: 0.65rem; color: var(--color-text-muted); }
 
 /* Sci-fi Tracker */
-.sci-fi-tracker { display: flex; flex-direction: column; gap: 10px; }
+.sci-fi-tracker { display: flex; flex-direction: column; gap: 6px; }
 
 .sci-fi-status-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: var(--color-bg2);
-  border-radius: 8px;
+  border-radius: 7px;
   border: 1px solid var(--color-border);
 }
 
@@ -216,14 +216,14 @@
 
 .counter-box {
   background: var(--color-bg2);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 7px;
+  padding: 7px 8px;
   text-align: center;
   border: 1px solid var(--color-border);
 }
 
 .c-val {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
   color: var(--color-text1);

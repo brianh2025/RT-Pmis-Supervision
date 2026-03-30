@@ -1,15 +1,15 @@
 import React from 'react';
 
-// 原本明亮清晰的品牌色
+// 品牌色（主色保持，背景/文字/邊框改用 CSS 變數以支援深色模式）
 export const C = {
-    primary: "#1a56db", primaryDark: "#1340a8", primaryLight: "#e8f0fd",
-    success: "#059669", successLight: "#d1fae5",
-    danger: "#dc2626", dangerLight: "#fee2e2",
-    warn: "#d97706", warnLight: "#fef3c7",
-    blue: "#2563eb", blueLight: "#eff6ff",
-    text: "#0f172a", textMid: "#475569", textMuted: "#94a3b8",
-    border: "#e2e8f0", bg: "#f1f5f9", card: "#ffffff",
-    sidebar: "#0f172a",
+    primary: "#1a56db", primaryDark: "#1340a8", primaryLight: "rgba(26,86,219,0.10)",
+    success: "#059669", successLight: "rgba(5,150,105,0.12)",
+    danger: "#dc2626", dangerLight: "rgba(220,38,38,0.12)",
+    warn: "#d97706", warnLight: "rgba(217,119,6,0.12)",
+    blue: "#2563eb", blueLight: "rgba(37,99,235,0.10)",
+    text: "var(--color-text-main)", textMid: "var(--color-text2)", textMuted: "var(--color-text-muted)",
+    border: "var(--color-border)", bg: "var(--color-bg1)", card: "var(--color-surface)",
+    sidebar: "var(--color-background-base)",
 };
 
 export const I = {
@@ -51,11 +51,11 @@ export const Badge = ({ label, variant = "default" }) => {
 
 export const ProgressBar = ({ value, planned, color, height = 7 }) => (
     <div style={{ position: "relative" }}>
-        <div style={{ background: "#e2e8f0", borderRadius: 99, height, overflow: "hidden" }}>
+        <div style={{ background: "var(--color-surface-border)", borderRadius: 99, height, overflow: "hidden" }}>
             <div style={{ width: `${Math.min(100, value)}%`, height: "100%", borderRadius: 99, background: color, transition: "width .6s ease" }} />
         </div>
         {planned !== undefined && (
-            <div style={{ position: "absolute", top: -2, left: `${Math.min(100, planned)}%`, width: 2, height: height + 4, background: "#334155", borderRadius: 2, transform: "translateX(-50%)" }} />
+            <div style={{ position: "absolute", top: -2, left: `${Math.min(100, planned)}%`, width: 2, height: height + 4, background: "var(--color-text2)", borderRadius: 2, transform: "translateX(-50%)" }} />
         )}
     </div>
 );

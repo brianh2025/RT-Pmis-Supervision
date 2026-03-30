@@ -549,3 +549,32 @@
   .mcs-tabs { gap: 4px; }
   .mcs-toolbar { gap: 6px; }
 }
+
+/* ─── Archive 歸檔管理 ─── */
+.archive-root {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow: auto;
+}
+
+.archive-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  flex: 1;
+}
+
+.archive-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .archive-root { padding: 10px; gap: 10px; }
+  .archive-grid { grid-template-columns: 108px 1fr; gap: 10px; }
+  .archive-doc-list { gap: 10px; }
+}

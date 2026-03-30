@@ -11,7 +11,13 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
   return (
     <header className={`pl-topbar ${backInfo ? 'has-back' : 'pl-topbar-mobile-only'}`}>
       <div className="pl-topbar-left">
-        {/* 返回按鈕（行動版與桌機版 has-back 時可見） */}
+        {/* 行動版漢堡鍵（專案內頁才顯示，與返回按鈕並排於左側） */}
+        {!isGlobalDashboard && setIsMobileOpen && (
+          <button className="pl-mobile-toggle" onClick={() => setIsMobileOpen(true)}>
+            <Menu size={22} />
+          </button>
+        )}
+        {/* 返回按鈕 */}
         {backInfo && (
           <button className="pl-back-btn" onClick={backInfo.onClick}>
             <ChevronLeft size={16} />
@@ -19,14 +25,8 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
           </button>
         )}
       </div>
-      
+
       <div className="pl-topbar-right">
-        {/* 行動版漢堡鍵（專案內頁才顯示） */}
-        {!isGlobalDashboard && setIsMobileOpen && (
-          <button className="pl-mobile-toggle" onClick={() => setIsMobileOpen(true)}>
-            <Menu size={22} />
-          </button>
-        )}
 
         {/* 總覽頁行動版專用：右側登出鍵 */}
         {isGlobalDashboard && onSignOut && (

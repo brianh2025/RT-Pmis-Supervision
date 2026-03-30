@@ -2,7 +2,8 @@ import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../hooks/useProject';
-import React, { useState, useEffect } from 'react';
+import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import './ProjectLayout.css';
@@ -17,6 +18,8 @@ export function ProjectLayout() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { project, loading } = useProject(projectId);
   const [time, setTime] = useState(new Date());
+  const contentRef = useRef(null);
+  useAutoHideScrollbar(contentRef);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -80,7 +83,7 @@ export function ProjectLayout() {
           backInfo={backInfo}
         />
         
-        <main className="pl-content-area custom-scrollbar">
+        <main ref={contentRef} className="pl-content-area custom-scrollbar">
           <Outlet />
         </main>
       </div>

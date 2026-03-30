@@ -112,7 +112,7 @@ export function ProjectDashboard() {
     : null;
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
       {/* ── 專案標頭 ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -120,7 +120,7 @@ export function ProjectDashboard() {
           <div style={{ fontSize: '0.6rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.1em', marginBottom: '4px' }}>
             PROJECT DASHBOARD
           </div>
-          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.2 }}>
             {project.name}
           </h1>
           {project.contractor && (

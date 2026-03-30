@@ -128,7 +128,7 @@ export function Sidebar({
           </div>
         )}
 
-        {/* 專案模式：原始 nav groups */}
+        {/* 專案模式：nav groups + 主題切換 */}
         {projectId && (
           <>
             {MENU_GROUPS_PROJECT.map((group, idx) => (
@@ -155,6 +155,30 @@ export function Sidebar({
                 </div>
               </div>
             ))}
+            {/* 主題切換（專案模式） */}
+            <div className="pl-nav-group">
+              <div className="pl-nav-items">
+                {!isCollapsed ? (
+                  <div className="pl-nav-row-tools" style={{ padding: '4px 6px' }}>
+                    <button
+                      className="pl-tool-btn"
+                      onClick={toggleTheme}
+                      title={isDarkMode ? '切換亮色' : '切換暗色'}
+                    >
+                      {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
+                    </button>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                      {isDarkMode ? '暗色模式' : '亮色模式'}
+                    </span>
+                  </div>
+                ) : (
+                  <button className="pl-tool-btn-icon" onClick={toggleTheme} title={isDarkMode ? '亮色' : '暗色'}
+                    style={{ margin: '0 auto' }}>
+                    {isDarkMode ? <Sun size={13} /> : <Moon size={13} />}
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         )}
 

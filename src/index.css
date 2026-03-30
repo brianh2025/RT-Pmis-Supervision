@@ -119,6 +119,39 @@ ul, ol {
 }
 
 /* ----------------------------------------------------- */
+/* Custom Scrollbar — 捲動顯示、逾時隱藏                  */
+/* ----------------------------------------------------- */
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+.custom-scrollbar.scrolling {
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+/* WebKit (Chrome / Edge / Safari) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+  transition: background 0.3s;
+}
+.custom-scrollbar.scrolling::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+/* ----------------------------------------------------- */
 /* Global Utilities                                      */
 /* ----------------------------------------------------- */
 
