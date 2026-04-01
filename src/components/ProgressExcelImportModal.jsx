@@ -111,8 +111,8 @@ export function ProgressExcelImportModal({ projectId, onClose, onSuccess }) {
                   <div className="upload-zone" onClick={() => fileRef.current?.click()}>
                     <Upload size={28} className="upload-icon" />
                     <p className="upload-text">點擊上傳進度 Excel 檔案</p>
-                    <p className="upload-hint">欄位需含：日期、預定進度(%)、實際進度(%)</p>
-                    <input type="file" accept=".xlsx,.xls" ref={fileRef} style={{ display: 'none' }} onChange={handleFile} />
+                    <p className="upload-hint">支援 .xlsx / .xls / .xlsm｜欄位需含：日期、預定進度(%)、實際進度(%)</p>
+                    <input type="file" accept=".xlsx,.xls,.xlsm" ref={fileRef} style={{ display: 'none' }} onChange={handleFile} />
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.6, padding: '10px 14px', background: 'var(--color-bg2)', borderRadius: '8px' }}>
                     <strong>欄位命名範例：</strong><br />

@@ -153,10 +153,10 @@ export function ExcelImportModal({ onClose, onSuccess }) {
                 <p className="upload-text">
                   {fileName ? fileName : '點擊或拖曳 Excel 檔案至此'}
                 </p>
-                <p className="upload-hint">支援 .xlsx / .xls 格式</p>
+                <p className="upload-hint">支援 .xlsx / .xls / .xlsm 格式</p>
                 <input
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.xlsm"
                   ref={fileRef}
                   style={{ display: 'none' }}
                   onChange={handleFile}

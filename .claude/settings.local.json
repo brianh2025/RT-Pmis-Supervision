@@ -3,7 +3,18 @@
     "allow": [
       "Read(//c/Users/User/Desktop//**)",
       "Read(//c/Users/User/Desktop/**)",
-      "Bash(wc -l \"/e/RT-Pmis-Supervision/Manus_v1/client/src/pages/\"*.tsx)"
+      "Bash(wc -l \"/e/RT-Pmis-Supervision/Manus_v1/client/src/pages/\"*.tsx)",
+      "Bash(grep -rn \"^\\\\s*--color-bg1\\\\|^\\\\s*--color-bg2\\\\|^\\\\s*--color-border:\" e:/RT-Pmis-Supervision/ --include=*.css --include=*.jsx --include=*.js)",
+      "Bash(curl -s \"http://localhost:3000/\")",
+      "Bash(npx vite:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(grep -rn \"from ''lucide-react''\" src/pages/Dashboard.jsx src/components/Sidebar.jsx src/pages/ProjectDashboard.jsx src/pages/DailyReport/)",
+      "Bash(node -e \"const l = require\\(''./node_modules/lucide-react/dist/cjs/lucide-react.js''\\); const icons = Object.keys\\(l\\); const check = [''AlertTriangle'',''CheckCircle2'',''AlertCircle'',''Edit'',''Columns'',''HelpCircle'']; check.forEach\\(i => console.log\\(i, icons.includes\\(i\\) ? ''EXISTS'' : ''MISSING -> need rename''\\)\\);\")",
+      "Bash(node -e \"import\\(''./node_modules/lucide-react/dist/esm/lucide-react.js''\\).then\\(l => { const icons = Object.keys\\(l\\); [''AlertTriangle'',''CheckCircle2'',''AlertCircle'',''Edit'',''Columns'',''HelpCircle''].forEach\\(i => console.log\\(i, icons.includes\\(i\\) ? ''OK'' : ''MISSING''\\)\\); }\\)\")",
+      "Bash(npm run:*)"
     ]
   }
 }
