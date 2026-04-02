@@ -3,22 +3,21 @@ import { X, Save } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
 
-export function ProgressFormModal({ projectId, initialData, onClose, onSuccess }) {
+export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, plannedProgress }) {
   const isEdit = !!initialData;
   const [form, setForm] = useState({
-    report_date: initialData?.report_date ?? '',
-    planned_progress: initialData?.planned_progress ?? '',
+    report_date:     initialData?.report_date     ?? '',
     actual_progress: initialData?.actual_progress ?? '',
-    notes: initialData?.notes ?? '',
+    notes:           initialData?.notes           ?? '',
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]   = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
-    if (!form.report_date || form.planned_progress === '' || form.actual_progress === '') {
-      setError('請填寫日期、預定進度及實際進度');
+    if (!form.report_date || form.actual_progress === '') {
+      setError('請填寫日期及實際進度');
       return;
     }
 
@@ -26,11 +25,10 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess }
     setError(null);
 
     const payload = {
-      project_id: projectId,
-      report_date: form.report_date,
-      planned_progress: parseFloat(form.planned_progress),
+      project_id:      projectId,
+      report_date:     form.report_date,
       actual_progress: parseFloat(form.actual_progress),
-      notes: form.notes || null,
+      notes:           form.notes || null,
     };
 
     let err;
@@ -53,13 +51,14 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess }
     }
   };
 
-  const diff = form.actual_progress !== '' && form.planned_progress !== ''
-    ? (parseFloat(form.actual_progress) - parseFloat(form.planned_progress)).toFixed(2)
+  // 差異：用傳入的計算值 plannedProgress
+  const diff = form.actual_progress !== '' && plannedProgress !== null && plannedProgress !== undefined
+    ? (parseFloat(form.actual_progress) - plannedProgress).toFixed(2)
     : null;
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-panel" style={{ maxWidth: '440px' }}>
+      <div className="modal-panel" style={{ maxWidth: '400px' }}>
         <div className="modal-header">
           <div className="modal-title-group">
             <div>
@@ -73,7 +72,6 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess }
         <div className="modal-body">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-            {/* Date */}
             <div className="form-group">
               <label className="form-label">報告日期 *</label>
               <input
@@ -84,62 +82,46 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess }
               />
             </div>
 
-            {/* Progress */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group">
-                <label className="form-label">預定進度 (%)*</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  className="form-input"
-                  value={form.planned_progress}
-                  onChange={e => set('planned_progress', e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">實際進度 (%)*</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  className="form-input"
-                  value={form.actual_progress}
-                  onChange={e => set('actual_progress', e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">實際進度 (%) *</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                className="form-input"
+                value={form.actual_progress}
+                onChange={e => set('actual_progress', e.target.value)}
+                placeholder="0.00"
+              />
             </div>
 
-            {/* Diff indicator */}
+            {/* 預定進度（唯讀，由工程計畫推算） */}
+            {plannedProgress !== null && plannedProgress !== undefined && (
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', padding: '6px 12px', background: 'var(--color-bg2)', borderRadius: '8px' }}>
+                預定進度（計算值）：<strong style={{ color: 'var(--color-text1)' }}>{plannedProgress.toFixed(2)}%</strong>
+              </div>
+            )}
+
             {diff !== null && (
               <div style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
+                padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
                 background: parseFloat(diff) >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
                 color: parseFloat(diff) >= 0 ? '#10b981' : '#ef4444',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
+                display: 'flex', alignItems: 'center', gap: '8px',
               }}>
-                {parseFloat(diff) >= 0 ? '▲ 超前' : '▼ 落後'} {Math.abs(parseFloat(diff))}%
+                {parseFloat(diff) >= 0 ? '▲ 超前' : '▼ 落後'} {Math.abs(parseFloat(diff)).toFixed(2)}%
                 <div style={{ flex: 1, height: '6px', background: 'rgba(0,0,0,0.08)', borderRadius: '99px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${Math.min(100, parseFloat(form.actual_progress) || 0)}%`,
                     background: parseFloat(diff) >= 0 ? '#10b981' : '#ef4444',
-                    transition: 'width 0.4s'
+                    transition: 'width 0.4s',
                   }} />
                 </div>
               </div>
             )}
 
-            {/* Notes */}
             <div className="form-group">
               <label className="form-label">備註說明</label>
               <textarea
