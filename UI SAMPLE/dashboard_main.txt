@@ -1,0 +1,165 @@
+﻿
+> <main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-6 lg:p-8 transition-all">
+  <div class="max-w-7xl mx-auto space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 shadow-card hover:shadow-soft transition-all duration-300 border border-border-light dark:border-border-dark relative overflow-hidden group">
+  <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+  <span class="material-icons-round text-6xl text-blue-500">attach_money</span>
+  </div>
+  <div class="flex justify-between items-start mb-4 relative z-10">
+  <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">憟???</h3>
+  <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+  <span class="material-icons-outlined text-lg">menu_book</span>
+  </div>
+  </div>
+  <div class="relative z-10">
+  <p class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">256,980,000</p>
+  <p class="text-xs text-slate-400 mt-1">?啣撟?(NTD)</p>
+  </div>
+  </div>
+  <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 shadow-card hover:shadow-soft transition-all duration-300 border border-border-light dark:border-border-dark relative overflow-hidden group">
+  <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+  <span class="material-icons-round text-6xl text-emerald-500">schedule</span>
+  </div>
+  <div class="flex justify-between items-start mb-4 relative z-10">
+  <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">?拚?憭拇</h3>
+  <div class="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+  <span class="material-icons-outlined text-lg">schedule</span>
+  </div>
+  </div>
+  <div class="relative z-10">
+  <p class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">841</p>
+  <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center font-medium">
+  <span class="material-icons-round text-xs mr-1">trending_up</span> 
+                              ?脣漲甇?虜
+                          </p>
+  </div>
+  </div>
+  <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 shadow-card hover:shadow-soft transition-all duration-300 border border-border-light dark:border-border-dark relative overflow-hidden group">
+  <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+  <span class="material-icons-round text-6xl text-amber-500">construction</span>
+  </div>
+  <div class="flex justify-between items-start mb-4 relative z-10">
+  <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">撠????/h3>
+  <div class="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+  <span class="material-icons-outlined text-lg">info</span>
+  </div>
+  </div>
+  <div class="relative z-10">
+  <p class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">皞?銝?/p>
+  <p class="text-xs text-slate-400 mt-1">?挾: ?蔭雿平</p>
+  </div>
+  </div>
+  <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-5 shadow-card hover:shadow-soft transition-all duration-300 border border-border-light dark:border-border-dark relative overflow-hidden group">
+  <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+  <span class="material-icons-round text-6xl text-violet-500">payments</span>
+  </div>
+  <div class="flex justify-between items-start mb-4 relative z-10">
+  <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">隞狡?脣漲</h3>
+  <div class="p-2 bg-violet-50 dark:bg-violet-900/30 rounded-lg text-violet-600 dark:text-violet-400">
+  <span class="material-icons-outlined text-lg">analytics</span>
+  </div>
+  </div>
+  <div class="relative z-10">
+  <p class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">0%</p>
+  <p class="text-xs text-slate-400 mt-1">蝝航?隡圈?: 0 ??/p>
+  </div>
+  </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <div class="lg:col-span-5 bg-surface-light dark:bg-surface-dark rounded-xl shadow-card border border-border-light dark:border-border-dark p-6 flex flex-col h-full">
+  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center space-x-2">
+  <span class="material-icons-round text-primary text-xl">trending_up</span>
+  <h3 class="text-lg font-bold text-slate-800 dark:text-white">?脣漲??</h3>
+  </div>
+  <button class="text-slate-400 hover:text-primary transition-colors">
+  <span class="material-icons-round">more_horiz</span>
+  </button>
+  </div>
+  <div class="space-y-8 flex-1 flex flex-col justify-center">
+  <div class="space-y-2">
+  <div class="flex justify-between items-end mb-1">
+  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">撠??脣漲</span>
+  <div class="text-right">
+  <span class="text-xs text-slate-400">?? <span class="text-slate-600 dark:text-slate-300">0%</span></span>
+  <span class="text-slate-300 mx-1">|</span>
+  <span class="text-sm font-bold text-primary">撖阡? 0%</span>
+  </div>
+  </div>
+  <div class="relative h-3 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+  <div class="absolute top-0 left-0 h-full bg-slate-200 dark:bg-slate-600 w-[0%]"></div>
+  <div class="absolute top-0 left-0 h-full bg-primary w-[0%] shadow-lg shadow-blue-500/50"></div>
+  </div>
+  <div class="flex justify-between text-xs text-slate-400">
+  <span>韏瑕?</span>
+  <span>摰極</span>
+  </div>
+  </div>
+  <div class="space-y-2">
+  <div class="flex justify-between items-end mb-1">
+  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">隞狡?脣漲</span>
+  <span class="text-sm font-bold text-violet-500">0%</span>
+  </div>
+  <div class="relative h-3 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+  <div class="absolute top-0 left-0 h-full bg-violet-500 w-[1%] shadow-lg shadow-violet-500/50"></div>
+  </div>
+  <p class="text-xs text-slate-400 mt-1">?桀??∪?隞狡??/p>
+  </div>
+  </div>
+  </div>
+  <div class="lg:col-span-7 bg-surface-light dark:bg-surface-dark rounded-xl shadow-card border border-border-light dark:border-border-dark p-6 h-full">
+  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-center space-x-2">
+  <span class="material-icons-round text-primary text-xl">description</span>
+  <h3 class="text-lg font-bold text-slate-800 dark:text-white">?祟蝯梯?</h3>
+  </div>
+  <div class="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex space-x-1">
+  <button class="px-3 py-1 text-xs font-medium bg-white dark:bg-slate-600 text-primary shadow-sm rounded-md transition-all">??閮</button>
+  <button class="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md transition-all">??閮剖?</button>
+  </div>
+  </div>
+  <div class="flex flex-col md:flex-row items-center gap-8 h-full">
+  <div class="relative w-48 h-48 flex-shrink-0">
+  <svg class="circular-chart text-primary w-full h-full" viewbox="0 0 36 36">
+  <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+  </svg>
+  <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+  <span class="text-xs text-slate-400 font-medium">撠?豢?</span>
+  </div>
+  </div>
+  <div class="flex-1 w-full space-y-4">
+  <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-700 transition-colors">
+  <div class="flex items-center space-x-3">
+  <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+  <span class="text-sm font-medium text-slate-700 dark:text-slate-200">撌脫摰?/span>
+  </div>
+  <span class="text-lg font-bold text-slate-800 dark:text-white">0</span>
+  </div>
+  <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-700 transition-colors">
+  <div class="flex items-center space-x-3">
+  <div class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+  <span class="text-sm font-medium text-slate-700 dark:text-slate-200">撖拇銝?/span>
+  </div>
+  <span class="text-lg font-bold text-slate-800 dark:text-white">0</span>
+  </div>
+  <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-700 transition-colors">
+  <div class="flex items-center space-x-3">
+  <div class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+  <span class="text-sm font-medium text-slate-700 dark:text-slate-200">?暹??芷?/span>
+  </div>
+  <span class="text-lg font-bold text-slate-800 dark:text-white">0</span>
+  </div>
+  </div>
+  </div>
+  <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+  <p class="text-xs text-slate-400">蝮賣??祟: <span class="font-bold text-slate-600 dark:text-slate-300">0</span> 隞?/p>
+  </div>
+  </div>
+  </div>
+  </div>
+  </main>
+  </div>
+  </body></html>
+
+

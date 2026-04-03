@@ -1,12 +1,10 @@
 .navbar {
   position: fixed;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 2rem);
-  max-width: 1400px;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1000;
-  padding: 0.5rem 1rem; /* Reduced from 0.75rem 1.5rem to reduce heaviness */
+  padding: 0.5rem 1rem;
   transition: all var(--transition-normal);
 }
 
@@ -15,10 +13,8 @@
   background: var(--color-surface-translucent);
   backdrop-filter: blur(32px) saturate(150%);
   -webkit-backdrop-filter: blur(32px) saturate(150%);
-  border: 1px solid var(--color-surface-border);
-  border-top: 1px solid rgba(255, 255, 255, 0.15); /* Slightly brighter top border */
-  border-radius: var(--radius-full); /* Perfectly pill-shaped */
-  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-surface-border);
+  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.3);
   position: relative;
   overflow: hidden;
 }
@@ -78,7 +74,9 @@
 
 .logo-text {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
   font-weight: 700;
   font-size: 1.125rem;
   letter-spacing: -0.025em;

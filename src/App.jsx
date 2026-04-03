@@ -5,10 +5,19 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Footer } from './components/Footer';
+import { ProjectLayout } from './components/ProjectLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { ProjectDashboard } from './pages/ProjectDashboard';
+import { Submission } from './pages/Submission';
+import { Quality } from './pages/Quality';
+import { Archive } from './pages/Archive';
+import { Analytics } from './pages/Analytics';
+import { DailyReportController } from './pages/DailyReport/DailyReportController';
 import { DiaryLog } from './pages/DiaryLog';
 import { DiaryPrintView } from './pages/DiaryPrintView';
+import { ProgressManagement } from './pages/ProgressManagement';
+import { MaterialControl } from './pages/MaterialControl';
 
 function WelcomePage() {
   return (
@@ -38,22 +47,30 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/dashboard/diary/:projectId"
+              
+              {/* Per-project routes nested within ProjectLayout */}
+              <Route 
+                path="/projects/:id" 
                 element={
                   <ProtectedRoute>
-                    <DiaryLog />
+                    <ProjectLayout />
                   </ProtectedRoute>
                 }
-              />
-              <Route
-                path="/dashboard/diary/:projectId/print/:logDate"
-                element={
-                  <ProtectedRoute>
-                    <DiaryPrintView />
-                  </ProtectedRoute>
-                }
-              />
+              >
+                {/* Redirect /projects/:id to /projects/:id/dashboard */}
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<ProjectDashboard />} />
+                <Route path="diary" element={<DailyReportController />} />
+                <Route path="supervision" element={<DiaryLog />} />
+                <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
+                <Route path="progress" element={<ProgressManagement />} />
+                <Route path="material" element={<MaterialControl />} />
+                <Route path="submission" element={<Submission />} />
+                <Route path="quality" element={<Quality />} />
+                <Route path="archive" element={<Archive />} />
+                <Route path="analytics" element={<Analytics />} />
+              </Route>
+              
               {/* Fallback: redirect unknown routes to home */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

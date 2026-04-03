@@ -1,44 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProjects } from '../hooks/useProjects';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
-import { DiaryImportModal } from '../components/DiaryImportModal';
 import { ReportReminderBanner } from '../components/ReportReminderBanner';
+import { Sidebar } from '../components/Sidebar';
+import { Topbar } from '../components/Topbar';
 import {
-  LogOut, Building2, TrendingUp, AlertTriangle,
-  CheckCircle2, Clock, PauseCircle, RefreshCw,
-  PlusCircle, FileSpreadsheet, Sun, Moon, BookOpen, Eye
+  Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers
 } from 'lucide-react';
 import './Dashboard.css';
+import '../components/ProjectLayout.css';
 
-/** Status config for projects */
 const STATUS_CONFIG = {
-  active:    { label: '執行中', enLabel: 'ACTIVE',    icon: Clock,        colorClass: 'status-active'    },
-  completed: { label: '已完工', enLabel: 'COMPLETED', icon: CheckCircle2, colorClass: 'status-completed' },
-  suspended: { label: '暫停中', enLabel: 'SUSPENDED', icon: PauseCircle,  colorClass: 'status-suspended' },
+  active:    { label: '執行中', colorClass: 'status-active' },
+  completed: { label: '已完工', colorClass: 'status-completed' },
+  suspended: { label: '暫停中', colorClass: 'status-suspended' },
 };
 
-/** Progress bar colour based on schedule difference */
-function progressColor(planned, actual) {
-  if (actual == null) return 'var(--color-text-muted)';
-  const diff = actual - planned;
-  if (diff >= 0)  return 'var(--color-success)';
-  if (diff >= -5) return 'var(--color-warning)';
-  return 'var(--color-error)';
+/** 圓形進度環元件 */
+function CircularProgress({ value = 0, size = 48, strokeWidth = 5, color = 'var(--color-primary)' }) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke="var(--color-surface-border)" strokeWidth={strokeWidth} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke={color} strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size/2} ${size/2})`}
+        style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1)' }}
+      />
+      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
+        fontSize={size < 44 ? 8 : 10} fontWeight="700"
+        fill="var(--color-text-main)">
+        {value}%
+      </text>
+    </svg>
+  );
 }
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { projects, loading, error, refresh } = useProjects();
+  const { projects, loading, refresh } = useProjects();
+  
+  const contentRef = useRef(null);
+  useAutoHideScrollbar(contentRef);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showExcelModal, setShowExcelModal] = useState(false);
-  const [showDiaryModal, setShowDiaryModal] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [time, setTime] = useState(new Date());
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    const welcomeTimer = setTimeout(() => setShowWelcome(false), 5000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(welcomeTimer);
+    };
+  }, []);
+
+  const formatDateWithSeconds = (date) => {
+    return new Intl.DateTimeFormat('zh-TW', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).format(date);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,239 +87,178 @@ export function Dashboard() {
 
   const handleDataAdded = () => refresh?.();
 
-  // Derived KPIs
-  const activeCount   = projects.filter(p => p.status === 'active').length;
-  const behindCount   = projects.filter(p => {
+  const isBehind = (p) => {
     const lp = p.latest_progress;
-    return lp && (lp.actual_progress - lp.planned_progress) < -5;
-  }).length;
-  const avgProgress   = projects.length
-    ? Math.round(projects.reduce((sum, p) => sum + (p.latest_progress?.actual_progress ?? 0), 0) / projects.length)
-    : 0;
+    return p.status === 'active' && lp && (lp.actual_progress - lp.planned_progress) < -5;
+  };
+  const activeCount    = projects.filter(p => p.status === 'active').length;
+  const behindCount    = projects.filter(isBehind).length;
+  const completedCount = projects.filter(p => p.status === 'completed').length;
+  const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
-  const displayName = user?.user_metadata?.full_name
-    || user?.user_metadata?.name
-    || user?.email
-    || '使用者';
+  const FILTERS = [
+    { key: 'all',       label: '全部',   count: projects.length,  icon: Layers,       color: 'var(--color-text2)' },
+    { key: 'active',    label: '執行中', count: activeCount,      icon: Building2,    color: 'var(--color-primary-light)' },
+    { key: 'behind',    label: '落後',   count: behindCount,      icon: AlertCircle,  color: 'var(--color-danger)' },
+    { key: 'completed', label: '已完工', count: completedCount,   icon: CheckCircle2, color: 'var(--color-success)' },
+    ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, icon: AlertCircle, color: 'var(--color-warning)' }] : []),
+  ];
+
+  const filteredProjects = projects.filter(p => {
+    if (statusFilter === 'all')       return true;
+    if (statusFilter === 'behind')    return isBehind(p);
+    return p.status === statusFilter;
+  });
 
   return (
-    <div className="dashboard-page">
-      {/* Top Navigation Bar */}
-      <header className="dash-topbar">
-        <div className="dash-brand">
-          <Building2 size={20} className="dash-brand-icon" />
-          <div className="dash-brand-text">
-            <span className="dash-brand-zh">專案監造管理系統</span>
-            <span className="dash-brand-en">PMIS DASHBOARD</span>
-          </div>
-        </div>
-        <div className="dash-user-area">
-          <button
-            className="btn-theme-toggle"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            title={isDarkMode ? '切換亮色模式' : '切換暗色模式'}
-          >
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <div className="dash-user-info">
-            {user?.user_metadata?.avatar_url && (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt="avatar"
-                className="dash-avatar"
-              />
-            )}
-            <span className="dash-user-name">{displayName}</span>
-          </div>
-          <button className="btn-signout" onClick={handleSignOut}>
-            <LogOut size={16} />
-            <span>登出</span>
-          </button>
-        </div>
-      </header>
+    <div className="project-layout-container">
+      <div 
+        className={`pl-mobile-overlay ${isMobileOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileOpen(false)}
+      />
 
-      {/* Main Content */}
-      <main className="dash-main">
-        {/* Page Title */}
-        <div className="dash-page-header">
-          <div>
-            <h1 className="dash-title">工程概況</h1>
-            <p className="dash-subtitle">PROJECT OVERVIEW · 雲林轄區</p>
-          </div>
-          <span className="dash-date">
-            {new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
-        </div>
+      {/* Sidebar 整合所有工具（傳入 isDarkMode、toggleTheme、time、formatDate） */}
+      <Sidebar 
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
+        projectId={null}
+        onSignOut={handleSignOut}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        time={time}
+        formatDate={formatDateWithSeconds}
+      />
 
-        {/* Monthly report reminder — auto-shows on days 1-5 or 25-31 */}
-        {projects.length > 0 && (
-          <ReportReminderBanner projectId={projects[0]?.id} />
-        )}
+      <div className="pl-main-wrapper">
+        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
+        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} />
 
-        {/* KPI Cards */}
-        <section className="dash-kpi-grid">
-          <div className="kpi-card kpi-blue">
-            <div className="kpi-icon"><Building2 size={24} /></div>
-            <div className="kpi-content">
-              <span className="kpi-value">{loading ? '—' : activeCount}</span>
-              <span className="kpi-label-zh">執行中工程</span>
-              <span className="kpi-label-en">ACTIVE PROJECTS</span>
+        <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
+          <div className="dash-main">
+              {/* 標題列：垂直色條 + 標題 + 按鈕同一列 */}
+              <div className="dash-page-header">
+                <div className="dash-title-block">
+                  <span className="dash-title-accent" />
+                  <div>
+                    <h1 className="dash-title">雲林縣工程監造</h1>
+                    {showWelcome && (
+                      <span className="welcome-msg-inline animate-fade-out">
+                        歡迎進行監造作業。
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="dash-table-actions">
+                  <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>
+                    <PlusCircle size={13} />
+                    <span>新增工程</span>
+                  </button>
+                  <button className="btn-dash-action btn-dash-excel" onClick={() => setShowExcelModal(true)}>
+                    <FileSpreadsheet size={13} />
+                    <span>Excel 匯入</span>
+                  </button>
+                </div>
+              </div>
+
+            {/* Banner + 篩選徽章同一列，空間不足時整列換行 */}
+            <div className="dash-banner-filter-row">
+              {projects.length > 0 && <ReportReminderBanner projectId={projects[0]?.id} />}
+              <div className="dash-filter-bar">
+                {loading ? (
+                  <span className="dash-filter-loading">載入中…</span>
+                ) : FILTERS.map(f => {
+                  const Icon = f.icon;
+                  const active = statusFilter === f.key;
+                  return (
+                    <button
+                      key={f.key}
+                      className={`dash-filter-chip${active ? ' active' : ''}${f.key === 'behind' && f.count > 0 ? ' has-alert' : ''}`}
+                      style={{ '--chip-color': f.color }}
+                      onClick={() => setStatusFilter(f.key)}
+                    >
+                      <Icon size={12} />
+                      <span className="chip-label">{f.label}</span>
+                      <span className="chip-count">{f.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 工程列表標題 */}
+            <div className="dash-section-header">
+              <h2 className="dash-section-h2">工程列表</h2>
+              <span className="dash-section-count">
+                {statusFilter === 'all' ? `共 ${projects.length} 個項目` : `篩選：${filteredProjects.length} / ${projects.length}`}
+              </span>
+            </div>
+
+            <div className="dash-project-grid">
+              {filteredProjects.length === 0 && (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.82rem', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-surface-border)' }}>
+                  此分類目前無工程
+                </div>
+              )}
+              {filteredProjects.map((p, index) => {
+                const lp = p.latest_progress;
+                const prog = lp ? lp.actual_progress : 0;
+                const planned = lp ? lp.planned_progress : 0;
+                const diff = prog - planned;
+                return (
+                  <div
+                    key={p.id}
+                    className="dash-project-card dash-project-card-compact"
+                    onClick={() => navigate(`/projects/${p.id}/dashboard`)}
+                    style={{ animationDelay: `${0.3 + index * 0.04}s` }}
+                  >
+                    {/* 左側色條 */}
+                    <div className="card-accent-side" style={{
+                      background: p.status === 'active' ? 'var(--color-primary)' :
+                                  p.status === 'suspended' ? 'var(--color-warning)' : 'var(--color-text-muted)'
+                    }} />
+
+                    {/* 右側內容 */}
+                    <div className="card-compact-body">
+                      {/* 上排：名稱 + 狀態 */}
+                      <div className="card-compact-top">
+                        <div>
+                          <div className="card-title-compact">{p.name}</div>
+                          <div className="card-contractor-compact">{p.contractor || '未指定單位'}</div>
+                        </div>
+                        {/* 圓形進度環 */}
+                        <CircularProgress
+                          value={prog}
+                          size={48}
+                          strokeWidth={5}
+                          color={diff < -5 ? 'var(--color-error)' : 'var(--color-primary)'}
+                        />
+                      </div>
+
+                      {/* 下排：進度條（差值標示） */}
+                      <div className="card-compact-progress">
+                        <div className="card-compact-progress-labels">
+                          <span>計畫 {planned}% · 實際 {prog}%</span>
+                          <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                            {diff >= 0 ? '+' : ''}{diff}%
+                          </span>
+                        </div>
+                        <div className="layered-progress-bar" style={{ height: '5px' }}>
+                          <div className="bar-planned" style={{ width: `${planned}%` }} />
+                          <div className="bar-actual" style={{ width: `${prog}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="kpi-card kpi-green">
-            <div className="kpi-icon"><TrendingUp size={24} /></div>
-            <div className="kpi-content">
-              <span className="kpi-value">{loading ? '—' : `${avgProgress}%`}</span>
-              <span className="kpi-label-zh">平均實際進度</span>
-              <span className="kpi-label-en">AVG. ACTUAL PROGRESS</span>
-            </div>
-          </div>
-          <div className={`kpi-card ${behindCount > 0 ? 'kpi-red' : 'kpi-green'}`}>
-            <div className="kpi-icon"><AlertTriangle size={24} /></div>
-            <div className="kpi-content">
-              <span className="kpi-value">{loading ? '—' : behindCount}</span>
-              <span className="kpi-label-zh">落後工程數</span>
-              <span className="kpi-label-en">BEHIND SCHEDULE</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Projects Table */}
-        <section className="dash-table-section">
-          <div className="dash-table-header">
-            <h2 className="dash-section-title">工程清單 <span>PROJECT LIST</span></h2>
-            <div className="dash-table-actions">
-              {loading && <RefreshCw size={16} className="spin-icon" />}
-              <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>
-                <PlusCircle size={15} />
-                <span>新增工程</span>
-              </button>
-              <button className="btn-dash-action btn-dash-excel" onClick={() => setShowExcelModal(true)}>
-                <FileSpreadsheet size={15} />
-                <span>Excel 匯入</span>
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="dash-error-msg">
-              資料載入失敗：{error}
-            </div>
-          )}
-
-          {!loading && !error && (
-            <div className="dash-table-wrapper">
-              <table className="dash-table">
-                <thead>
-                  <tr>
-                    <th>工程名稱<br/><span>Project Name</span></th>
-                    <th>施工地點<br/><span>Location</span></th>
-                    <th>承包商<br/><span>Contractor</span></th>
-                    <th>狀態<br/><span>Status</span></th>
-                    <th>計畫 / 實際進度<br/><span>Planned / Actual</span></th>
-                    <th>預計完工<br/><span>End Date</span></th>
-                    <th>操作<br/><span>Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projects.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="dash-empty">
-                        尚無工程資料 No projects found
-                      </td>
-                    </tr>
-                  ) : (
-                    projects.map(project => {
-                      const lp = project.latest_progress;
-                      const statusCfg = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.active;
-                      const StatusIcon = statusCfg.icon;
-                      const color = progressColor(lp?.planned_progress, lp?.actual_progress);
-                      return (
-                        <tr key={project.id} className="dash-row">
-                          <td className="td-name">{project.name}</td>
-                          <td className="td-location">{project.location ?? '—'}</td>
-                          <td className="td-contractor">{project.contractor ?? '—'}</td>
-                          <td>
-                            <span className={`status-badge ${statusCfg.colorClass}`}>
-                              <StatusIcon size={12} />
-                              {statusCfg.label}
-                            </span>
-                          </td>
-                          <td className="td-progress">
-                            {lp ? (
-                              <>
-                                <div className="progress-bar-track">
-                                  <div
-                                    className="progress-bar-fill"
-                                    style={{ width: `${lp.actual_progress}%`, background: color }}
-                                  />
-                                </div>
-                                <span className="progress-nums" style={{ color }}>
-                                  {lp.planned_progress}% / {lp.actual_progress}%
-                                </span>
-                              </>
-                            ) : (
-                              <span className="no-data">未記錄</span>
-                            )}
-                          </td>
-                          <td className="td-date">
-                            {project.end_date
-                              ? new Date(project.end_date).toLocaleDateString('zh-TW')
-                              : '—'}
-                          </td>
-                          <td className="td-actions">
-                            <button
-                              className="btn-row-action btn-row-diary-import"
-                              title="匯入日誌"
-                              onClick={() => {
-                                setSelectedProjectId(project.id);
-                                setShowDiaryModal(true);
-                              }}
-                            >
-                              <BookOpen size={13} />
-                              <span>日誌</span>
-                            </button>
-                            <button
-                              className="btn-row-action btn-row-diary-view"
-                              title="查看日誌"
-                              onClick={() => navigate(`/dashboard/diary/${project.id}`)}
-                            >
-                              <Eye size={13} />
-                              <span>查看</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </main>
-
-      {/* Modals */}
-      {showAddModal && (
-        <AddProjectModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handleDataAdded}
-        />
-      )}
-      {showExcelModal && (
-        <ExcelImportModal
-          onClose={() => setShowExcelModal(false)}
-          onSuccess={handleDataAdded}
-        />
-      )}
-      {showDiaryModal && selectedProjectId && (
-        <DiaryImportModal
-          projectId={selectedProjectId}
-          onClose={() => setShowDiaryModal(false)}
-          onSuccess={handleDataAdded}
-        />
-      )}
+          {showAddModal && <AddProjectModal onClose={() => setShowAddModal(false)} onSuccess={handleDataAdded} />}
+          {showExcelModal && <ExcelImportModal onClose={() => setShowExcelModal(false)} onSuccess={handleDataAdded} />}
+        </main>
+      </div>
     </div>
   );
 }

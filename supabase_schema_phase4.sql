@@ -49,7 +49,20 @@ CREATE POLICY "auth_read_reports"
   ON supervision_reports FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "auth_insert_reports"
-  ON supervision_reports FOR INSERT TO authenticated USING (true);
+  ON supervision_reports FOR INSERT TO authenticated
+  WITH CHECK (true);
 
 CREATE POLICY "auth_update_reports"
-  ON supervision_reports FOR UPDATE TO authenticated USING (true);
+  ON supervision_reports FOR UPDATE TO authenticated
+  USING (true) WITH CHECK (true);
+
+CREATE POLICY "auth_delete_reports"
+  ON supervision_reports FOR DELETE TO authenticated USING (true);
+
+CREATE POLICY "auth_update_daily_logs"
+  ON daily_logs FOR UPDATE TO authenticated
+  USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "auth_delete_daily_logs"
+  ON daily_logs FOR DELETE TO authenticated
+  USING (auth.uid() = created_by);

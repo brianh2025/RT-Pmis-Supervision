@@ -26,8 +26,8 @@ function mapAuthError(message) {
 export function Login() {
   const navigate = useNavigate();
   const { user, loading, signIn, signInWithGoogle } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@xiaoxiong.page');
+  const [password, setPassword] = useState('1234');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
