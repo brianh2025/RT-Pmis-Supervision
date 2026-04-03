@@ -50,8 +50,25 @@ CREATE POLICY "auth_insert_progress"
   ON progress_records FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = created_by);
 
+-- 6. 建立 RLS 策略：已認證使用者可更新/刪除（限本人建立的資料）
+CREATE POLICY "auth_update_projects"
+  ON projects FOR UPDATE TO authenticated
+  USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "auth_delete_projects"
+  ON projects FOR DELETE TO authenticated
+  USING (auth.uid() = created_by);
+
+CREATE POLICY "auth_update_progress"
+  ON progress_records FOR UPDATE TO authenticated
+  USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "auth_delete_progress"
+  ON progress_records FOR DELETE TO authenticated
+  USING (auth.uid() = created_by);
+
 -- ============================================================
--- 6. 插入範例工程資料（可依實際情況刪除或修改）
+-- 7. 插入範例工程資料（可依實際情況刪除或修改）
 -- ============================================================
 INSERT INTO projects (name, location, contractor, status, start_date, end_date, budget)
 VALUES

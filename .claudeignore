@@ -1,0 +1,4 @@
+package-lock.json
+*.css
+src/assets/
+public/
