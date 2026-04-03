@@ -14,7 +14,7 @@ export function ProjectLayout() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { project, loading } = useProject(projectId);
   const [time, setTime] = useState(new Date());
@@ -71,6 +71,7 @@ export function ProjectLayout() {
         setIsMobileOpen={setIsMobileOpen}
         projectId={projectId}
         onSignOut={handleSignOut}
+        user={user}
         isDarkMode={isDarkMode}
         toggleTheme={toggleTheme}
         time={time}

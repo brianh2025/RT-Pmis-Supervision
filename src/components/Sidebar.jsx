@@ -39,13 +39,14 @@ const MENU_GROUPS_PROJECT = [
   },
 ];
 
-export function Sidebar({ 
-  isCollapsed, 
-  setIsCollapsed, 
-  isMobileOpen, 
-  setIsMobileOpen, 
-  projectId, 
+export function Sidebar({
+  isCollapsed,
+  setIsCollapsed,
+  isMobileOpen,
+  setIsMobileOpen,
+  projectId,
   onSignOut,
+  user,
   isDarkMode,
   toggleTheme,
   time,
@@ -214,8 +215,8 @@ export function Sidebar({
       {/* ── Footer：頭像 + 登出 ── */}
       <div className="pl-sidebar-footer">
         <div className="pl-user-info-brief">
-          <div className="user-avatar-mini">admin</div>
-          {!isCollapsed && <span className="user-email-mini">admin@xiaoxiong.page</span>}
+          <div className="user-avatar-mini">{user?.email?.[0]?.toUpperCase() ?? '?'}</div>
+          {!isCollapsed && <span className="user-email-mini">{user?.email ?? '未登入'}</span>}
         </div>
         <button className="pl-btn-logout" onClick={onSignOut} title="登出系統">
           <LogOut size={16} className="pl-nav-icon" />

@@ -1,16 +1,52 @@
-# React + Vite
+# RT-PMIS — 雲林縣公共工程監造管理系統
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+雲林縣政府公共工程監造督導平台，提供工程人員統一管理施工日誌、進度追蹤、材料送審、品管缺失與文件歸檔的一站式作業環境。
 
-Currently, two official plugins are available:
+## 技術棧
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **前端**：React 19 + Vite 8 (Rolldown)
+- **後端/資料庫**：Supabase（PostgreSQL + Auth + Storage）
+- **UI**：Lucide React、Recharts
+- **PDF**：pdfjs-dist
 
-## React Compiler
+## 功能模組
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| 模組 | 說明 |
+|------|------|
+| 工程總覽 | 多工程列表、狀態概覽、快速進入 |
+| 專案儀表板 | S-Curve 進度曲線、里程碑追蹤 |
+| 施工日誌 | 每日施工記事、PDF 匯入、列印視圖 |
+| 進度管理 | 計畫進度匯入（xlsx）、實際進度更新 |
+| 材料管制 | 送審管制表、檢試驗管制表、施工計畫管制 |
+| 品管管理 | 缺失紀錄、改善追蹤 |
+| 送審管理 | 文件送審流程 |
+| 歸檔管理 | 工程文件分類歸檔 |
+| 統計分析 | 各模組彙總圖表 |
 
-## Expanding the ESLint configuration
+## 開發啟動
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+## 資料庫建置
+
+依序在 Supabase SQL Editor 執行：
+
+1. `supabase_schema.sql` — 基本資料表（projects、progress_records）
+2. `supabase_schema_phase4.sql` — 施工日誌、監造月報
+3. `db_migration_p4.sql` — P4 擴充資料表（材料管控、品管、歸檔等）
+
+## 環境變數
+
+複製 `.env.example`（若有）或在專案根目錄建立 `.env`：
+
+```
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
+
+## 授權
+
+本系統為雲林縣政府內部使用，未經授權不得對外散布。
