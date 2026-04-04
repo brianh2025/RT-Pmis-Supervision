@@ -3,12 +3,113 @@
    Based on Manus_v1 Archive.tsx + version tracking + 進版 button
    ============================================================ */
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Loader2, FolderOpen, FileText, Download, Search, Tag, Calendar, GitBranch, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Loader2, FolderOpen, FileText, Download, Search, Tag, Calendar, GitBranch, CheckCircle, Printer } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useProject } from '../hooks/useProject';
 import '../components/Modal.css';
 import './MaterialControl.css';
+
+/* ── 照片記錄列印工具（與 PhotoTable.jsx 共用邏輯）── */
+const PHOTOS_PER_PAGE = 3;
+
+function toRocDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return `${dt.getFullYear() - 1911}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+const PRINT_CSS = `
+  body { margin: 0; background: #e0e0e0; }
+  .report-page {
+    font-family: 'DFKai-SB','BiauKai','標楷體','Noto Serif TC',serif;
+    width: 21cm; height: 29.7cm; padding: 1cm;
+    margin: 1.5cm auto; background: #fff; box-sizing: border-box; color: #000;
+    page-break-after: always; overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  @media print {
+    body { background: #fff; }
+    .report-page { margin: 0 auto; box-shadow: none; }
+  }
+  .report-header { display:flex; align-items:flex-start; gap:8px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:0; }
+  .report-header-left { width:80px; flex-shrink:0; }
+  .report-header-center { flex:1; text-align:center; }
+  .report-header-center h1 { font-size:18pt; font-weight:700; margin:0 0 4px; }
+  .report-header-center h2 { font-size:14pt; font-weight:600; margin:0; }
+  .report-header-right { width:80px; flex-shrink:0; text-align:right; font-size:9pt; line-height:2; }
+  .report-table-b { width:100%; border-collapse:collapse; border-top:1px solid #000; border-left:1px solid #000; border-right:1px solid #000; }
+  .report-block-b { page-break-inside:avoid; }
+  .photo-cell-b { width:70%; height:6.9cm; padding:.3rem; text-align:center; vertical-align:middle; border-bottom:1px solid #000; }
+  .photo-cell-b img { max-width:100%; max-height:6.5cm; object-fit:contain; }
+  .photo-placeholder { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f5f5; border:1px dashed #ccc; color:#999; font-size:12pt; gap:4px; }
+  .info-cell-b { width:30%; padding:.3rem .7rem; border-left:1px solid #000; border-bottom:1px solid #000; vertical-align:top; font-size:12pt; word-break:break-all; }
+  .info-location { font-weight:700; line-height:1.5; }
+  .info-date { margin-top:.5rem; font-size:12pt; }
+  .desc-cell-b { padding:.2rem .7rem; font-size:12pt; border-bottom:1px solid #000; word-break:break-all; line-height:1.4; height:1.35cm; box-sizing:border-box; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+`;
+
+function buildPhotoReportHtml(pages, { title, docNo, subtitle }) {
+  const sub = subtitle || '施工抽查紀錄';
+  return pages.map((page, pi) => `
+    <div class="report-page">
+      <div class="report-header">
+        <div class="report-header-left"></div>
+        <div class="report-header-center">
+          <h1>${title || '工程名稱'}</h1>
+          <h2>${sub}</h2>
+        </div>
+        <div class="report-header-right">
+          ${docNo ? `<div>編號：${docNo}</div>` : ''}
+          <div>第 ${pi + 1} 頁</div>
+        </div>
+      </div>
+      <table class="report-table-b"><tbody>
+        ${page.map((item, ci) => `
+          <tr class="report-block-b">
+            <td class="photo-cell-b">
+              ${item.url
+                ? `<img src="${item.url}" alt="照片 ${pi * PHOTOS_PER_PAGE + ci + 1}">`
+                : `<div class="photo-placeholder"><span>照片 ${pi * PHOTOS_PER_PAGE + ci + 1}</span><span style="font-size:9pt">（無照片）</span></div>`
+              }
+            </td>
+            <td class="info-cell-b">
+              <div class="info-location">${item.location || '（無位置說明）'}</div>
+              <div class="info-date">${toRocDate(item.date)}</div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="desc-cell-b">說明：${item.description || ''}</td>
+          </tr>
+        `).join('')}
+      </tbody></table>
+    </div>
+  `).join('');
+}
+
+function previewPhotoDoc(doc, projectName) {
+  let photos = [];
+  try {
+    const parsed = JSON.parse(doc.remark);
+    photos = parsed.photos || [];
+  } catch { return; }
+  if (!photos.length) { alert('此記錄無照片資料'); return; }
+
+  const pages = [];
+  for (let i = 0; i < photos.length; i += PHOTOS_PER_PAGE) {
+    pages.push(photos.slice(i, i + PHOTOS_PER_PAGE));
+  }
+  const html = buildPhotoReportHtml(pages, {
+    title: projectName || doc.title || '工程名稱',
+    docNo: doc.doc_no,
+    subtitle: '施工抽查紀錄',
+  });
+  const w = window.open('', '_blank', 'width=960,height=800');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>${PRINT_CSS}</style></head><body>${html}</body></html>`);
+  w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
+}
 
 const CATEGORY_TREE = [
   { key: 'contract',   label: '契約文件',   icon: '📋' },
@@ -56,6 +157,7 @@ function Toast({ msg, onClose }) {
 export function Archive() {
   const { id: projectId } = useParams();
   const { user } = useAuth();
+  const { project } = useProject(projectId);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -252,9 +354,27 @@ export function Archive() {
                           ))}
                         </div>
                       )}
-                      {doc.remark && <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.5 }}>{doc.remark}</p>}
+                      {doc.remark && (() => {
+                        try {
+                          const parsed = JSON.parse(doc.remark);
+                          if (parsed && typeof parsed === 'object') {
+                            // 照片記錄：顯示張數摘要而非原始 JSON
+                            if (parsed.count !== undefined) return null;
+                            return null; // 其他 JSON 物件不顯示
+                          }
+                        } catch { /* 不是 JSON，繼續顯示文字 */ }
+                        return <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.5 }}>{doc.remark}</p>;
+                      })()}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                      {doc.category === '施工照片' && doc.remark && (
+                        <button
+                          onClick={() => previewPhotoDoc(doc, project?.name)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: 'rgba(21,101,192,0.08)', border: '1px solid rgba(21,101,192,0.2)', borderRadius: '6px', fontSize: '11px', color: 'var(--color-primary-light)', cursor: 'pointer', transition: 'all 0.15s' }}
+                          title="預覽照片報告 PDF">
+                          <Printer size={11} /> 預覽 PDF
+                        </button>
+                      )}
                       {doc.file_url && (
                         <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '11px', color: 'var(--color-text2)', textDecoration: 'none' }}>

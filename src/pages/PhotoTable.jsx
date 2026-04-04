@@ -183,12 +183,17 @@ async function fetchDriveBlob(fileId, token) {
    最小字體 12pt（表單編號除外）
 */
 const PRINT_CSS = `
-  body { margin: 0; background: #fff; }
+  body { margin: 0; background: #e0e0e0; }
   .report-page {
     font-family: 'DFKai-SB','BiauKai','標楷體','Noto Serif TC',serif;
     width: 21cm; height: 29.7cm; padding: 1cm;
-    margin: 0 auto; background: #fff; box-sizing: border-box; color: #000;
+    margin: 1.5cm auto; background: #fff; box-sizing: border-box; color: #000;
     page-break-after: always; overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  @media print {
+    body { background: #fff; }
+    .report-page { margin: 0 auto; box-shadow: none; }
   }
   .report-header { display:flex; align-items:flex-start; gap:8px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:0; }
   .report-header-left { width:80px; flex-shrink:0; }

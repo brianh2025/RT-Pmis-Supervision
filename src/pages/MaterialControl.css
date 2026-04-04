@@ -27,15 +27,15 @@
 }
 
 .mcs-stat-val {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semi);
   color: var(--color-text1);
   font-family: 'JetBrains Mono', monospace;
   line-height: 1;
 }
 
 .mcs-stat-label {
-  font-size: 0.62rem;
+  font-size: var(--fs-2xs);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -91,8 +91,8 @@
 }
 
 .mcs-grp-label {
-  font-size: 0.62rem;
-  font-weight: 700;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   color: var(--color-text-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -111,13 +111,13 @@
 .mcs-tab {
   padding: 5px 12px;
   border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   color: var(--color-text-muted);
   background: var(--color-bg2);
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
@@ -136,10 +136,10 @@
   gap: 4px;
   padding: 4px 10px;
   border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s, color 0.15s, transform 0.08s;
   border: 1px solid var(--color-border);
   background: var(--color-bg2);
   color: var(--color-text2);

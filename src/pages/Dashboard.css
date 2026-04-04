@@ -45,10 +45,10 @@
 }
 
 .dash-brand-zh {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semi);
   color: var(--color-text-main);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .dash-brand-en {
@@ -140,9 +140,9 @@
 }
 
 .timeline-date {
-  font-size: 0.75rem;
-  color: var(--color-primary);
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  color: var(--color-primary-light);
+  font-weight: var(--fw-semi);
   margin-bottom: 0.25rem;
 }
 
@@ -1595,6 +1595,126 @@
   transition: all 0.2s ease;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/* ── 專案卡片刪除按鈕 ── */
+.card-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s, transform 0.08s;
+  flex-shrink: 0;
+}
+
+.dash-project-card-compact:hover .card-delete-btn {
+  opacity: 1;
+}
+
+.card-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.card-delete-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── 刪除確認 Modal ── */
+.del-modal-warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+}
+
+.del-modal-warning-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  color: var(--color-danger);
+  margin-bottom: 4px;
+}
+
+.del-modal-warning-body {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.del-modal-project-name {
+  padding: 8px 12px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  color: var(--color-text1);
+}
+
+.del-modal-confirm-hint {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.del-modal-name-badge {
+  padding: 6px 10px;
+  background: var(--color-bg2);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  color: var(--color-danger);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.del-modal-error {
+  font-size: var(--fs-xs);
+  color: var(--color-danger);
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-modal-delete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 1.25rem;
+  background: var(--color-danger);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.08s;
+}
+
+.btn-modal-delete:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-modal-delete:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-modal-delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .btn-back-to-list:hover {

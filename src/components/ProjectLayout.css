@@ -131,11 +131,11 @@
 }
 
 .pl-nav-group-label {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   padding: 0 8px;
   margin-bottom: 2px;
 }
@@ -152,13 +152,14 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   color: var(--color-text-muted);
-  font-size: var(--fs-base);
-  font-weight: 500;
-  transition: all var(--transition-fast);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
   margin-bottom: 2px;
   position: relative;
+  animation: listItemIn 0.2s cubic-bezier(0.16,1,0.3,1) both;
 }
 
 .pl-sidebar.collapsed .pl-nav-link {
@@ -198,8 +199,8 @@
 }
 
 .pl-nav-label {
-  font-weight: 600;
-  font-size: 0.85rem; /* Reduced from 1rem for density */
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -291,14 +292,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px; /* Reduced from 10px */
+  padding: 6px;
   background-color: rgba(239, 68, 68, 0.05);
   color: var(--color-danger);
   border: 1px solid rgba(239, 68, 68, 0.15);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   transition: all 0.2s;
 }
 
@@ -744,12 +745,12 @@
   text-align: center;
 }
 
-/* 日期文字：改黑、加大、加粗 */
+/* 日期文字 */
 .pl-sidebar-time-text {
   display: block;
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
-  font-weight: 700;
+  font-weight: var(--fw-semi);
   letter-spacing: 0.03em;
   color: var(--color-text-main);   /* 改深色 */
   -webkit-text-fill-color: var(--color-text-main); /* 覆蓋之前漸層 */

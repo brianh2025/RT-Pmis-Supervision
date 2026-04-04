@@ -4,16 +4,135 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProjects } from '../hooks/useProjects';
+import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { ReportReminderBanner } from '../components/ReportReminderBanner';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
-  Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers
+  Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
+  Trash2, TriangleAlert, Loader2,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
+import '../components/Modal.css';
+
+/* ── 刪除專案確認 Modal ── */
+function DeleteProjectModal({ project, onClose, onDeleted }) {
+  const [step,       setStep]       = useState(1); // 1=警告 2=輸入確認
+  const [inputName,  setInputName]  = useState('');
+  const [deleting,   setDeleting]   = useState(false);
+  const [error,      setError]      = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (step === 2) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [step]);
+
+  async function handleDelete() {
+    if (inputName.trim() !== project.name.trim()) {
+      setError('輸入的名稱不符，請重新輸入。');
+      return;
+    }
+    setDeleting(true);
+    setError('');
+
+    // 確保 session 有效
+    const { data: { session }, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr || !session) {
+      // 嘗試 refresh
+      const { error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr) {
+        setDeleting(false);
+        setError('登入狀態已過期，請重新整理頁面後再試。');
+        return;
+      }
+    }
+
+    const { error: err } = await supabase.from('projects').delete().eq('id', project.id);
+    setDeleting(false);
+    if (err) {
+      // code 42501 = RLS 權限不足
+      const hint = err.code === '42501' || err.message?.includes('policy')
+        ? '（RLS 政策限制，請確認 Supabase 刪除權限）'
+        : '';
+      setError(`刪除失敗：${err.message} ${hint}`);
+      return;
+    }
+    onDeleted();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-panel" style={{ maxWidth: 440 }}>
+        <div className="modal-header" style={{ borderBottom: '1px solid var(--color-surface-border)' }}>
+          <div className="modal-title-group">
+            <TriangleAlert size={16} style={{ color: 'var(--color-danger)' }} />
+            <h3 className="modal-title" style={{ color: 'var(--color-danger)' }}>刪除專案</h3>
+          </div>
+          <button className="modal-close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          {step === 1 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="del-modal-warning-box">
+                <TriangleAlert size={20} style={{ color: 'var(--color-danger)', flexShrink: 0 }} />
+                <div>
+                  <div className="del-modal-warning-title">此操作無法復原</div>
+                  <div className="del-modal-warning-body">
+                    刪除專案將同時移除所有相關資料，包含日誌、材料管制、照片記錄、歸檔文件等。
+                  </div>
+                </div>
+              </div>
+              <div className="del-modal-project-name">{project.name}</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p className="del-modal-confirm-hint">
+                請輸入專案名稱以確認刪除：
+              </p>
+              <div className="del-modal-name-badge">{project.name}</div>
+              <input
+                ref={inputRef}
+                className="form-input"
+                placeholder="請輸入上方名稱…"
+                value={inputName}
+                onChange={e => { setInputName(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && !deleting && handleDelete()}
+              />
+              {error && <div className="del-modal-error">{error}</div>}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn-modal-cancel" onClick={onClose}>取消</button>
+          {step === 1 ? (
+            <button
+              className="btn-modal-delete"
+              onClick={() => setStep(2)}
+            >
+              我了解，繼續刪除
+            </button>
+          ) : (
+            <button
+              className="btn-modal-delete"
+              onClick={handleDelete}
+              disabled={deleting || inputName.trim() !== project.name.trim()}
+            >
+              {deleting
+                ? <><Loader2 size={14} className="animate-spin" />刪除中…</>
+                : <><Trash2 size={14} />確認刪除</>
+              }
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const STATUS_CONFIG = {
   active:    { label: '執行中', colorClass: 'status-active' },
@@ -55,8 +174,9 @@ export function Dashboard() {
   
   const contentRef = useRef(null);
   useAutoHideScrollbar(contentRef);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showExcelModal, setShowExcelModal] = useState(false);
+  const [showAddModal,    setShowAddModal]    = useState(false);
+  const [showExcelModal,  setShowExcelModal]  = useState(false);
+  const [deleteTarget,    setDeleteTarget]    = useState(null); // project to delete
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -221,19 +341,27 @@ export function Dashboard() {
 
                     {/* 右側內容 */}
                     <div className="card-compact-body">
-                      {/* 上排：名稱 + 狀態 */}
+                      {/* 上排：名稱 + 進度環 + 刪除鈕 */}
                       <div className="card-compact-top">
                         <div>
                           <div className="card-title-compact">{p.name}</div>
                           <div className="card-contractor-compact">{p.contractor || '未指定單位'}</div>
                         </div>
-                        {/* 圓形進度環 */}
-                        <CircularProgress
-                          value={prog}
-                          size={48}
-                          strokeWidth={5}
-                          color={diff < -5 ? 'var(--color-error)' : 'var(--color-primary)'}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          <CircularProgress
+                            value={prog}
+                            size={48}
+                            strokeWidth={5}
+                            color={diff < -5 ? 'var(--color-danger)' : 'var(--color-primary)'}
+                          />
+                          <button
+                            className="card-delete-btn"
+                            title="刪除專案"
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* 下排：進度條（差值標示） */}
@@ -257,6 +385,13 @@ export function Dashboard() {
           </div>
           {showAddModal && <AddProjectModal onClose={() => setShowAddModal(false)} onSuccess={handleDataAdded} />}
           {showExcelModal && <ExcelImportModal onClose={() => setShowExcelModal(false)} onSuccess={handleDataAdded} />}
+          {deleteTarget && (
+            <DeleteProjectModal
+              project={deleteTarget}
+              onClose={() => setDeleteTarget(null)}
+              onDeleted={() => { setDeleteTarget(null); refresh?.(); }}
+            />
+          )}
         </main>
       </div>
     </div>

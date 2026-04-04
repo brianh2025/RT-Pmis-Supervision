@@ -12,19 +12,22 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Get initial session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // 2. Subscribe to auth state changes (login, logout, token refresh)
+    // 1. 訂閱 auth 狀態變更（須先訂閱，才不會漏掉 getSession 後的事件）
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
+
+    // 2. 取得初始 session（getSession 會讀 localStorage 並在必要時自動 refresh token）
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch(() => {
+      setUser(null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
