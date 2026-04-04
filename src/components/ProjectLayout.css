@@ -804,3 +804,45 @@
 
 /* 行動版 sidebar-right 維持從左側滑入（與一般 sidebar 相同） */
 
+/* ══════════════════════════════════════════
+   行動版 topbar 優化
+   ══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* topbar 高度收緊 */
+  .pl-topbar { height: 44px; padding: 0 10px; }
+
+  /* project badge 縮短 */
+  .pl-project-badge {
+    max-width: 160px;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+
+  /* 時間/天氣欄位在行動版隱藏（sidebar 已有） */
+  .topbar-info-group { display: none; }
+
+  /* 返回按鈕縮小 */
+  .pl-back-btn { font-size: 0.72rem; padding: 3px 7px; }
+}
+
+@media (max-width: 480px) {
+  .pl-topbar { padding: 0 8px; }
+
+  /* 超窄螢幕隱藏 project badge 文字，只保留狀態點 */
+  .pl-project-badge {
+    max-width: 120px;
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+}
+
+/* ─── 列印樣式 ─── */
+@media print {
+  .pl-sidebar,
+  .pl-topbar,
+  .pl-topbar-mobile-only,
+  .pl-mobile-overlay,
+  .pl-mobile-toggle {
+    display: none !important;
+  }
+}
