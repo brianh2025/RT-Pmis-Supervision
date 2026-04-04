@@ -8,6 +8,7 @@ import {
   TrendingUp, Package, FileText, ClipboardCheck, Archive, BarChart2,
   Calendar, Loader2, Activity, Shield, ClipboardList,
   AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
+  Camera, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -23,6 +24,7 @@ const QUICK_LINKS = [
   { label: '品質管理', icon: Shield,         path: 'quality',     color: '#f472b6' },
   { label: '歸檔管理', icon: Archive,        path: 'archive',     color: '#34d399' },
   { label: '統計分析', icon: BarChart2,      path: 'analytics',   color: '#818cf8' },
+  { label: '照片記錄', icon: Camera,         path: 'photos',      color: '#f472b6' },
 ];
 
 export function ProjectDashboard() {
@@ -41,6 +43,7 @@ export function ProjectDashboard() {
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [showEmergency, setShowEmergency] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
 
   useEffect(() => {
     if (!projectId || !supabase) { setStatsLoading(false); return; }
@@ -216,8 +219,16 @@ export function ProjectDashboard() {
       </div>
 
       {/* ── 頂部快速捷徑列 ── */}
-      <div className="dash-quick-nav">
-        {QUICK_LINKS.map(link => {
+      <div className={`dash-quick-nav ${navCollapsed ? 'collapsed' : ''}`}>
+        <button
+          className="dash-quick-collapse-btn"
+          onClick={() => setNavCollapsed(v => !v)}
+          title={navCollapsed ? '展開捷徑' : '收合捷徑'}
+        >
+          {navCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+          {navCollapsed ? '功能捷徑' : ''}
+        </button>
+        {!navCollapsed && QUICK_LINKS.map(link => {
           const Icon = link.icon;
           return (
             <button

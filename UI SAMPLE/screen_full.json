@@ -1,8 +1,0 @@
-{
-    "error":  {
-                  "code":  -32700,
-                  "message":  "JSON Parse error"
-              },
-    "id":  null,
-    "jsonrpc":  "2.0"
-}
