@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
+import { EmergencyStopModal } from '../components/EmergencyStopModal';
 import './ProjectDashboard.css';
 
 const QUICK_LINKS = [
@@ -36,8 +37,10 @@ export function ProjectDashboard() {
     submissionCount: 0, submissionPending: 0,
     qualityCount: 0, qualityOpen: 0,
     archiveCount: 0,
+    inspTotal: 0, inspPending: 0, inspFail: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [showEmergency, setShowEmergency] = useState(false);
 
   useEffect(() => {
     if (!projectId || !supabase) { setStatsLoading(false); return; }
@@ -66,13 +69,18 @@ export function ProjectDashboard() {
       const pendingLogs = Math.max(0, workingDays - (monthLogsRes.count || 0));
       const latestProgress = progressRes.data?.[0];
 
-      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes] = await Promise.all([
+      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes] = await Promise.all([
         supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['pending', 'submitted', 'reviewing']),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        supabase.from('construction_inspections').select('result').eq('project_id', projectId),
       ]);
+
+      const inspData = inspRes.data || [];
+      const inspPending = inspData.filter(r => r.result === '待複驗').length;
+      const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -88,6 +96,9 @@ export function ProjectDashboard() {
         qualityCount: qualRes.count || 0,
         qualityOpen: qualOpenRes.count || 0,
         archiveCount: archRes.count || 0,
+        inspTotal: inspData.length,
+        inspPending,
+        inspFail,
       });
       setStatsLoading(false);
     }
@@ -159,6 +170,24 @@ export function ProjectDashboard() {
       path: 'progress',
       action: '查看進度',
     },
+    stats.inspFail > 0 && {
+      id: 'insp-fail',
+      level: 'urgent',
+      icon: AlertCircle,
+      title: `施工檢驗不合格 ${stats.inspFail} 項，需複驗`,
+      desc: `共 ${stats.inspTotal} 項檢驗，${stats.inspPending} 待複驗，${stats.inspFail} 不合格`,
+      path: 'quality',
+      action: '前往複驗',
+    },
+    stats.inspFail === 0 && stats.inspPending > 0 && {
+      id: 'insp-pending',
+      level: 'warning',
+      icon: Clock,
+      title: `施工檢驗待複驗 ${stats.inspPending} 項`,
+      desc: `共 ${stats.inspTotal} 項檢驗，請安排複驗作業`,
+      path: 'quality',
+      action: '查看檢驗',
+    },
   ].filter(Boolean);
 
   const allDone = !statsLoading && tasks.length === 0;
@@ -215,9 +244,18 @@ export function ProjectDashboard() {
               : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦查驗任務</>
             }
           </div>
-          <span className="task-board-count">
-            {statsLoading ? '載入中…' : allDone ? '全部完成' : `${tasks.length} 項待處理`}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="task-board-count">
+              {statsLoading ? '載入中…' : allDone ? '全部完成' : `${tasks.length} 項待處理`}
+            </span>
+            <button
+              className="task-emergency-btn"
+              onClick={() => setShowEmergency(true)}
+              title="緊急停工通報"
+            >
+              <AlertTriangle size={12} />緊急停工
+            </button>
+          </div>
         </div>
 
         {statsLoading && (
@@ -454,6 +492,14 @@ export function ProjectDashboard() {
         </div>
 
       </div>
+
+      {showEmergency && (
+        <EmergencyStopModal
+          projectId={projectId}
+          onClose={() => setShowEmergency(false)}
+          onSuccess={() => { setShowEmergency(false); /* 重新抓 stats */ setStatsLoading(true); }}
+        />
+      )}
     </div>
   );
 }

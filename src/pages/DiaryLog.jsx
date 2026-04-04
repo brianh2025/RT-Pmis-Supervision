@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCw, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCw, RefreshCcw, PlusCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DiaryImportModal } from '../components/DiaryImportModal';
+import { QuickDiaryModal } from '../components/QuickDiaryModal';
 import './DiaryLog.css'; // Minimal specific styles, relying mostly on inline and generic styles
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
@@ -31,6 +32,7 @@ export function DiaryLog() {
   const [error, setError] = useState(null);
   
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showQuickModal, setShowQuickModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -235,15 +237,22 @@ export function DiaryLog() {
                             </div>
                         </div>
                     ) : (
-                        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                        <div style={{ padding: '32px 20px', textAlign: 'center' }}>
                             <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 12px' }} />
                             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>尚未提送報表</p>
-                            <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>請等待系統同步或手動匯入</p>
-                            <button
-                                onClick={() => setShowImportModal(true)}
-                                style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px', margin: '16px auto 0', padding: '6px 12px', background: 'rgba(15,82,186,0.1)', color: 'var(--color-primary)', borderRadius: '6px', fontSize: '11px', border: 'none', cursor: 'pointer' }}>
-                                <RefreshCcw size={12} /> 手動匯入
-                            </button>
+                            <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>可快速新增或手動匯入 PDF</p>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
+                                <button
+                                    onClick={() => setShowQuickModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 14px', background: 'rgba(15,82,186,0.1)', color: 'var(--color-primary)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600 }}>
+                                    <PlusCircle size={13} /> 快速新增
+                                </button>
+                                <button
+                                    onClick={() => setShowImportModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 14px', background: 'var(--color-bg2)', color: 'var(--color-text2)', borderRadius: '6px', fontSize: '12px', border: '1px solid var(--color-border)', cursor: 'pointer' }}>
+                                    <RefreshCcw size={12} /> PDF 匯入
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -291,6 +300,14 @@ export function DiaryLog() {
           projectId={projectId}
           onClose={() => setShowImportModal(false)}
           onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+        />
+      )}
+      {showQuickModal && selectedKey && (
+        <QuickDiaryModal
+          projectId={projectId}
+          logDate={selectedKey}
+          onClose={() => setShowQuickModal(false)}
+          onSuccess={() => { setShowQuickModal(false); setRefreshTrigger(prev => prev + 1); }}
         />
       )}
     </div>
