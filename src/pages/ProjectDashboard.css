@@ -1,5 +1,128 @@
 /* ─── Project Dashboard ───────────────────────────────── */
 
+/* ── 查驗任務看板 ── */
+.task-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.task-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.task-board-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text1);
+}
+
+.task-board-count {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+.task-board-loading,
+.task-board-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+
+.task-board-done {
+  color: var(--color-success);
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  background: var(--color-surface);
+}
+
+.task-item:hover {
+  background: var(--color-surface-hover);
+  transform: translateX(2px);
+}
+
+.task-item-urgent {
+  border-left-color: var(--color-danger, #ef4444);
+}
+
+.task-item-warning {
+  border-left-color: var(--color-warning, #f59e0b);
+}
+
+.task-item-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--color-bg2);
+}
+
+.task-item-urgent .task-item-icon { color: var(--color-danger, #ef4444); }
+.task-item-warning .task-item-icon { color: var(--color-warning, #f59e0b); }
+
+.task-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-item-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-item-desc {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-item-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-primary-light);
+  white-space: nowrap;
+}
+
+
+
 /* Quick Nav Bar (top shortcut strip) */
 .dash-quick-nav {
   display: flex;

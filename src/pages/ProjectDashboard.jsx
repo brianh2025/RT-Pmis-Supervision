@@ -7,6 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Package, FileText, ClipboardCheck, Archive, BarChart2,
   Calendar, Loader2, Activity, Shield, ClipboardList,
+  AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -111,6 +112,57 @@ export function ProjectDashboard() {
     ? Math.ceil((new Date(project.end_date).getTime() - Date.now()) / 86400000)
     : null;
 
+  // ── 待辦任務清單（從現有 stats 聚合）──
+  const tasks = statsLoading ? [] : [
+    stats.pendingLogs > 0 && {
+      id: 'diary',
+      level: stats.pendingLogs >= 3 ? 'urgent' : 'warning',
+      icon: BookOpen,
+      title: `施工日誌未補 ${stats.pendingLogs} 天`,
+      desc: `本月已匯入 ${stats.thisMonthLogs} 筆，請補齊工作日記錄`,
+      path: 'diary',
+      action: '前往補填',
+    },
+    stats.qualityOpen > 0 && {
+      id: 'quality',
+      level: 'urgent',
+      icon: AlertCircle,
+      title: `品管缺失未結案 ${stats.qualityOpen} 件`,
+      desc: `共 ${stats.qualityCount} 件缺失，${stats.qualityOpen} 件待改善或驗收`,
+      path: 'quality',
+      action: '查看缺失',
+    },
+    stats.submissionPending > 0 && {
+      id: 'submission',
+      level: 'warning',
+      icon: Clock,
+      title: `送審件待處理 ${stats.submissionPending} 件`,
+      desc: `共 ${stats.submissionCount} 件送審，${stats.submissionPending} 件審查中或待送出`,
+      path: 'submission',
+      action: '前往送審',
+    },
+    diff < -5 && {
+      id: 'progress',
+      level: 'urgent',
+      icon: TrendingUp,
+      title: `進度落後 ${Math.abs(diff).toFixed(1)}%，需提出趕工計畫`,
+      desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%，請更新進度並說明原因`,
+      path: 'progress',
+      action: '更新進度',
+    },
+    daysRemaining !== null && daysRemaining <= 30 && daysRemaining >= 0 && {
+      id: 'deadline',
+      level: daysRemaining <= 14 ? 'urgent' : 'warning',
+      icon: Calendar,
+      title: `工程剩餘工期 ${daysRemaining} 天`,
+      desc: `完工期限：${project.end_date}，請確認最終驗收作業準備`,
+      path: 'progress',
+      action: '查看進度',
+    },
+  ].filter(Boolean);
+
+  const allDone = !statsLoading && tasks.length === 0;
+
   return (
     <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
@@ -150,6 +202,56 @@ export function ProjectDashboard() {
               <Icon size={13} />
               {link.label}
             </button>
+          );
+        })}
+      </div>
+
+      {/* ── 查驗任務看板 ── */}
+      <div className="task-board">
+        <div className="task-board-header">
+          <div className="task-board-title">
+            {allDone
+              ? <><CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />今日查驗任務</>
+              : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦查驗任務</>
+            }
+          </div>
+          <span className="task-board-count">
+            {statsLoading ? '載入中…' : allDone ? '全部完成' : `${tasks.length} 項待處理`}
+          </span>
+        </div>
+
+        {statsLoading && (
+          <div className="task-board-loading">
+            <Loader2 size={14} className="animate-spin" />載入任務中…
+          </div>
+        )}
+
+        {allDone && (
+          <div className="task-board-done">
+            <CheckCircle2 size={20} />
+            <span>今日查驗任務全數完成，繼續保持！</span>
+          </div>
+        )}
+
+        {tasks.map(task => {
+          const Icon = task.icon;
+          return (
+            <div
+              key={task.id}
+              className={`task-item task-item-${task.level}`}
+              onClick={() => navigate(`/projects/${projectId}/${task.path}`)}
+            >
+              <div className="task-item-icon">
+                <Icon size={15} />
+              </div>
+              <div className="task-item-body">
+                <div className="task-item-title">{task.title}</div>
+                <div className="task-item-desc">{task.desc}</div>
+              </div>
+              <div className="task-item-action">
+                {task.action}<ChevronRight size={13} />
+              </div>
+            </div>
           );
         })}
       </div>
