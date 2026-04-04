@@ -49,4 +49,4 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 
 ## 授權
 
-本系統為雲林縣政府內部使用，未經授權不得對外散布。
+本系統由XIAOXIONG.PAGE開發，獨家授權予RT雲林工務所內部使用，未經授權不得對外散布。

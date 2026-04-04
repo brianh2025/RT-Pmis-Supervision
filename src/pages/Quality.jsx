@@ -4,7 +4,7 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +35,7 @@ const INSPECT_RESULT = {
 };
 const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 
-const TNAMES = ['施工檢驗管制', '缺失改善管制'];
+const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
 const EMPTY_INSPECT = {
   inspect_date: new Date().toISOString().split('T')[0],
@@ -64,12 +64,19 @@ export function Quality() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [issueForm, setIssueForm] = useState({ ...EMPTY_QUALITY });
 
+  // Tab 2: mcs_test 試驗報告
+  const [tests, setTests] = useState([]);
+  const [testFilter, setTestFilter] = useState('all');
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [editCell, setEditCell] = useState(null);
   const [editVal, setEditVal] = useState('');
   const editInputRef = useRef(null);
+  const [verifyTarget, setVerifyTarget] = useState(null); // { id, item, location }
+  const [verifyChecks, setVerifyChecks] = useState([]);
+  const [verifyNote, setVerifyNote] = useState('');
 
   const loadInspections = useCallback(async () => {
     if (!supabase) return [];
@@ -85,16 +92,24 @@ export function Quality() {
     return data || [];
   }, [projectId]);
 
+  const loadTests = useCallback(async () => {
+    if (!supabase) return [];
+    const { data } = await supabase.from('mcs_test').select('*')
+      .eq('project_id', projectId).order('created_at', { ascending: false });
+    return data || [];
+  }, [projectId]);
+
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const [ins, iss] = await Promise.all([loadInspections(), loadIssues()]);
+      const [ins, iss, tsts] = await Promise.all([loadInspections(), loadIssues(), loadTests()]);
       setInspections(ins);
       setIssues(iss);
+      setTests(tsts);
       setLoading(false);
     }
     if (projectId) init();
-  }, [projectId, loadInspections, loadIssues]);
+  }, [projectId, loadInspections, loadIssues, loadTests]);
 
   useEffect(() => {
     if (editCell) setTimeout(() => editInputRef.current?.focus(), 10);
@@ -139,6 +154,58 @@ export function Quality() {
     const next = RESOLVE_CYCLE[(RESOLVE_CYCLE.indexOf(cur) + 1) % RESOLVE_CYCLE.length];
     await supabase.from('quality_issues').update({ status: next }).eq('id', id);
     setIssues(prev => prev.map(r => r.id === id ? { ...r, status: next } : r));
+  }
+
+  /* ── Tab 2: 試驗報告 ── */
+  const TEST_RESULT_CYCLE = ['待審閱', '審閱中', '可入', '不可入'];
+  const TEST_RESULT_CFG = {
+    '待審閱': { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
+    '審閱中': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    '可入':   { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+    '不可入': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  };
+
+  async function cycleTestResult(id, cur) {
+    if (!supabase) return;
+    const next = TEST_RESULT_CYCLE[(TEST_RESULT_CYCLE.indexOf(cur) + 1) % TEST_RESULT_CYCLE.length];
+    await supabase.from('mcs_test').update({ result: next }).eq('id', id);
+    setTests(prev => prev.map(r => r.id === id ? { ...r, result: next } : r));
+  }
+
+  const testStats = TEST_RESULT_CYCLE.reduce((acc, r) => {
+    acc[r] = tests.filter(t => (t.result || '待審閱') === r).length;
+    return acc;
+  }, {});
+  const filteredTests = testFilter === 'all' ? tests : tests.filter(t => (t.result || '待審閱') === testFilter);
+
+  /* ── 驗收申請 ── */
+  const VERIFY_CHECKLIST = [
+    '缺失改善項目已完成',
+    '改善工法符合規範要求',
+    '相關材料已通過送審',
+    '現場照片已留存',
+    '廠商已確認簽章',
+  ];
+
+  function openVerify(row) {
+    setVerifyTarget({ id: row.id, item: row.item, location: row.location });
+    setVerifyChecks([]);
+    setVerifyNote('');
+  }
+
+  async function submitVerify() {
+    if (!verifyTarget || !supabase) return;
+    const today = new Date().toISOString().split('T')[0];
+    await supabase.from('quality_issues').update({
+      status: 'verified',
+      resolve_date: today,
+      remark: verifyNote ? `驗收確認：${verifyNote}` : '驗收確認完成',
+    }).eq('id', verifyTarget.id);
+    setIssues(prev => prev.map(r => r.id === verifyTarget.id
+      ? { ...r, status: 'verified', resolve_date: today, remark: verifyNote ? `驗收確認：${verifyNote}` : '驗收確認完成' }
+      : r
+    ));
+    setVerifyTarget(null);
   }
 
   /* ── Inline edit (shared) ── */
@@ -223,13 +290,23 @@ export function Quality() {
               </div>
             );
           })
-        ) : (
+        ) : tab === 1 ? (
           RESOLVE_CYCLE.map(s => {
             const cfg = RESOLVE_STATUS[s];
             return (
               <div key={s} className="mcs-stat" style={{ cursor: 'pointer' }} onClick={() => setIssueFilter(f => f === s ? 'all' : s)}>
                 <span className="mcs-stat-val" style={{ color: cfg.color }}>{issueStats[s] || 0}</span>
                 <span className="mcs-stat-label">{cfg.label}</span>
+              </div>
+            );
+          })
+        ) : (
+          TEST_RESULT_CYCLE.map(r => {
+            const cfg = TEST_RESULT_CFG[r];
+            return (
+              <div key={r} className="mcs-stat" style={{ cursor: 'pointer' }} onClick={() => setTestFilter(f => f === r ? 'all' : r)}>
+                <span className="mcs-stat-val" style={{ color: cfg.color }}>{testStats[r] || 0}</span>
+                <span className="mcs-stat-label">{r}</span>
               </div>
             );
           })
@@ -256,9 +333,11 @@ export function Quality() {
           {tab === 0 && openIssues === 0 && (
             <span style={{ fontSize: '0.68rem', color: 'var(--color-success)' }}>• 無待複驗項目</span>
           )}
-          <button className="mcs-btn mcs-btn-add" onClick={() => tab === 0 ? setShowInspModal(true) : setShowIssueModal(true)}>
-            <Plus size={12} /> 新增{tab === 0 ? '檢驗' : '缺失'}
-          </button>
+          {tab < 2 && (
+            <button className="mcs-btn mcs-btn-add" onClick={() => tab === 0 ? setShowInspModal(true) : setShowIssueModal(true)}>
+              <Plus size={12} /> 新增{tab === 0 ? '檢驗' : '缺失'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -393,11 +472,20 @@ export function Quality() {
                       <EditableCell id={row.id} field="deadline" table="quality_issues" val={row.deadline} type="date" />
                     </td>
                     <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                      <span onClick={() => cycleIssueStatus(row.id, row.status)} title="點擊切換狀態"
-                        style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer',
-                          color: resCfg.color, border: `1px solid ${resCfg.color}40`, background: `${resCfg.color}10` }}>
-                        {resCfg.label}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                        <span onClick={() => cycleIssueStatus(row.id, row.status)} title="點擊切換狀態"
+                          style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer',
+                            color: resCfg.color, border: `1px solid ${resCfg.color}40`, background: `${resCfg.color}10` }}>
+                          {resCfg.label}
+                        </span>
+                        {row.status === 'resolved' && (
+                          <button onClick={() => openVerify(row)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '1px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 600,
+                              background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer' }}>
+                            <ClipboardCheck size={9} />申請驗收
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '2px 4px' }}>
                       <EditableCell id={row.id} field="resolve_date" table="quality_issues" val={row.resolve_date} type="date" />
@@ -413,10 +501,94 @@ export function Quality() {
         </div>
       )}
 
+      {/* Tab 2: 試驗報告管制 */}
+      {tab === 2 && (
+        <div className="mcs-tbl-wrap">
+          <table className="mcs-table">
+            <thead>
+              <tr>
+                <th style={{ width: 28 }}>
+                  <input type="checkbox"
+                    checked={filteredTests.length > 0 && selected.size === filteredTests.length}
+                    onChange={() => setSelected(selected.size === filteredTests.length ? new Set() : new Set(filteredTests.map(r => r.id)))} />
+                </th>
+                <th style={{ width: 36 }}>#</th>
+                <th style={{ width: 88 }}>契約項次</th>
+                <th style={{ width: 180 }}>材料/設備名稱</th>
+                <th style={{ width: 84 }}>預定送審</th>
+                <th style={{ width: 84 }}>實際送審</th>
+                <th style={{ width: 80 }}>取樣數量</th>
+                <th style={{ width: 90 }}>頻率</th>
+                <th style={{ width: 90 }}>累計數量</th>
+                <th style={{ width: 80 }}>試驗結果</th>
+                <th style={{ width: 80 }}>可入判定</th>
+                <th>備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTests.length === 0 ? (
+                <tr><td colSpan={12} className="mcs-empty">
+                  <FlaskConical size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+                  <div>尚無試驗報告記錄 — 請至「材料管制」頁面的「檢試驗管制表」新增資料</div>
+                </td></tr>
+              ) : filteredTests.map(row => {
+                const resultKey = row.result || '待審閱';
+                const cfg = TEST_RESULT_CFG[resultKey] || TEST_RESULT_CFG['待審閱'];
+                return (
+                  <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
+                    </td>
+                    <td style={{ padding: '2px 6px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-text-muted)' }}>{row.no || '—'}</td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="ci" table="mcs_test" val={row.ci} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="name" table="mcs_test" val={row.name} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="p_date" table="mcs_test" val={row.p_date} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="a_date" table="mcs_test" val={row.a_date} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="s_qty" table="mcs_test" val={row.s_qty} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="freq" table="mcs_test" val={row.freq} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="cum_qty" table="mcs_test" val={row.cum_qty} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="personnel" table="mcs_test" val={row.personnel} />
+                    </td>
+                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
+                      <span onClick={() => cycleTestResult(row.id, resultKey)} title="點擊切換可入判定"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 600,
+                          color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40` }}>
+                        {resultKey === '可入' && <CheckCircle2 size={10} />}
+                        {resultKey}
+                      </span>
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="remark" table="mcs_test" val={row.remark} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="mcs-footer">
         {tab === 0
           ? <span>共 {filteredInsp.length} 筆 · 合格 {inspStats['合格'] || 0} · 不合格 {inspStats['不合格'] || 0} · 待複驗 {inspStats['待複驗'] || 0}</span>
-          : <span>共 {filteredIssues.length} 筆 · 待改善 {openIssues} 筆</span>
+          : tab === 1
+          ? <span>共 {filteredIssues.length} 筆 · 待改善 {openIssues} 筆</span>
+          : <span>共 {filteredTests.length} 筆 · 可入 {testStats['可入'] || 0} · 不可入 {testStats['不可入'] || 0} · 待審閱 {testStats['待審閱'] || 0}</span>
         }
         <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.7rem' }}>雙擊儲存格編輯 · 點擊狀態/結果切換</span>
       </div>
@@ -469,6 +641,57 @@ export function Quality() {
               <button className="btn-secondary" onClick={() => setShowInspModal(false)}>取消</button>
               <button className="btn-primary" onClick={addInspection} disabled={saving || !inspForm.work_item.trim()}>
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} 新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: 驗收申請確認 */}
+      {verifyTarget && (
+        <div className="modal-overlay" onClick={() => setVerifyTarget(null)}>
+          <div className="modal-box" style={{ maxWidth: '480px', width: '92%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <ClipboardCheck size={16} style={{ color: '#6366f1' }} />
+                <span>缺失驗收申請</span>
+              </div>
+              <button className="modal-close" onClick={() => setVerifyTarget(null)}><X size={14} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ padding: '10px 12px', background: 'var(--color-bg2)', borderRadius: '7px', fontSize: '12px', color: 'var(--color-text2)' }}>
+                <div style={{ fontWeight: 600, color: 'var(--color-text1)', marginBottom: '4px' }}>{verifyTarget.item}</div>
+                {verifyTarget.location && <div style={{ color: 'var(--color-text-muted)' }}>位置：{verifyTarget.location}</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: 600 }}>驗收確認清單</div>
+                {VERIFY_CHECKLIST.map((item, i) => (
+                  <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text2)', borderBottom: i < VERIFY_CHECKLIST.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                    <input type="checkbox"
+                      checked={verifyChecks.includes(i)}
+                      onChange={() => setVerifyChecks(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}
+                    />
+                    {item}
+                  </label>
+                ))}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>驗收說明（選填）</label>
+                <input type="text" placeholder="驗收人員、方式或補充說明…"
+                  value={verifyNote} onChange={e => setVerifyNote(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: '6px', color: 'var(--color-text1)', fontSize: '13px', boxSizing: 'border-box' }} />
+              </div>
+              {verifyChecks.length < VERIFY_CHECKLIST.length && (
+                <div style={{ fontSize: '11px', color: 'var(--color-warning)', padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6 }}>
+                  尚有 {VERIFY_CHECKLIST.length - verifyChecks.length} 項未確認，仍可送出但建議全數勾選
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setVerifyTarget(null)}>取消</button>
+              <button className="btn-primary" onClick={submitVerify}
+                style={{ background: '#6366f1', borderColor: '#6366f1' }}>
+                <ClipboardCheck size={12} /> 確認已驗收
               </button>
             </div>
           </div>

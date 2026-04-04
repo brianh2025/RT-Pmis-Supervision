@@ -18,6 +18,7 @@ import { DiaryLog } from './pages/DiaryLog';
 import { DiaryPrintView } from './pages/DiaryPrintView';
 import { ProgressManagement } from './pages/ProgressManagement';
 import { MaterialControl } from './pages/MaterialControl';
+import { PhotoTable } from './pages/PhotoTable';
 
 function WelcomePage() {
   return (
@@ -69,6 +70,7 @@ function App() {
                 <Route path="quality" element={<Quality />} />
                 <Route path="archive" element={<Archive />} />
                 <Route path="analytics" element={<Analytics />} />
+                <Route path="photos" element={<PhotoTable />} />
               </Route>
               
               {/* Fallback: redirect unknown routes to home */}

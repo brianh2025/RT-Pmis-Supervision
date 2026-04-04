@@ -1,0 +1,225 @@
+/* ── PhotoTable ── */
+.photo-table-root {
+  padding: 0;
+}
+
+.photo-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--color-bg2);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.pt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pt-btn:hover { background: var(--color-surface-hover); }
+.pt-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.pt-btn-primary:hover { opacity: 0.9; }
+
+/* ── A4 Page ── */
+.photo-table-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 16px auto;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  padding: 12mm 14mm;
+  box-sizing: border-box;
+  font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  color: #111;
+}
+
+.pt-page-header {
+  border-bottom: 2px solid #1565C0;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+.pt-page-title {
+  font-size: 15pt;
+  font-weight: 700;
+  color: #1565C0;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.pt-page-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 8.5pt;
+  color: #333;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pt-photo-grid {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+}
+
+.pt-photo-cell {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.pt-photo-area {
+  flex: 1;
+  min-height: 120px;
+  background: #f5f5f5;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pt-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pt-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #999;
+  font-size: 0.72rem;
+}
+.pt-photo-print-placeholder {
+  display: none;
+  width: 100%;
+  height: 120px;
+  border: 1px dashed #ccc;
+}
+.pt-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pt-photo-info {
+  padding: 4px 6px;
+  background: #fff;
+  font-size: 8.5pt;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid #e0e0e0;
+}
+.pt-info-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pt-info-label {
+  font-weight: 600;
+  color: #555;
+  min-width: 24px;
+  font-size: 8pt;
+}
+.pt-info-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8pt;
+  color: #1565C0;
+  font-weight: 700;
+}
+.pt-info-input, .pt-info-date, .pt-info-textarea {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 8.5pt;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fafafa;
+  color: #111;
+  font-family: inherit;
+}
+.pt-info-textarea { resize: none; }
+.pt-info-desc { align-items: flex-start; }
+
+.pt-print-only { display: none; }
+.pt-print-field {
+  flex: 1;
+  font-size: 8.5pt;
+  color: #111;
+  line-height: 1.4;
+}
+
+.pt-cell-remove {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pt-page-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5pt;
+  color: #555;
+  border-top: 1px solid #ccc;
+  padding-top: 6px;
+  margin-top: 10px;
+}
+
+/* ── 列印樣式 ── */
+@media print {
+  .no-print { display: none !important; }
+  .pt-print-only { display: block !important; }
+  .photo-table-toolbar { display: none !important; }
+
+  .photo-table-page {
+    margin: 0;
+    box-shadow: none;
+    page-break-after: always;
+  }
+
+  .pt-photo-placeholder { display: none !important; }
+  .pt-photo-print-placeholder { display: block !important; }
+
+  .pt-photo-area {
+    min-height: 100px;
+  }
+}

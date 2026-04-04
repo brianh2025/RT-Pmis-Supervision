@@ -4,9 +4,9 @@
    ============================================================ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, TrendingUp, BarChart3, PieChart as PieIcon, Activity } from 'lucide-react';
+import { Loader2, TrendingUp, BarChart3, PieChart as PieIcon, Activity, ShieldCheck, FlaskConical } from 'lucide-react';
 import {
-  BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart,
 } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
@@ -22,6 +22,8 @@ export function Analytics() {
   const [qualityStats, setQualityStats] = useState([]);
   const [diaryStats, setDiaryStats] = useState({});
   const [materialStats, setMaterialStats] = useState({});
+  const [qualityRateStats, setQualityRateStats] = useState({});
+  const [inspectionStats, setInspectionStats] = useState({});
   const [activeTab, setActiveTab] = useState('progress');
 
   const load = useCallback(async () => {
@@ -34,12 +36,14 @@ export function Analytics() {
       { data: qualRows },
       { data: diaryRows },
       { data: matSubRows },
+      { data: inspRows },
     ] = await Promise.all([
       supabase.from('progress_items').select('*').eq('project_id', projectId).order('created_at'),
       supabase.from('submissions').select('status, category, created_at').eq('project_id', projectId),
       supabase.from('quality_issues').select('status, severity, inspection_date').eq('project_id', projectId).order('inspection_date'),
       supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, cumulative_progress').eq('project_id', projectId).order('log_date'),
       supabase.from('mcs_submission').select('result').eq('project_id', projectId),
+      supabase.from('construction_inspections').select('result, work_item, inspect_date').eq('project_id', projectId).order('inspect_date'),
     ]);
 
     // Progress bar chart
@@ -85,6 +89,47 @@ export function Analytics() {
       setMaterialStats({ total: matSubRows.length, approved, pending: matSubRows.length - approved });
     }
 
+    // 缺失合格率（resolved+verified / total）
+    if (qualRows) {
+      const total = qualRows.length;
+      const resolved = qualRows.filter(r => ['resolved', 'verified', 'waived'].includes(r.status)).length;
+      const open = qualRows.filter(r => r.status === 'open').length;
+      const inProgress = qualRows.filter(r => r.status === 'in_progress').length;
+      const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+      // 每月缺失趨勢
+      const monthlyMap = {};
+      qualRows.forEach(r => {
+        const m = r.inspection_date?.substring(0, 7);
+        if (!m) return;
+        if (!monthlyMap[m]) monthlyMap[m] = { month: m, total: 0, resolved: 0 };
+        monthlyMap[m].total++;
+        if (['resolved', 'verified', 'waived'].includes(r.status)) monthlyMap[m].resolved++;
+      });
+      const monthly = Object.values(monthlyMap).sort((a, b) => a.month.localeCompare(b.month))
+        .map(m => ({ ...m, rate: m.total > 0 ? Math.round((m.resolved / m.total) * 100) : 0 }));
+      setQualityRateStats({ total, resolved, open, inProgress, rate, monthly });
+    }
+
+    // 施工檢驗完成率
+    if (inspRows) {
+      const total = inspRows.length;
+      const pass = inspRows.filter(r => r.result === '合格').length;
+      const fail = inspRows.filter(r => r.result === '不合格').length;
+      const pending = inspRows.filter(r => r.result === '待複驗').length;
+      const passRate = total > 0 ? Math.round((pass / total) * 100) : 0;
+      // 按工項統計
+      const itemMap = {};
+      inspRows.forEach(r => {
+        const k = r.work_item || '未分類';
+        if (!itemMap[k]) itemMap[k] = { name: k, pass: 0, fail: 0, pending: 0 };
+        if (r.result === '合格') itemMap[k].pass++;
+        else if (r.result === '不合格') itemMap[k].fail++;
+        else itemMap[k].pending++;
+      });
+      const byItem = Object.values(itemMap).sort((a, b) => (b.pass + b.fail + b.pending) - (a.pass + a.fail + a.pending)).slice(0, 10);
+      setInspectionStats({ total, pass, fail, pending, passRate, byItem });
+    }
+
     setLoading(false);
   }, [projectId]);
 
@@ -113,6 +158,8 @@ export function Analytics() {
     { key: 'diary', label: '日誌進度曲線' },
     { key: 'submission', label: '送審狀態' },
     { key: 'quality', label: '品管缺失' },
+    { key: 'quality-rate', label: '缺失合格率' },
+    { key: 'inspection', label: '施工檢驗完成率' },
   ];
 
   return (
@@ -126,12 +173,11 @@ export function Analytics() {
       </header>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
         {[
           { label: '監造日誌', val: diaryStats.total || 0, sub: '已匯入筆數', icon: <Activity size={18} />, color: '#1565C0' },
-          { label: '送審文件', val: submissionStats.reduce((s, r) => s + r.value, 0), sub: '總送審件數', icon: <BarChart3 size={18} />, color: '#10b981' },
-          { label: '品管缺失', val: qualityStats.reduce((s, r) => s + r.value, 0), sub: '總缺失件數', icon: <PieIcon size={18} />, color: '#f59e0b' },
-          { label: '材料送審', val: materialStats.approved || 0, sub: `已核定 / ${materialStats.total || 0} 件`, icon: <TrendingUp size={18} />, color: '#8b5cf6' },
+          { label: '品管缺失', val: qualityStats.reduce((s, r) => s + r.value, 0), sub: `結案率 ${qualityRateStats.rate ?? 0}%`, icon: <ShieldCheck size={18} />, color: '#f59e0b' },
+          { label: '施工檢驗', val: inspectionStats.total || 0, sub: `合格率 ${inspectionStats.passRate ?? 0}%`, icon: <FlaskConical size={18} />, color: '#10b981' },
         ].map(kpi => (
           <div key={kpi.label} className="b-content-panel" style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: `${kpi.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.color, flexShrink: 0 }}>
@@ -290,6 +336,107 @@ export function Analytics() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {activeTab === 'quality-rate' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* 合格率儀錶 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            {[
+              { label: '總缺失件', val: qualityRateStats.total || 0, color: 'var(--color-text2)' },
+              { label: '待改善', val: qualityRateStats.open || 0, color: '#ef4444' },
+              { label: '改善中', val: qualityRateStats.inProgress || 0, color: '#f59e0b' },
+              { label: '已結案', val: qualityRateStats.resolved || 0, color: '#10b981' },
+            ].map(s => (
+              <div key={s.label} className="b-content-panel" style={{ padding: '14px', textAlign: 'center' }}>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: s.color, fontFamily: 'JetBrains Mono, monospace' }}>{s.val}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '16px' }}>
+            <div className="b-content-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>結案率</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <RadialBarChart cx="50%" cy="50%" innerRadius="55%" outerRadius="80%"
+                  data={[{ value: qualityRateStats.rate || 0, fill: '#10b981' }]} startAngle={90} endAngle={-270}>
+                  <RadialBar dataKey="value" cornerRadius={6} background={{ fill: 'var(--color-bg2)' }} />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: '32px', fontWeight: 700, color: '#10b981', fontFamily: 'JetBrains Mono, monospace', marginTop: '-12px' }}>
+                {qualityRateStats.rate || 0}%
+              </div>
+            </div>
+            <div className="b-content-panel" style={{ padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)', marginBottom: '16px' }}>每月缺失趨勢</div>
+              {!qualityRateStats.monthly?.length ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-muted)', fontSize: '13px' }}>尚無缺失資料</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={qualityRateStats.monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                    <Bar dataKey="total" name="總缺失" fill="#f59e0b" opacity={0.5} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="resolved" name="已結案" fill="#10b981" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'inspection' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            {[
+              { label: '總檢驗項', val: inspectionStats.total || 0, color: 'var(--color-text2)' },
+              { label: '合格', val: inspectionStats.pass || 0, color: '#10b981' },
+              { label: '不合格', val: inspectionStats.fail || 0, color: '#ef4444' },
+              { label: '待複驗', val: inspectionStats.pending || 0, color: '#f59e0b' },
+            ].map(s => (
+              <div key={s.label} className="b-content-panel" style={{ padding: '14px', textAlign: 'center' }}>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: s.color, fontFamily: 'JetBrains Mono, monospace' }}>{s.val}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '16px' }}>
+            <div className="b-content-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>一次合格率</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <RadialBarChart cx="50%" cy="50%" innerRadius="55%" outerRadius="80%"
+                  data={[{ value: inspectionStats.passRate || 0, fill: '#1565C0' }]} startAngle={90} endAngle={-270}>
+                  <RadialBar dataKey="value" cornerRadius={6} background={{ fill: 'var(--color-bg2)' }} />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: '32px', fontWeight: 700, color: '#1565C0', fontFamily: 'JetBrains Mono, monospace', marginTop: '-12px' }}>
+                {inspectionStats.passRate || 0}%
+              </div>
+            </div>
+            <div className="b-content-panel" style={{ padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)', marginBottom: '16px' }}>各工項檢驗結果（前10項）</div>
+              {!inspectionStats.byItem?.length ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-muted)', fontSize: '13px' }}>尚無施工檢驗資料</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={inspectionStats.byItem} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }} width={80} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                    <Bar dataKey="pass" name="合格" stackId="a" fill="#10b981" />
+                    <Bar dataKey="pending" name="待複驗" stackId="a" fill="#f59e0b" />
+                    <Bar dataKey="fail" name="不合格" stackId="a" fill="#ef4444" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
       )}
