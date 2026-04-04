@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Camera, ChevronLeft, Printer, Upload, Cloud,
+  Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
   Save, Loader2, FileText, Plus, Trash2, Lock, Zap,
 } from 'lucide-react';
@@ -176,40 +176,46 @@ async function fetchDriveBlob(fileId, token) {
   return res.blob();
 }
 
-/* 共用列印 CSS */
+/* 共用列印 CSS
+   A4 可用高度：29.7cm - 2cm padding = 27.7cm
+   頁首約 3.0cm（大字） → 剩 24.7cm 供 3 組照片
+   每組 = photo(6.9cm) + desc(1.35cm) = 8.25cm × 3 = 24.75cm ✓
+   最小字體 12pt（表單編號除外）
+*/
 const PRINT_CSS = `
   body { margin: 0; background: #fff; }
   .report-page {
     font-family: 'DFKai-SB','BiauKai','標楷體','Noto Serif TC',serif;
-    width: 21cm; min-height: 29.7cm; padding: 1cm;
+    width: 21cm; height: 29.7cm; padding: 1cm;
     margin: 0 auto; background: #fff; box-sizing: border-box; color: #000;
-    page-break-after: always;
+    page-break-after: always; overflow: hidden;
   }
-  .report-header { display:flex; align-items:flex-start; gap:8px; border-bottom:2px solid #000; padding-bottom:8px; }
-  .report-header-left { width:100px; flex-shrink:0; }
+  .report-header { display:flex; align-items:flex-start; gap:8px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:0; }
+  .report-header-left { width:80px; flex-shrink:0; }
   .report-header-center { flex:1; text-align:center; }
-  .report-header-center h1 { font-size:14pt; font-weight:700; margin:0 0 4px; }
-  .report-header-center h2 { font-size:12pt; font-weight:600; margin:0; }
-  .report-header-right { width:100px; flex-shrink:0; text-align:right; font-size:9pt; line-height:1.8; }
+  .report-header-center h1 { font-size:18pt; font-weight:700; margin:0 0 4px; }
+  .report-header-center h2 { font-size:14pt; font-weight:600; margin:0; }
+  .report-header-right { width:80px; flex-shrink:0; text-align:right; font-size:9pt; line-height:2; }
   .report-table-b { width:100%; border-collapse:collapse; border-top:1px solid #000; border-left:1px solid #000; border-right:1px solid #000; }
   .report-block-b { page-break-inside:avoid; }
-  .photo-cell-b { width:70%; height:8cm; padding:.5rem; text-align:center; vertical-align:middle; border-bottom:1px solid #000; }
-  .photo-cell-b img { max-width:100%; max-height:7.5cm; object-fit:contain; }
-  .photo-placeholder { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f5f5; border:1px dashed #ccc; color:#999; font-size:10pt; gap:4px; }
-  .info-cell-b { width:30%; padding:.5rem 1rem; border-left:1px solid #000; border-bottom:1px solid #000; vertical-align:top; font-size:10pt; word-break:break-all; }
-  .info-location { font-weight:700; line-height:1.6; }
-  .info-date { margin-top:1rem; font-size:9.5pt; }
-  .desc-cell-b { padding:.5rem 1rem; font-size:10pt; border-bottom:1px solid #000; word-break:break-all; line-height:1.8; }
+  .photo-cell-b { width:70%; height:6.9cm; padding:.3rem; text-align:center; vertical-align:middle; border-bottom:1px solid #000; }
+  .photo-cell-b img { max-width:100%; max-height:6.5cm; object-fit:contain; }
+  .photo-placeholder { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f5f5; border:1px dashed #ccc; color:#999; font-size:12pt; gap:4px; }
+  .info-cell-b { width:30%; padding:.3rem .7rem; border-left:1px solid #000; border-bottom:1px solid #000; vertical-align:top; font-size:12pt; word-break:break-all; }
+  .info-location { font-weight:700; line-height:1.5; }
+  .info-date { margin-top:.5rem; font-size:12pt; }
+  .desc-cell-b { padding:.2rem .7rem; font-size:12pt; border-bottom:1px solid #000; word-break:break-all; line-height:1.4; height:1.35cm; box-sizing:border-box; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 `;
 
-function buildReportHtml(pages, { title, docNo }, withPhotos) {
+function buildReportHtml(pages, { title, docNo, subtitle }) {
+  const sub = subtitle || '施工抽查紀錄';
   return pages.map((page, pi) => `
     <div class="report-page">
       <div class="report-header">
         <div class="report-header-left"></div>
         <div class="report-header-center">
           <h1>${title || '工程名稱'}</h1>
-          <h2>施工 / 材料抽查照片</h2>
+          <h2>${sub}</h2>
         </div>
         <div class="report-header-right">
           ${docNo ? `<div>編號：${docNo}</div>` : ''}
@@ -257,7 +263,8 @@ function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDelet
   const [photos,       setPhotos]       = useState(info.photos || []);
   const [saving,       setSaving]       = useState(false);
   const [deleting,     setDeleting]     = useState(false);
-  const [replacingIdx, setReplacingIdx] = useState(null); // 正在更換的照片索引
+  const [subtitle,     setSubtitle]     = useState(SUBTITLE_OPTIONS[0]);
+  const [replacingIdx, setReplacingIdx] = useState(null);
   const replaceInputRef = useRef(null);
 
   /* 更換單張照片 */
@@ -319,7 +326,7 @@ function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDelet
       );
     }
     openPrintWindow(
-      buildReportHtml(pages, { title, docNo }),
+      buildReportHtml(pages, { title: projectName || title, docNo, subtitle }),
       `工程照片報告 ${docNo || title}`
     );
   }
@@ -332,7 +339,15 @@ function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDelet
           ? <span className="pt-detail-badge locked"><Lock size={11} />已附日報（唯讀）</span>
           : <span className="pt-detail-badge edit">編輯照片記錄</span>
         }
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {SUBTITLE_OPTIONS.map(opt => (
+            <button key={opt}
+              className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
+              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+              onClick={() => setSubtitle(opt)}>
+              {opt}
+            </button>
+          ))}
           <button className="pt-btn" onClick={handlePrint}>
             <Printer size={13} />列印 / 另存 PDF
           </button>
@@ -617,13 +632,15 @@ function StepUpload({ onPhotosReady, onBack }) {
     finally { setGBusy(false); }
   }
 
-  /* Google 雲端硬碟 / 相簿：設公開後直接用 thumbnail URL，不下載 blob */
-  async function handlePickerSource(viewId, errLabel) {
+  /* Google 雲端硬碟 / 相簿：設公開後直接用 thumbnail URL，不下載 blob
+     viewIdKey：字串 key（'DOCS_IMAGES' | 'PHOTOS'），在 ensureGapiPicker 後才解析 */
+  async function handlePickerSource(viewIdKey, errLabel) {
     const token = await ensureToken();
     if (!token) return;
     setGBusy(true);
     try {
-      await ensureGapiPicker();
+      await ensureGapiPicker();                          // 確保 Picker 已載入
+      const viewId = window.google.picker.ViewId[viewIdKey]; // 載入後才能存取
       const docs = await openGooglePicker(viewId, token);
       for (const doc of docs) {
         const url = await makeFilePublic(doc.id, token);
@@ -635,8 +652,8 @@ function StepUpload({ onPhotosReady, onBack }) {
     } catch (e) { alert(`${errLabel}失敗：${e.message}`); }
     finally { setGBusy(false); }
   }
-  const handleDrive  = () => handlePickerSource(window.google?.picker?.ViewId?.DOCS_IMAGES, 'Drive 選取');
-  const handlePhotos = () => handlePickerSource(window.google?.picker?.ViewId?.PHOTOS,      '相簿選取');
+  const handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
+  const handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
 
   /* 繼續：直接進填資料，不在此上傳（保留 blob 供後續存檔用）*/
   function handleNext() {
@@ -653,18 +670,10 @@ function StepUpload({ onPhotosReady, onBack }) {
 
   return (
     <div className="pt-step-upload">
-      {/* 三種來源按鈕 */}
+      {/* 照片來源：目前僅開放本機上傳 */}
       <div className="pt-upload-sources">
         <button className="pt-upload-source-btn" onClick={() => fileInputRef.current?.click()}>
-          <Upload size={22} /><span>從電腦/手機上傳</span>
-        </button>
-        <button className="pt-upload-source-btn" onClick={handleDrive} disabled={gBusy}>
-          {gBusy ? <Loader2 size={22} className="animate-spin" /> : <Cloud size={22} />}
-          <span>從 Google 雲端硬碟</span>
-        </button>
-        <button className="pt-upload-source-btn" onClick={handlePhotos} disabled={gBusy}>
-          {gBusy ? <Loader2 size={22} className="animate-spin" /> : <Camera size={22} />}
-          <span>從 Google 相簿</span>
+          <Upload size={22} /><span>從電腦 / 手機上傳</span>
         </button>
         <input ref={fileInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }}
           onChange={e => handleLocalFiles(e.target.files)} />
@@ -769,11 +778,14 @@ function StepEntry({ photos, onComplete, onBack }) {
   );
 }
 
+const SUBTITLE_OPTIONS = ['施工抽查紀錄', '材料抽查紀錄'];
+
 /* ── 報告預覽 ── */
 function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo, projectId, onBack, onSaved }) {
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [saved,       setSaved]       = useState(false);
   const [logAttached, setLogAttached] = useState(false);
+  const [subtitle,    setSubtitle]    = useState(SUBTITLE_OPTIONS[0]);
 
   const pages = [];
   for (let i = 0; i < photos.length; i += PHOTOS_PER_PAGE) {
@@ -782,7 +794,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
 
   function handlePrint() {
     openPrintWindow(
-      buildReportHtml(pages, { title: projectName || batchTitle || '工程名稱', docNo: reportNo }, true),
+      buildReportHtml(pages, { title: projectName || batchTitle || '工程名稱', docNo: reportNo, subtitle }),
       `工程照片報告 ${reportNo || batchTitle || ''}`
     );
   }
@@ -826,9 +838,20 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
     <div className="pt-step-report">
       <div className="pt-report-toolbar no-print">
         <button className="pt-btn" onClick={onBack}><RotateCcw size={13} />返回編輯</button>
-        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: 8 }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
           共 {photos.length} 張 / {pages.length} 頁
         </span>
+        {/* 副標題選擇 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {SUBTITLE_OPTIONS.map(opt => (
+            <button key={opt}
+              className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
+              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+              onClick={() => setSubtitle(opt)}>
+              {opt}
+            </button>
+          ))}
+        </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <label className="pt-check-label">
             <input type="checkbox" checked={logAttached} onChange={e => setLogAttached(e.target.checked)} />
@@ -851,7 +874,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
             <div className="report-header-left" />
             <div className="report-header-center">
               <h1>{projectName || '工程名稱'}</h1>
-              <h2>施工 / 材料抽查照片</h2>
+              <h2>{subtitle}</h2>
             </div>
             <div className="report-header-right">
               {reportNo && <div>編號：{reportNo}</div>}
