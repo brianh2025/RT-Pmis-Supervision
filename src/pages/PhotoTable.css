@@ -92,6 +92,22 @@
   justify-content: center;
 }
 
+.pt-thumb-exif {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(16,185,129,0.85);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .pt-upload-actions {
   display: flex;
   align-items: center;

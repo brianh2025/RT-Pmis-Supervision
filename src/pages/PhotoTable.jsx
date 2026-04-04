@@ -7,8 +7,9 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Camera, Upload, ChevronLeft, ChevronRight,
-  Printer, RotateCcw, X, Check, FileImage,
+  Printer, RotateCcw, X, Check, FileImage, MapPin, Zap,
 } from 'lucide-react';
+import * as exifr from 'exifr';
 import { useProject } from '../hooks/useProject';
 import './PhotoTable.css';
 
@@ -31,16 +32,47 @@ function StepUpload({ onPhotosReady }) {
 
   const handleFiles = useCallback((files) => {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
-    arr.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        setPreviews(prev => [...prev, {
-          id: crypto.randomUUID(),
-          src: e.target.result,
-          file,
-        }]);
-      };
-      reader.readAsDataURL(file);
+    arr.forEach(async file => {
+      // 讀取圖片 DataURL
+      const src = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(file);
+      });
+
+      // 讀取 EXIF
+      let exifDate = '';
+      let exifGps = '';
+      try {
+        const tags = await exifr.parse(file, {
+          pick: ['DateTimeOriginal', 'CreateDate', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef'],
+        });
+        if (tags) {
+          // 日期：DateTimeOriginal 優先
+          const dt = tags.DateTimeOriginal || tags.CreateDate;
+          if (dt instanceof Date) {
+            exifDate = dt.toISOString().split('T')[0];
+          }
+          // GPS：轉十進制度，提供座標字串供使用者參考
+          if (tags.GPSLatitude && tags.GPSLongitude) {
+            const lat = tags.GPSLatitude;
+            const lng = tags.GPSLongitude;
+            const latDec = (typeof lat === 'number' ? lat : lat[0] + lat[1] / 60 + lat[2] / 3600) * (tags.GPSLatitudeRef === 'S' ? -1 : 1);
+            const lngDec = (typeof lng === 'number' ? lng : lng[0] + lng[1] / 60 + lng[2] / 3600) * (tags.GPSLongitudeRef === 'W' ? -1 : 1);
+            exifGps = `${latDec.toFixed(6)}, ${lngDec.toFixed(6)}`;
+          }
+        }
+      } catch (_) {
+        // EXIF 讀取失敗不中斷
+      }
+
+      setPreviews(prev => [...prev, {
+        id: crypto.randomUUID(),
+        src,
+        file,
+        exifDate,
+        exifGps,
+      }]);
     });
   }, []);
 
@@ -74,6 +106,11 @@ function StepUpload({ onPhotosReady }) {
               <div key={p.id} className="pt-thumb-cell">
                 <img src={p.src} alt="" className="pt-thumb-img" />
                 <button className="pt-thumb-remove" onClick={() => removePhoto(p.id)}><X size={11} /></button>
+                {p.exifDate && (
+                  <div className="pt-thumb-exif" title={`EXIF 日期：${p.exifDate}${p.exifGps ? `\nGPS：${p.exifGps}` : ''}`}>
+                    <Zap size={9} />{p.exifGps ? 'GPS+日期' : '日期'}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -92,10 +129,11 @@ function StepUpload({ onPhotosReady }) {
 /* ── 步驟二：逐張填寫資料 ── */
 function StepEntry({ photos, onComplete, onBack }) {
   const [index, setIndex] = useState(0);
-  const [data, setData] = useState(() => photos.map(() => ({
-    date: todayISO(),
+  const [data, setData] = useState(() => photos.map(p => ({
+    date: p.exifDate || todayISO(),
     location: '',
     description: '',
+    gps: p.exifGps || '',
   })));
 
   function update(field, val) {
@@ -125,10 +163,27 @@ function StepEntry({ photos, onComplete, onBack }) {
         {/* 欄位 */}
         <div className="pt-entry-fields">
           <div>
-            <label className="form-label">拍攝日期</label>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              拍攝日期
+              {current.exifDate && (
+                <span style={{ fontSize: '0.65rem', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Zap size={10} />EXIF 自動帶入
+                </span>
+              )}
+            </label>
             <input className="form-input" type="date" value={currentData.date}
               onChange={e => update('date', e.target.value)} style={{ marginTop: 4 }} />
           </div>
+          {currentData.gps && (
+            <div>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MapPin size={11} />GPS 座標
+              </label>
+              <div style={{ marginTop: 4, padding: '4px 8px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                {currentData.gps}
+              </div>
+            </div>
+          )}
           <div>
             <label className="form-label">拍攝位置</label>
             <input className="form-input" placeholder="例：B棟1F柱位 A3 / 3號排水溝上游"
