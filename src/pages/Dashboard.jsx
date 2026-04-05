@@ -65,7 +65,7 @@ function DeleteProjectModal({ project, onClose, onDeleted }) {
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-panel" style={{ maxWidth: 440 }}>
+      <div className="modal-panel animate-slide-up" style={{ maxWidth: 440 }}>
         <div className="modal-header" style={{ borderBottom: '1px solid var(--color-surface-border)' }}>
           <div className="modal-title-group">
             <TriangleAlert size={16} style={{ color: 'var(--color-danger)' }} />

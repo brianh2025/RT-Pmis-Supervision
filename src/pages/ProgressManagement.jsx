@@ -88,7 +88,7 @@ export function ProgressManagement() {
       '工項名稱': r.item_name,
       '開始日期': r.start_date,
       '結束日期': r.end_date,
-      '工期(天)': Math.round((new Date(r.end_date) - new Date(r.start_date)) / 86400000) + 1,
+      '工期(天)': (r.start_date && r.end_date) ? Math.round((new Date(r.end_date) - new Date(r.start_date)) / 86400000) + 1 : '',
       '權重(%)': r.weight,
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -98,21 +98,22 @@ export function ProgressManagement() {
     XLSX.writeFile(wb, `計畫進度表_${id?.slice(0,8)}.xlsx`);
   };
 
-  // 從 schedule_items 推算任意日期的預定進度（線性插值）
+  // 從 schedule_items 推算任意日期的預定進度（線性插值，跳過無日期的工項）
   const calcPlanned = (dateStr) => {
     if (!scheduleItems.length) return null;
     const d = new Date(dateStr).getTime();
     return scheduleItems.reduce((sum, item) => {
+      if (!item.start_date || !item.end_date) return sum;
       const s = new Date(item.start_date).getTime();
       const e = new Date(item.end_date).getTime();
       const ratio = e === s ? (d >= e ? 1 : 0) : Math.min(1, Math.max(0, (d - s) / (e - s)));
-      return sum + parseFloat(item.weight) * ratio;
+      return sum + parseFloat(item.weight ?? 0) * ratio;
     }, 0);
   };
 
-  // Chart data：合併 schedule 關鍵日期 + 實際紀錄日期
+  // Chart data：合併 schedule 關鍵日期 + 實際紀錄日期（過濾 null）
   const chartDates = [...new Set([
-    ...scheduleItems.flatMap(i => [i.start_date, i.end_date]),
+    ...scheduleItems.flatMap(i => [i.start_date, i.end_date]).filter(Boolean),
     ...records.map(r => r.report_date),
   ])].sort();
 

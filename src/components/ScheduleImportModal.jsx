@@ -49,7 +49,12 @@ function autoGuess(headers, dataRows) {
     const byVal = headers.findIndex((_, i) => valueTest(first[i]));
     return byVal !== -1 ? byVal : null;
   };
-  const nameIdx = guess([/名稱|工項|項目|item|name/i], v => typeof v === 'string' && String(v).trim().length > 1);
+  // byName 找到欄位後，確認第一筆資料確實是文字，否則改用 byVal（避免序號欄共用合併表頭）
+  const nameByName = headers.findIndex(h => /名稱|工項|項目|item|name/i.test(String(h)));
+  const nameByVal  = headers.findIndex((_, i) => { const v = first[i]; return typeof v === 'string' && String(v).trim().length > 1; });
+  const nameIdx = (nameByName !== -1 && typeof first[nameByName] === 'string' && String(first[nameByName]).trim().length > 1)
+    ? nameByName
+    : (nameByVal !== -1 ? nameByVal : (nameByName !== -1 ? nameByName : null));
   return {
     name:   nameIdx !== null ? [nameIdx] : [],  // name 為陣列
     start:  guess([/開始|start|開工/i],            v => !!parseDate(v)),
@@ -76,8 +81,8 @@ function downloadTemplate() {
 
 const FIELDS = [
   { key: 'name',   label: '工項名稱', required: true },
-  { key: 'start',  label: '開始日期', required: true },
-  { key: 'end',    label: '結束日期', required: true },
+  { key: 'start',  label: '開始日期', required: false },
+  { key: 'end',    label: '結束日期', required: false },
   { key: 'weight', label: '權重(%)',  required: false },
 ];
 
@@ -104,12 +109,22 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
 
   // 從指定 sheet 讀取 headers + data，進入 mapping 步驟
   const loadSheet = (wb, sheetName) => {
-    const ws = expandMerges(wb.Sheets[sheetName]);
+    // 先記錄垂直合併的延伸列（非第一列），避免工項名稱跨列合併產生重複資料
+    const rawWs = wb.Sheets[sheetName];
+    const vertCont = new Set();
+    (rawWs['!merges'] || []).forEach(({ s, e }) => {
+      if (e.r > s.r) {
+        for (let r = s.r + 1; r <= e.r; r++) vertCont.add(r);
+      }
+    });
+
+    const ws = expandMerges(rawWs);
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     const hIdx = allRows.findIndex(r => r.some(c => String(c).trim() !== ''));
     if (hIdx === -1) { setErrors([`工作表「${sheetName}」是空的`]); return; }
     const headers  = allRows[hIdx].map((h, i) => String(h).trim() || `欄 ${i + 1}`);
-    const dataRows = allRows.slice(hIdx + 1).filter(r => r.some(c => String(c).trim() !== ''));
+    const dataRows = allRows.slice(hIdx + 1)
+      .filter((r, i) => r.some(c => String(c).trim() !== '') && !vertCont.has(hIdx + 1 + i));
     setRawHeaders(headers);
     setRawData(dataRows);
     setColMap(autoGuess(headers, dataRows));
@@ -158,17 +173,15 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
     rawData.forEach((row, i) => {
       const rowNum = i + 2;
       const name  = colMap.name.length > 0
-        ? colMap.name.map(ci => String(row[ci] ?? '').trim()).filter(Boolean).join(' - ')
+        ? colMap.name.map(ci => { const v = row[ci]; return (v instanceof Date || typeof v === 'number') ? '' : String(v ?? '').trim(); }).filter(Boolean).join(' - ')
         : '';
       const start = colMap.start !== null ? parseDate(row[colMap.start]) : null;
       const end   = colMap.end   !== null ? parseDate(row[colMap.end])   : null;
-      const wt    = colMap.weight !== null ? parseWeight(row[colMap.weight]) : null;
+      const wt    = colMap.weight !== null ? parseWeight(row[colMap.weight]) : 0;
 
       if (!name)       { errs.push(`第 ${rowNum} 列：工項名稱為空`); return; }
-      if (!start)      { errs.push(`第 ${rowNum} 列 (${name})：無法辨識開始日期`); return; }
-      if (!end)        { errs.push(`第 ${rowNum} 列 (${name})：無法辨識結束日期`); return; }
-      if (wt === null) { errs.push(`第 ${rowNum} 列 (${name})：權重欄位無效`); return; }
-      if (start > end) { errs.push(`第 ${rowNum} 列 (${name})：開始日期不得晚於結束日期`); return; }
+      if (colMap.weight !== null && wt === null) { errs.push(`第 ${rowNum} 列 (${name})：權重欄位無效`); return; }
+      if (start && end && start > end) { errs.push(`第 ${rowNum} 列 (${name})：開始日期不得晚於結束日期`); return; }
 
       parsed.push({ item_name: name, start_date: start, end_date: end, weight: wt, sort_order: i });
     });
@@ -307,7 +320,8 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
                     {rawHeaders.map((h, idx) => {
                       const checked = colMap.name.includes(idx);
                       const sample = rawData[0]?.[idx];
-                      const preview = sample !== undefined && sample !== '' ? `（${String(sample).slice(0, 10)}）` : '';
+                      const sampleStr = sample instanceof Date ? parseDate(sample) : String(sample ?? '');
+                      const preview = sample !== undefined && sample !== '' ? `（${sampleStr.slice(0, 10)}）` : '';
                       return (
                         <label key={idx} style={{
                           display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer',
