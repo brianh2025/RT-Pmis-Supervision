@@ -151,6 +151,18 @@
 
 
 
+/* 待辦截止日期標籤 */
+.task-due-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.task-due-urgent  { background: rgba(239,68,68,0.1);  color: var(--color-danger); }
+.task-due-warning { background: rgba(245,158,11,0.1); color: var(--color-warning); }
+
 /* Quick Nav Bar (top shortcut strip) */
 .dash-quick-nav {
   display: flex;

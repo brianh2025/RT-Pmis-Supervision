@@ -1390,7 +1390,7 @@
 }
 
 .card-title-compact {
-  font-size: 0.82rem;
+  font-size: 0.96rem;
   font-weight: 700;
   color: var(--color-text-main);
   line-height: 1.35;
@@ -1716,6 +1716,97 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ── 跨工程待辦彙總區 ── */
+.alerts-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.alerts-group {
+  flex: 1 1 260px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.alerts-group-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.alerts-group-label.urgent  { color: var(--color-danger); }
+.alerts-group-label.warning { color: var(--color-warning); }
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.alert-item:hover { background: var(--color-bg2); }
+.alert-item[data-level="urgent"]  { border-left: 2px solid var(--color-danger); }
+.alert-item[data-level="warning"] { border-left: 2px solid var(--color-warning); }
+.alert-project-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+.alert-msg {
+  font-size: 0.72rem;
+  color: var(--color-text2);
+  flex: 1;
+}
+.alert-arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* ── 搜尋框 ── */
+.dash-search-box {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-left: auto;
+  min-width: 180px;
+  transition: border-color 0.15s;
+}
+.dash-search-box:focus-within {
+  border-color: var(--color-primary-light);
+}
+.dash-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.dash-search-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.75rem;
+  color: var(--color-text-main);
+  width: 100%;
+}
+.dash-search-input::placeholder { color: var(--color-text-muted); }
 
 .btn-back-to-list:hover {
   background: rgba(21, 101, 192, 0.08);

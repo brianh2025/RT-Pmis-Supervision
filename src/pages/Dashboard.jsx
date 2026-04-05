@@ -12,11 +12,43 @@ import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  Trash2, TriangleAlert, Loader2,
+  Trash2, TriangleAlert, Loader2, Search, ChevronRight,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
 import '../components/Modal.css';
+
+/* ── 跨工程待辦彙總區 ── */
+function AlertsPanel({ alerts, navigate }) {
+  const urgent  = alerts.filter(a => a.level === 'urgent');
+  const warning = alerts.filter(a => a.level === 'warning');
+  if (!urgent.length && !warning.length) return null;
+
+  const Item = ({ a }) => (
+    <button className="alert-item" data-level={a.level} onClick={() => navigate(`/projects/${a.projectId}/${a.path}`)}>
+      <span className="alert-project-name">{a.projectName}</span>
+      <span className="alert-msg">{a.msg}</span>
+      <ChevronRight size={11} className="alert-arrow" />
+    </button>
+  );
+
+  return (
+    <div className="alerts-panel">
+      {urgent.length > 0 && (
+        <div className="alerts-group">
+          <span className="alerts-group-label urgent">需立即處理（{urgent.length}）</span>
+          <div className="alerts-list">{urgent.map((a, i) => <Item key={i} a={a} />)}</div>
+        </div>
+      )}
+      {warning.length > 0 && (
+        <div className="alerts-group">
+          <span className="alerts-group-label warning">本週注意（{warning.length}）</span>
+          <div className="alerts-list">{warning.map((a, i) => <Item key={i} a={a} />)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── 刪除專案確認 Modal ── */
 function DeleteProjectModal({ project, onClose, onDeleted }) {
@@ -182,6 +214,8 @@ export function Dashboard() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showWelcome, setShowWelcome] = useState(true);
+  const [searchQuery,  setSearchQuery]  = useState('');
+  const [alerts,       setAlerts]       = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -191,6 +225,47 @@ export function Dashboard() {
       clearTimeout(welcomeTimer);
     };
   }, []);
+
+  // 跨工程警示查詢（在專案列表載入完成後執行）
+  useEffect(() => {
+    if (loading || !projects.length) return;
+    const active = projects.filter(p => p.status === 'active');
+    if (!active.length) { setAlerts([]); return; }
+    const ids = active.map(p => p.id);
+
+    async function fetchAlerts() {
+      const [qualRes, subRes] = await Promise.all([
+        supabase.from('quality_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']),
+        supabase.from('submissions').select('project_id').in('project_id', ids).in('status', ['pending', 'submitted', 'reviewing']),
+      ]);
+      const qualMap = {}, subMap = {};
+      (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
+      (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
+
+      const today = Date.now();
+      const list = [];
+      active.forEach(p => {
+        const lp       = p.latest_progress;
+        const diff     = lp ? (lp.actual_progress - lp.planned_progress) : null;
+        const daysLeft = p.end_date ? Math.ceil((new Date(p.end_date).getTime() - today) / 86400000) : null;
+        const qual     = qualMap[p.id] || 0;
+        const sub      = subMap[p.id]  || 0;
+
+        if (diff !== null && diff < -5)
+          list.push({ level: 'urgent',  projectId: p.id, projectName: p.name, msg: `進度落後 ${Math.abs(diff).toFixed(1)}%`, path: 'progress' });
+        if (qual > 0)
+          list.push({ level: 'urgent',  projectId: p.id, projectName: p.name, msg: `品管缺失未結案 ${qual} 件`, path: 'quality' });
+        if (daysLeft !== null && daysLeft >= 0 && daysLeft <= 14)
+          list.push({ level: 'urgent',  projectId: p.id, projectName: p.name, msg: `剩餘工期 ${daysLeft} 天`, path: 'progress' });
+        else if (daysLeft !== null && daysLeft >= 0 && daysLeft <= 30)
+          list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `剩餘工期 ${daysLeft} 天`, path: 'progress' });
+        if (sub > 0)
+          list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `送審待處理 ${sub} 件`, path: 'submission' });
+      });
+      setAlerts(list);
+    }
+    fetchAlerts();
+  }, [projects, loading]);
 
   const formatDateWithSeconds = (date) => {
     return new Intl.DateTimeFormat('zh-TW', {
@@ -225,9 +300,13 @@ export function Dashboard() {
   ];
 
   const filteredProjects = projects.filter(p => {
-    if (statusFilter === 'all')       return true;
-    if (statusFilter === 'behind')    return isBehind(p);
-    return p.status === statusFilter;
+    if (statusFilter === 'behind' && !isBehind(p)) return false;
+    if (statusFilter !== 'all' && statusFilter !== 'behind' && p.status !== statusFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (p.name || '').toLowerCase().includes(q) || (p.contractor || '').toLowerCase().includes(q);
+    }
+    return true;
   });
 
   return (
@@ -282,7 +361,10 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* Banner + 篩選徽章同一列，空間不足時整列換行 */}
+            {/* 跨工程待辦彙總 */}
+            <AlertsPanel alerts={alerts} navigate={navigate} />
+
+            {/* Banner + 篩選徽章 + 搜尋框 */}
             <div className="dash-banner-filter-row">
               {projects.length > 0 && <ReportReminderBanner projectId={projects[0]?.id} />}
               <div className="dash-filter-bar">
@@ -304,6 +386,15 @@ export function Dashboard() {
                     </button>
                   );
                 })}
+                <div className="dash-search-box">
+                  <Search size={12} className="dash-search-icon" />
+                  <input
+                    className="dash-search-input"
+                    placeholder="搜尋工程或承包商…"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -333,9 +424,10 @@ export function Dashboard() {
                     onClick={() => navigate(`/projects/${p.id}/dashboard`)}
                     style={{ animationDelay: `${0.3 + index * 0.04}s` }}
                   >
-                    {/* 左側色條 */}
+                    {/* 左側色條：落後→紅、執行中→藍、暫停→黃、竣工→灰 */}
                     <div className="card-accent-side" style={{
-                      background: p.status === 'active' ? 'var(--color-primary)' :
+                      background: isBehind(p)              ? 'var(--color-danger)' :
+                                  p.status === 'active'    ? 'var(--color-primary)' :
                                   p.status === 'suspended' ? 'var(--color-warning)' : 'var(--color-text-muted)'
                     }} />
 

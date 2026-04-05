@@ -5,10 +5,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Package, FileText, ClipboardCheck, Archive, BarChart2,
-  Calendar, Loader2, Activity, Shield, ClipboardList,
+  TrendingUp, FileText, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
-  Camera, ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -126,6 +125,12 @@ export function ProjectDashboard() {
     ? Math.ceil((new Date(project.end_date).getTime() - Date.now()) / 86400000)
     : null;
 
+  // 本月底日期（供日誌截止標籤用）
+  const monthEnd = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()}`;
+  })();
+
   // ── 待辦任務清單（從現有 stats 聚合）──
   const tasks = statsLoading ? [] : [
     stats.pendingLogs > 0 && {
@@ -134,6 +139,7 @@ export function ProjectDashboard() {
       icon: BookOpen,
       title: `施工日誌未補 ${stats.pendingLogs} 天`,
       desc: `本月已匯入 ${stats.thisMonthLogs} 筆，請補齊工作日記錄`,
+      due: `補至 ${monthEnd}`,
       path: 'diary',
       action: '前往補填',
     },
@@ -143,6 +149,7 @@ export function ProjectDashboard() {
       icon: AlertCircle,
       title: `品管缺失未結案 ${stats.qualityOpen} 件`,
       desc: `共 ${stats.qualityCount} 件缺失，${stats.qualityOpen} 件待改善或驗收`,
+      due: '請儘速結案',
       path: 'quality',
       action: '查看缺失',
     },
@@ -161,6 +168,7 @@ export function ProjectDashboard() {
       icon: TrendingUp,
       title: `進度落後 ${Math.abs(diff).toFixed(1)}%，需提出趕工計畫`,
       desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%，請更新進度並說明原因`,
+      due: '請儘速更新',
       path: 'progress',
       action: '更新進度',
     },
@@ -170,6 +178,7 @@ export function ProjectDashboard() {
       icon: Calendar,
       title: `工程剩餘工期 ${daysRemaining} 天`,
       desc: `完工期限：${project.end_date}，請確認最終驗收作業準備`,
+      due: project.end_date,
       path: 'progress',
       action: '查看進度',
     },
@@ -297,6 +306,9 @@ export function ProjectDashboard() {
                 <div className="task-item-title">{task.title}</div>
                 <div className="task-item-desc">{task.desc}</div>
               </div>
+              {task.due && (
+                <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>
+              )}
               <div className="task-item-action">
                 {task.action}<ChevronRight size={13} />
               </div>
@@ -368,139 +380,6 @@ export function ProjectDashboard() {
           </div>
         </div>
 
-        {/* 監造報表 */}
-        <div className="stunning-card">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><FileText size={14} /></div>
-            <h3 className="stunning-card-title">監造報表</h3>
-          </div>
-          <div className="sci-fi-tracker">
-            <div className="sci-fi-status-row">
-              <span className="sci-fi-text">本月已匯入</span>
-              <span className="sci-fi-indicator orb-green">
-                <span className="sci-fi-orb" />
-                {statsLoading ? '—' : stats.thisMonthLogs} 筆
-              </span>
-            </div>
-            <div className="sci-fi-status-row">
-              <span className="sci-fi-text">待補工作日</span>
-              <span className={`sci-fi-indicator ${stats.pendingLogs > 0 ? 'orb-red' : 'orb-green'}`}>
-                <span className="sci-fi-orb" />
-                {statsLoading ? '—' : stats.pendingLogs} 天
-              </span>
-            </div>
-            <div className="sci-fi-status-row">
-              <span className="sci-fi-text">累計總筆數</span>
-              <span className="sci-fi-indicator orb-green">
-                <span className="sci-fi-orb" />
-                {statsLoading ? '—' : stats.totalLogs} 筆
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 材料管制 */}
-        <div className="stunning-card">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><Package size={14} /></div>
-            <h3 className="stunning-card-title">材料管制</h3>
-          </div>
-          <div className="inspection-counters">
-            <div className="counter-box">
-              <div className="c-val highlight-val">{statsLoading ? '—' : stats.mcsSubmissionCount}</div>
-              <div className="c-label">送審管制</div>
-            </div>
-            <div className="counter-box">
-              <div className="c-val highlight-val">{statsLoading ? '—' : stats.mcsTestCount}</div>
-              <div className="c-label">檢試驗</div>
-            </div>
-            <div className="counter-box">
-              <div className="c-val highlight-val">{statsLoading ? '—' : stats.mcsPlanCount}</div>
-              <div className="c-label">計畫書</div>
-            </div>
-            <div className="counter-box">
-              <div className="c-val">{statsLoading ? '—' : stats.mcsSubmissionCount + stats.mcsTestCount + stats.mcsPlanCount}</div>
-              <div className="c-label">總計</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 送審管理 */}
-        <div className="stunning-card">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><ClipboardCheck size={14} /></div>
-            <h3 className="stunning-card-title">送審管理</h3>
-          </div>
-          <div className="inspection-counters">
-            <div className="counter-box">
-              <div className="c-val highlight-val">{statsLoading ? '—' : stats.submissionCount}</div>
-              <div className="c-label">總送審件</div>
-            </div>
-            <div className="counter-box">
-              <div className="c-val" style={{ color: stats.submissionPending > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
-                {statsLoading ? '—' : stats.submissionPending}
-              </div>
-              <div className="c-label">待處理</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 品管缺失 */}
-        <div className="stunning-card">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><Shield size={14} /></div>
-            <h3 className="stunning-card-title">品管缺失</h3>
-          </div>
-          <div className="inspection-counters">
-            <div className="counter-box">
-              <div className="c-val highlight-val">{statsLoading ? '—' : stats.qualityCount}</div>
-              <div className="c-label">總缺失件</div>
-            </div>
-            <div className="counter-box">
-              <div className="c-val" style={{ color: stats.qualityOpen > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                {statsLoading ? '—' : stats.qualityOpen}
-              </div>
-              <div className="c-label">未結案</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 歸檔管理 */}
-        <div className="stunning-card stunning-card-wide">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><Archive size={14} /></div>
-            <h3 className="stunning-card-title">歸檔管理</h3>
-            <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-              共 {statsLoading ? '—' : stats.archiveCount} 件文件
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {[
-              { label: '契約文件', emoji: '📋' },
-              { label: '設計圖說', emoji: '📐' },
-              { label: '送審資料', emoji: '📤' },
-              { label: '品管文件', emoji: '✅' },
-              { label: '監造日誌', emoji: '📔' },
-              { label: '施工照片', emoji: '📷' },
-            ].map(cat => (
-              <div
-                key={cat.label}
-                onClick={() => navigate(`/projects/${projectId}/archive`)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '4px',
-                  padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
-                  background: 'var(--color-bg2)', border: '1px solid var(--color-border)',
-                  fontSize: '0.72rem', color: 'var(--color-text2)',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-text1)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text2)'; }}
-              >
-                <span>{cat.emoji}</span>{cat.label}
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
 
