@@ -364,45 +364,50 @@ export function Dashboard() {
             {/* 跨工程待辦彙總 */}
             <AlertsPanel alerts={alerts} navigate={navigate} />
 
-            {/* Banner + 篩選徽章 + 搜尋框 */}
-            <div className="dash-banner-filter-row">
-              {projects.length > 0 && <ReportReminderBanner projectId={projects[0]?.id} />}
-              <div className="dash-filter-bar">
+            {/* Banner */}
+            {projects.length > 0 && (
+              <div style={{ marginBottom: 6 }}>
+                <ReportReminderBanner projectId={projects[0]?.id} />
+              </div>
+            )}
+
+            {/* 搜尋欄（獨立一列，最上方） */}
+            <div className="dash-search-row">
+              <Search size={12} className="dash-search-icon" />
+              <input
+                className="dash-search-input"
+                placeholder="搜尋工程名稱或承包商…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* 工程列表標題 + 篩選標籤 + 計數（同一列） */}
+            <div className="dash-list-header">
+              <div className="dash-list-title">
+                <span className="dash-list-title-bar" />
+                <span className="dash-list-title-text">工程列表</span>
+              </div>
+              <div className="dash-tab-bar">
                 {loading ? (
                   <span className="dash-filter-loading">載入中…</span>
                 ) : FILTERS.map(f => {
-                  const Icon = f.icon;
                   const active = statusFilter === f.key;
                   return (
                     <button
                       key={f.key}
-                      className={`dash-filter-chip${active ? ' active' : ''}${f.key === 'behind' && f.count > 0 ? ' has-alert' : ''}`}
-                      style={{ '--chip-color': f.color }}
+                      className={`dash-tab${active ? ' active' : ''}${f.key === 'behind' && f.count > 0 ? ' has-alert' : ''}`}
+                      style={{ '--tab-color': f.color }}
                       onClick={() => setStatusFilter(f.key)}
                     >
-                      <Icon size={12} />
-                      <span className="chip-label">{f.label}</span>
-                      <span className="chip-count">{f.count}</span>
+                      {f.label}
+                      <span className="tab-count">{f.count}</span>
                     </button>
                   );
                 })}
-                <div className="dash-search-box">
-                  <Search size={12} className="dash-search-icon" />
-                  <input
-                    className="dash-search-input"
-                    placeholder="搜尋工程或承包商…"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                  />
-                </div>
               </div>
-            </div>
-
-            {/* 工程列表標題 */}
-            <div className="dash-section-header">
-              <h2 className="dash-section-h2">工程列表</h2>
               <span className="dash-section-count">
-                {statusFilter === 'all' ? `共 ${projects.length} 個項目` : `篩選：${filteredProjects.length} / ${projects.length}`}
+                {statusFilter !== 'all' && `${filteredProjects.length} / ${projects.length}`}
               </span>
             </div>
 
@@ -433,41 +438,37 @@ export function Dashboard() {
 
                     {/* 右側內容 */}
                     <div className="card-compact-body">
-                      {/* 上排：名稱 + 進度環 + 刪除鈕 */}
+                      {/* 上排：工程名稱（左）＋ 實際進度大字（右） */}
                       <div className="card-compact-top">
-                        <div>
-                          <div className="card-title-compact">{p.name}</div>
-                          <div className="card-contractor-compact">{p.contractor || '未指定單位'}</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          <CircularProgress
-                            value={prog}
-                            size={48}
-                            strokeWidth={5}
-                            color={diff < -5 ? 'var(--color-danger)' : 'var(--color-primary)'}
-                          />
-                          <button
-                            className="card-delete-btn"
-                            title="刪除專案"
-                            onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 下排：進度條（差值標示） */}
-                      <div className="card-compact-progress">
-                        <div className="card-compact-progress-labels">
-                          <span>計畫 {planned}% · 實際 {prog}%</span>
+                        <div className="card-title-compact">{p.name}</div>
+                        <div className="card-pct-block">
+                          <span className="card-pct-num" style={{
+                            color: isBehind(p) ? 'var(--color-danger)' :
+                                   p.status === 'completed' ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
+                          }}>{prog}%</span>
                           <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
                             {diff >= 0 ? '+' : ''}{diff}%
                           </span>
                         </div>
-                        <div className="layered-progress-bar" style={{ height: '5px' }}>
-                          <div className="bar-planned" style={{ width: `${planned}%` }} />
-                          <div className="bar-actual" style={{ width: `${prog}%` }} />
-                        </div>
+                      </div>
+
+                      {/* 進度條 */}
+                      <div className="layered-progress-bar" style={{ height: '4px' }}>
+                        <div className="bar-planned" style={{ width: `${planned}%` }} />
+                        <div className="bar-actual" style={{ width: `${prog}%` }} />
+                      </div>
+
+                      {/* 下排：計畫%（左）＋ 承包廠商（右）＋ 刪除鈕 */}
+                      <div className="card-bottom-row">
+                        <span className="card-planned-label">計畫 {planned}%</span>
+                        <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
+                        <button
+                          className="card-delete-btn"
+                          title="刪除專案"
+                          onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </div>
                   </div>
