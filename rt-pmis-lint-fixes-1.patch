@@ -1,0 +1,449 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 24227cb..2b22977 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -31,7 +31,11 @@ GitHub 帳號：brianh2025，repo 為 public。
+ - 每季：Supabase SQL 健檢 + 程式碼安全稽核
+ - 發版前：完整清單
+ 
+-## 建置基準（2026-04）
+-- JS bundle: ~1.85 MB（gzip ~551 KB）
+-- CSS bundle: ~88 KB（gzip ~15.5 KB）
+-- 建置時間: ~650 ms
++## 建置基準（2026-04-06 更新）
++- JS 主 chunk: ~208 KB（gzip ~66 KB）— 已啟用 React.lazy code splitting
++- CSS bundle: ~117 KB（gzip ~20 KB）
++- 建置時間: ~4 s
++- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告）
++
++## 已知技術債
++- `xlsx` 套件有 Prototype Pollution（high）漏洞，官方無修復版。前端使用風險較低，但應評估替換為 `xlsx-js-style` 或 `exceljs`。
+diff --git a/eslint.config.js b/eslint.config.js
+index 4fa125d..f6b371c 100644
+--- a/eslint.config.js
++++ b/eslint.config.js
+@@ -23,7 +23,11 @@ export default defineConfig([
+       },
+     },
+     rules: {
+-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
++      'no-unused-vars': ['error', {
++        varsIgnorePattern: '^[A-Z_]',
++        argsIgnorePattern: '^_',
++        destructuredArrayIgnorePattern: '^_',
++      }],
+     },
+   },
+ ])
+diff --git a/src/App.jsx b/src/App.jsx
+index ddaf83d..7b9bcd8 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,3 +1,4 @@
++import React, { Suspense } from 'react';
+ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+ import { ThemeProvider } from './contexts/ThemeContext';
+ import { AuthProvider } from './context/AuthContext';
+@@ -6,19 +7,28 @@ import { Navbar } from './components/Navbar';
+ import { Hero } from './components/Hero';
+ import { Footer } from './components/Footer';
+ import { ProjectLayout } from './components/ProjectLayout';
+-import { Login } from './pages/Login';
+-import { Dashboard } from './pages/Dashboard';
+-import { ProjectDashboard } from './pages/ProjectDashboard';
+-import { Submission } from './pages/Submission';
+-import { Quality } from './pages/Quality';
+-import { Archive } from './pages/Archive';
+-import { Analytics } from './pages/Analytics';
+-import { DailyReportController } from './pages/DailyReport/DailyReportController';
+-import { DiaryLog } from './pages/DiaryLog';
+-import { DiaryPrintView } from './pages/DiaryPrintView';
+-import { ProgressManagement } from './pages/ProgressManagement';
+-import { MaterialControl } from './pages/MaterialControl';
+-import { PhotoTable } from './pages/PhotoTable';
++
++const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
++const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
++const ProjectDashboard = React.lazy(() => import('./pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
++const Submission = React.lazy(() => import('./pages/Submission').then(m => ({ default: m.Submission })));
++const Quality = React.lazy(() => import('./pages/Quality').then(m => ({ default: m.Quality })));
++const Archive = React.lazy(() => import('./pages/Archive').then(m => ({ default: m.Archive })));
++const Analytics = React.lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
++const DailyReportController = React.lazy(() => import('./pages/DailyReport/DailyReportController').then(m => ({ default: m.DailyReportController })));
++const DiaryLog = React.lazy(() => import('./pages/DiaryLog').then(m => ({ default: m.DiaryLog })));
++const DiaryPrintView = React.lazy(() => import('./pages/DiaryPrintView').then(m => ({ default: m.DiaryPrintView })));
++const ProgressManagement = React.lazy(() => import('./pages/ProgressManagement').then(m => ({ default: m.ProgressManagement })));
++const MaterialControl = React.lazy(() => import('./pages/MaterialControl').then(m => ({ default: m.MaterialControl })));
++const PhotoTable = React.lazy(() => import('./pages/PhotoTable').then(m => ({ default: m.PhotoTable })));
++
++function PageLoader() {
++  return (
++    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
++      載入中…
++    </div>
++  );
++}
+ 
+ function WelcomePage() {
+   return (
+@@ -36,47 +46,49 @@ function App() {
+     <ThemeProvider>
+       <AuthProvider>
+         <Router>
+-          <div className="app-container">
+-            <Routes>
+-              <Route path="/" element={<WelcomePage />} />
+-              <Route path="/login" element={<Login />} />
+-              <Route
+-                path="/dashboard"
+-                element={
+-                  <ProtectedRoute>
+-                    <Dashboard />
+-                  </ProtectedRoute>
+-                }
+-              />
+-              
+-              {/* Per-project routes nested within ProjectLayout */}
+-              <Route 
+-                path="/projects/:id" 
+-                element={
+-                  <ProtectedRoute>
+-                    <ProjectLayout />
+-                  </ProtectedRoute>
+-                }
+-              >
+-                {/* Redirect /projects/:id to /projects/:id/dashboard */}
+-                <Route index element={<Navigate to="dashboard" replace />} />
+-                <Route path="dashboard" element={<ProjectDashboard />} />
+-                <Route path="diary" element={<DailyReportController />} />
+-                <Route path="supervision" element={<DiaryLog />} />
+-                <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
+-                <Route path="progress" element={<ProgressManagement />} />
+-                <Route path="material" element={<MaterialControl />} />
+-                <Route path="submission" element={<Submission />} />
+-                <Route path="quality" element={<Quality />} />
+-                <Route path="archive" element={<Archive />} />
+-                <Route path="analytics" element={<Analytics />} />
+-                <Route path="photos" element={<PhotoTable />} />
+-              </Route>
+-              
+-              {/* Fallback: redirect unknown routes to home */}
+-              <Route path="*" element={<Navigate to="/" replace />} />
+-            </Routes>
+-          </div>
++          <Suspense fallback={<PageLoader />}>
++            <div className="app-container">
++              <Routes>
++                <Route path="/" element={<WelcomePage />} />
++                <Route path="/login" element={<Login />} />
++                <Route
++                  path="/dashboard"
++                  element={
++                    <ProtectedRoute>
++                      <Dashboard />
++                    </ProtectedRoute>
++                  }
++                />
++                
++                {/* Per-project routes nested within ProjectLayout */}
++                <Route 
++                  path="/projects/:id" 
++                  element={
++                    <ProtectedRoute>
++                      <ProjectLayout />
++                    </ProtectedRoute>
++                  }
++                >
++                  {/* Redirect /projects/:id to /projects/:id/dashboard */}
++                  <Route index element={<Navigate to="dashboard" replace />} />
++                  <Route path="dashboard" element={<ProjectDashboard />} />
++                  <Route path="diary" element={<DailyReportController />} />
++                  <Route path="supervision" element={<DiaryLog />} />
++                  <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
++                  <Route path="progress" element={<ProgressManagement />} />
++                  <Route path="material" element={<MaterialControl />} />
++                  <Route path="submission" element={<Submission />} />
++                  <Route path="quality" element={<Quality />} />
++                  <Route path="archive" element={<Archive />} />
++                  <Route path="analytics" element={<Analytics />} />
++                  <Route path="photos" element={<PhotoTable />} />
++                </Route>
++                
++                {/* Fallback: redirect unknown routes to home */}
++                <Route path="*" element={<Navigate to="/" replace />} />
++              </Routes>
++            </div>
++          </Suspense>
+         </Router>
+       </AuthProvider>
+     </ThemeProvider>
+diff --git a/src/components/DiaryImportModal.jsx b/src/components/DiaryImportModal.jsx
+index 072c519..3683257 100644
+--- a/src/components/DiaryImportModal.jsx
++++ b/src/components/DiaryImportModal.jsx
+@@ -60,32 +60,13 @@ async function extractPageItems(page) {
+     .filter(i => i.str !== '');
+ }
+ 
+-// ---------------------------------------------------------------------------
+-// Find item value nearest to a label item using x/y constraints
+-// ---------------------------------------------------------------------------
+-function findNear(items, labelStr, opts = {}) {
+-  const { maxDy = 5, minDx = 0, maxDx = 200, exactY = null } = opts;
+-  const label = items.find(i => i.str.includes(labelStr));
+-  if (!label) return null;
+-  // Search items on roughly the same row (same y ± maxDy)
+-  const sameRow = items.filter(i =>
+-    Math.abs(i.y - label.y) <= maxDy &&
+-    i.x > label.x + minDx &&
+-    i.x <= label.x + maxDx &&
+-    i.str !== labelStr
+-  );
+-  if (!sameRow.length) return null;
+-  sameRow.sort((a, b) => a.x - b.x);
+-  return sameRow[0].str;
+-}
+-
+ // ---------------------------------------------------------------------------
+ // Date parsers: handles CE and ROC year strings
+ // ---------------------------------------------------------------------------
+ function parseDate(raw) {
+   if (!raw) return null;
+   let s = String(raw).trim()
+-    .replace(/[年\/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
++    .replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
+     .trim();
+   // ROC: 2~3 digit year like 113-05-12 or 99-05-12
+   const rocMatch = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})$/);
+diff --git a/src/components/ExcelImportModal.jsx b/src/components/ExcelImportModal.jsx
+index 9e2a8b8..9949cd9 100644
+--- a/src/components/ExcelImportModal.jsx
++++ b/src/components/ExcelImportModal.jsx
+@@ -31,7 +31,7 @@ function parseExcelDate(val) {
+     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+   }
+   // String: try to normalize
+-  const s = String(val).trim().replace(/[年\/]/g, '-').replace(/月/g, '-').replace(/日/g, '');
++  const s = String(val).trim().replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '');
+   const d = new Date(s);
+   return isNaN(d) ? null : d.toISOString().split('T')[0];
+ }
+diff --git a/src/components/ProgressExcelImportModal.jsx b/src/components/ProgressExcelImportModal.jsx
+index a5af1b1..d5657df 100644
+--- a/src/components/ProgressExcelImportModal.jsx
++++ b/src/components/ProgressExcelImportModal.jsx
+@@ -17,7 +17,7 @@ function parseDate(raw) {
+     const d = XLSX.SSF.parse_date_code(raw);
+     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+   }
+-  let s = String(raw).trim().replace(/[年\/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
++  let s = String(raw).trim().replace(/[年/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
+   const roc = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})/);
+   if (roc && parseInt(roc[1]) < 1911)
+     s = `${parseInt(roc[1])+1911}-${roc[2].padStart(2,'0')}-${roc[3].padStart(2,'0')}`;
+diff --git a/src/components/ProjectLayout.jsx b/src/components/ProjectLayout.jsx
+index b647f98..8d076fd 100644
+--- a/src/components/ProjectLayout.jsx
++++ b/src/components/ProjectLayout.jsx
+@@ -16,7 +16,7 @@ export function ProjectLayout() {
+   const location = useLocation();
+   const { signOut, user } = useAuth();
+   const { isDarkMode, toggleTheme } = useTheme();
+-  const { project, loading } = useProject(projectId);
++  const { project: _project, loading: _loading } = useProject(projectId);
+   const [time, setTime] = useState(new Date());
+   const contentRef = useRef(null);
+   useAutoHideScrollbar(contentRef);
+diff --git a/src/components/ScheduleImportModal.jsx b/src/components/ScheduleImportModal.jsx
+index 5cf60a1..9f7c77f 100644
+--- a/src/components/ScheduleImportModal.jsx
++++ b/src/components/ScheduleImportModal.jsx
+@@ -11,7 +11,7 @@ function parseDate(raw) {
+     const d = XLSX.SSF.parse_date_code(raw);
+     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+   }
+-  let s = String(raw).trim().replace(/[年\/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
++  let s = String(raw).trim().replace(/[年/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
+   const roc = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})/);
+   if (roc && parseInt(roc[1]) < 1911)
+     s = `${parseInt(roc[1])+1911}-${roc[2].padStart(2,'0')}-${roc[3].padStart(2,'0')}`;
+diff --git a/src/contexts/ThemeContext.jsx b/src/contexts/ThemeContext.jsx
+index 2f54fe5..eead220 100644
+--- a/src/contexts/ThemeContext.jsx
++++ b/src/contexts/ThemeContext.jsx
+@@ -3,19 +3,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
+ const ThemeContext = createContext();
+ 
+ export const ThemeProvider = ({ children }) => {
+-  const [isDarkMode, setIsDarkMode] = useState(true);
++  const [isDarkMode, setIsDarkMode] = useState(() => {
++    const savedTheme = localStorage.getItem('theme');
++    return savedTheme !== 'light';
++  });
+ 
+-  // Check system preference or saved preference on mount
++  // 初始化 DOM attribute
+   useEffect(() => {
+-    const savedTheme = localStorage.getItem('theme');
+-    if (savedTheme === 'light') {
+-      setIsDarkMode(false);
+-      document.documentElement.setAttribute('data-theme', 'light');
+-    } else {
+-      setIsDarkMode(true);
+-      document.documentElement.setAttribute('data-theme', 'dark');
+-    }
+-  }, []);
++    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
++  }, [isDarkMode]);
+ 
+   const toggleTheme = () => {
+     const newTheme = !isDarkMode;
+diff --git a/src/hooks/useAutoHideScrollbar.js b/src/hooks/useAutoHideScrollbar.js
+index ae22169..29333c0 100644
+--- a/src/hooks/useAutoHideScrollbar.js
++++ b/src/hooks/useAutoHideScrollbar.js
+@@ -12,7 +12,6 @@ export function useAutoHideScrollbar(ref) {
+     let timer = null;
+ 
+     function onScroll() {
+-      const node = el || document.querySelectorAll('.custom-scrollbar');
+       if (el) {
+         el.classList.add('scrolling');
+       } else {
+diff --git a/src/pages/Analytics.jsx b/src/pages/Analytics.jsx
+index 41a547d..71c1980 100644
+--- a/src/pages/Analytics.jsx
++++ b/src/pages/Analytics.jsx
+@@ -2,7 +2,7 @@
+    Analytics.jsx — 統計分析
+    Ported from Manus_v1/Analytics.tsx
+    ============================================================ */
+-import React, { useState, useEffect, useCallback } from 'react';
++import React, { useState, useEffect } from 'react';
+ import { useParams } from 'react-router-dom';
+ import { Loader2, TrendingUp, BarChart3, PieChart as PieIcon, Activity, ShieldCheck, FlaskConical } from 'lucide-react';
+ import {
+@@ -14,6 +14,18 @@ import './Dashboard.css';
+ 
+ const COLORS = ['#1565C0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#f97316'];
+ 
++function CustomTooltip({ active, payload, label }) {
++  if (!active || !payload?.length) return null;
++  return (
++    <div style={{ background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px' }}>
++      <p style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }}>{label}</p>
++      {payload.map(p => (
++        <p key={p.name} style={{ color: p.color, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>
++      ))}
++    </div>
++  );
++}
++
+ export function Analytics() {
+   const { id: projectId } = useParams();
+   const [loading, setLoading] = useState(true);
+@@ -21,16 +33,17 @@ export function Analytics() {
+   const [submissionStats, setSubmissionStats] = useState([]);
+   const [qualityStats, setQualityStats] = useState([]);
+   const [diaryStats, setDiaryStats] = useState({});
+-  const [materialStats, setMaterialStats] = useState({});
++  const [_materialStats, setMaterialStats] = useState({});
+   const [qualityRateStats, setQualityRateStats] = useState({});
+   const [inspectionStats, setInspectionStats] = useState({});
+   const [activeTab, setActiveTab] = useState('progress');
+ 
+-  const load = useCallback(async () => {
+-    if (!supabase || !projectId) { setLoading(false); return; }
+-    setLoading(true);
++  useEffect(() => {
++    async function load() {
++      if (!supabase || !projectId) { setLoading(false); return; }
++      setLoading(true);
+ 
+-    const [
++      const [
+       { data: progRows },
+       { data: subRows },
+       { data: qualRows },
+@@ -131,28 +144,16 @@ export function Analytics() {
+     }
+ 
+     setLoading(false);
++    }
++    load();
+   }, [projectId]);
+ 
+-  useEffect(() => { load(); }, [load]);
+-
+   if (loading) return (
+     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px', color: 'var(--color-text-muted)' }}>
+       <Loader2 size={18} className="animate-spin" /><span>載入統計資料中…</span>
+     </div>
+   );
+ 
+-  function CustomTooltip({ active, payload, label }) {
+-    if (!active || !payload?.length) return null;
+-    return (
+-      <div style={{ background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px' }}>
+-        <p style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }}>{label}</p>
+-        {payload.map(p => (
+-          <p key={p.name} style={{ color: p.color, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>
+-        ))}
+-      </div>
+-    );
+-  }
+-
+   const TABS = [
+     { key: 'progress', label: '施工進度' },
+     { key: 'diary', label: '日誌進度曲線' },
+diff --git a/src/pages/DailyReport/DailyReportContext.jsx b/src/pages/DailyReport/DailyReportContext.jsx
+index a39139b..1455932 100644
+--- a/src/pages/DailyReport/DailyReportContext.jsx
++++ b/src/pages/DailyReport/DailyReportContext.jsx
+@@ -1,5 +1,4 @@
+ import React, { createContext, useState, useEffect } from 'react';
+-import { supabase } from '../../lib/supabaseClient';
+ 
+ export const DailyReportContext = createContext();
+ 
+@@ -32,13 +31,16 @@ export function DailyReportProvider({ children, projectId }) {
+     const [loading, setLoading] = useState(true);
+ 
+     useEffect(() => {
+-        const saved = localStorage.getItem(`daily_reports_${projectId}`);
+-        if (saved) {
+-            setReports(JSON.parse(saved));
+-        } else {
+-            setReports(INIT_DAILY_REPORTS.map(r => ({ ...r, project_id: projectId })));
++        async function init() {
++            const saved = localStorage.getItem(`daily_reports_${projectId}`);
++            if (saved) {
++                setReports(JSON.parse(saved));
++            } else {
++                setReports(INIT_DAILY_REPORTS.map(r => ({ ...r, project_id: projectId })));
++            }
++            setLoading(false);
+         }
+-        setLoading(false);
++        init();
+     }, [projectId]);
+ 
+     const saveReport = (form) => {
+diff --git a/src/pages/DailyReport/DailyReportController.jsx b/src/pages/DailyReport/DailyReportController.jsx
+index 7fb5b34..a4a91df 100644
+--- a/src/pages/DailyReport/DailyReportController.jsx
++++ b/src/pages/DailyReport/DailyReportController.jsx
+@@ -1,5 +1,5 @@
+ import React, { useState } from 'react';
+-import { useParams, useNavigate } from 'react-router-dom';
++import { useParams } from 'react-router-dom';
+ import { DailyReportProvider } from './DailyReportContext';
+ import { DailyReportList } from './DailyReportList';
+ import { DailyReportView } from './DailyReportView';
+diff --git a/src/pages/DailyReport/DailyReportForm.jsx b/src/pages/DailyReport/DailyReportForm.jsx
+index 587fc65..f354a9e 100644
+--- a/src/pages/DailyReport/DailyReportForm.jsx
++++ b/src/pages/DailyReport/DailyReportForm.jsx
+@@ -10,21 +10,22 @@ const tisStyle = { ...inpStyle, padding: "8px 16px", fontSize: 12 };
+ const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 8, display: "block" };
+ const Field = ({ label, children }) => <div style={{ 
