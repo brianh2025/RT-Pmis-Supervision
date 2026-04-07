@@ -12,7 +12,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  Trash2, TriangleAlert, Loader2, Search, ChevronRight,
+  Trash2, TriangleAlert, Loader2, Search, ChevronRight, Star,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -286,28 +286,43 @@ export function Dashboard() {
     const lp = p.latest_progress;
     return p.status === 'active' && lp && (lp.actual_progress - lp.planned_progress) < -5;
   };
+
+  // 切換收藏（樂觀更新）
+  const toggleStar = async (e, p) => {
+    e.stopPropagation();
+    const next = !p.is_starred;
+    await supabase.from('projects').update({ is_starred: next }).eq('id', p.id);
+    refresh?.();
+  };
+
+  const starredCount   = projects.filter(p => p.is_starred).length;
   const activeCount    = projects.filter(p => p.status === 'active').length;
   const behindCount    = projects.filter(isBehind).length;
   const completedCount = projects.filter(p => p.status === 'completed').length;
   const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
   const FILTERS = [
-    { key: 'all',       label: '全部',   count: projects.length,  icon: Layers,       color: 'var(--color-text2)' },
-    { key: 'active',    label: '執行中', count: activeCount,      icon: Building2,    color: 'var(--color-primary-light)' },
-    { key: 'behind',    label: '落後',   count: behindCount,      icon: AlertCircle,  color: 'var(--color-danger)' },
-    { key: 'completed', label: '已完工', count: completedCount,   icon: CheckCircle2, color: 'var(--color-success)' },
-    ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, icon: AlertCircle, color: 'var(--color-warning)' }] : []),
+    { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
+    ...(starredCount > 0 ? [{ key: 'starred', label: '我的最愛', count: starredCount, color: '#f59e0b' }] : []),
+    { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
+    { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
+    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
+    ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
-  const filteredProjects = projects.filter(p => {
-    if (statusFilter === 'behind' && !isBehind(p)) return false;
-    if (statusFilter !== 'all' && statusFilter !== 'behind' && p.status !== statusFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (p.name || '').toLowerCase().includes(q) || (p.contractor || '').toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const filteredProjects = projects
+    .filter(p => {
+      if (statusFilter === 'starred')  return p.is_starred;
+      if (statusFilter === 'behind' && !isBehind(p)) return false;
+      if (statusFilter !== 'all' && statusFilter !== 'behind' && p.status !== statusFilter) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (p.name || '').toLowerCase().includes(q) || (p.contractor || '').toLowerCase().includes(q);
+      }
+      return true;
+    })
+    // 已收藏的排最前
+    .sort((a, b) => (b.is_starred ? 1 : 0) - (a.is_starred ? 1 : 0));
 
   return (
     <div className="project-layout-container">
@@ -472,6 +487,13 @@ export function Dashboard() {
                           {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'suspended' ? '暫停' : '執行中'}
                         </span>
                         <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
+                        <button
+                          className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
+                          title={p.is_starred ? '取消注目' : '加入注目'}
+                          onClick={e => toggleStar(e, p)}
+                        >
+                          <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} />
+                        </button>
                         <button
                           className="card-delete-btn"
                           title="刪除專案"
