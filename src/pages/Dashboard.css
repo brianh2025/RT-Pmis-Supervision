@@ -1317,12 +1317,12 @@
   height: 90px !important;
 }
 
-/* ─── 極致緊湊專案卡片 ─── */
+/* ─── 專案列表：雙欄 Grid，間距充足 ─── */
 .dash-project-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-  padding-bottom: 8px !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  gap: 12px !important;
+  padding-bottom: 16px !important;
 }
 
 .dash-project-card-compact {
@@ -1336,21 +1336,28 @@
   cursor: pointer;
   background: var(--color-surface);
   border: 1.5px solid var(--color-surface-border);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
   opacity: 0;
   animation: slideUpFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.dash-project-card-compact:hover {
-  transform: translateY(-2px);
-  border-color: var(--color-primary-light);
-  box-shadow: 0 4px 16px rgba(21,101,192,0.2);
-}
+/* 狀態底色微分 */
+.dash-project-card-compact.status-behind   { background: rgba(239,68,68,0.03); }
+.dash-project-card-compact.status-suspended{ background: rgba(245,158,11,0.03); }
+.dash-project-card-compact.status-completed{ background: var(--color-bg2); opacity: 0.82; }
+.dash-project-card-compact.status-completed.opacity-0 { opacity: 0; }
 
-/* 左側縱向色條 */
+.dash-project-card-compact:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(21,101,192,0.14);
+}
+.dash-project-card-compact.status-behind:hover   { box-shadow: 0 6px 20px rgba(239,68,68,0.18); }
+.dash-project-card-compact.status-suspended:hover{ box-shadow: 0 6px 20px rgba(245,158,11,0.18); }
+
+/* 左側縱向色條（加寬至 6px） */
 .card-accent-side {
-  width: 4px;
+  width: 6px;
   flex-shrink: 0;
   border-radius: 10px 0 0 10px;
 }
@@ -1358,10 +1365,10 @@
 /* 右側主體 */
 .card-compact-body {
   flex: 1;
-  padding: 8px 10px 7px;
+  padding: 11px 12px 9px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -1389,22 +1396,31 @@
   letter-spacing: -0.02em;
 }
 
-/* 下排：計畫% (左) + 承包廠商 (right) + 刪除鈕 */
+/* 下排：狀態 chip (左) + 承包廠商靠右 + 刪除鈕 */
 .card-bottom-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.card-planned-label {
-  font-size: 0.62rem;
-  color: var(--color-text-muted);
+.card-status-chip {
   flex-shrink: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
 }
+.chip-active   { background: rgba(21,101,192,0.1);  color: var(--color-primary); }
+.chip-behind   { background: rgba(239,68,68,0.12);  color: var(--color-danger); }
+.chip-paused   { background: rgba(245,158,11,0.12); color: var(--color-warning); }
+.chip-done     { background: var(--color-bg2);      color: var(--color-text-muted); }
+
 .card-bottom-row .card-contractor-compact {
   flex: 1;
   text-align: right;
   font-size: 0.68rem;
   color: var(--color-text-muted);
+  line-height: 1.3;
 }
 
 .card-meta-compact {
@@ -1624,33 +1640,30 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
+  padding: 2px 8px 4px;
   border: none;
+  border-bottom: 2px solid transparent;
   background: none;
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
+  border-radius: 0;
 }
-.dash-tab:hover {
-  background: var(--color-bg2);
-  color: var(--color-text1);
-}
+.dash-tab:hover { color: var(--color-text1); }
 .dash-tab.active {
-  background: var(--color-bg2);
-  color: var(--color-text1);
+  color: var(--tab-color, var(--color-primary));
   font-weight: 700;
-  box-shadow: inset 0 0 0 1.5px var(--tab-color, var(--color-primary));
+  border-bottom-color: var(--tab-color, var(--color-primary));
 }
-.dash-tab.has-alert { color: var(--color-danger); }
-.dash-tab.has-alert.active { box-shadow: inset 0 0 0 1.5px var(--color-danger); }
+.dash-tab.has-alert         { color: var(--color-danger); }
+.dash-tab.has-alert.active  { border-bottom-color: var(--color-danger); }
 .tab-count {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  opacity: 0.75;
+  opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
 

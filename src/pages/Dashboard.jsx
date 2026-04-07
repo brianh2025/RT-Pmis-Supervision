@@ -425,7 +425,7 @@ export function Dashboard() {
                 return (
                   <div
                     key={p.id}
-                    className="dash-project-card dash-project-card-compact"
+                    className={`dash-project-card dash-project-card-compact${isBehind(p) ? ' status-behind' : p.status === 'suspended' ? ' status-suspended' : p.status === 'completed' ? ' status-completed' : ''}`}
                     onClick={() => navigate(`/projects/${p.id}/dashboard`)}
                     style={{ animationDelay: `${0.3 + index * 0.04}s` }}
                   >
@@ -458,9 +458,11 @@ export function Dashboard() {
                         <div className="bar-actual" style={{ width: `${prog}%` }} />
                       </div>
 
-                      {/* 下排：計畫%（左）＋ 承包廠商（右）＋ 刪除鈕 */}
+                      {/* 下排：狀態徽章（左）＋ 承包廠商靠右＋ 刪除鈕 */}
                       <div className="card-bottom-row">
-                        <span className="card-planned-label">計畫 {planned}%</span>
+                        <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
+                          {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'suspended' ? '暫停' : '執行中'}
+                        </span>
                         <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
                         <button
                           className="card-delete-btn"
