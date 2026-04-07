@@ -26,10 +26,10 @@ export function DiaryLog() {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const [project, setProject] = useState(null);
+  const [_project, setProject] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState(null);
   
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);

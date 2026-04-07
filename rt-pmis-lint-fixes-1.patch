@@ -446,4 +446,208 @@ index 587fc65..f354a9e 100644
 +++ b/src/pages/DailyReport/DailyReportForm.jsx
 @@ -10,21 +10,22 @@ const tisStyle = { ...inpStyle, padding: "8px 16px", fontSize: 12 };
  const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 8, display: "block" };
- const Field = ({ label, children }) => <div style={{ 
+ const Field = ({ label, children }) => <div style={{ marginBottom: 16 }}><label style={lblStyle}>{label}</label>{children}</div>;
+ export function DailyReportForm({ existing, onSave, onBack, projectId, project }) {
+-    const emptyReport = {
+-        id: `dr-${Date.now()}`, project_id: projectId, date: today(),
+-        reportNo: `114-${String(Math.floor(Math.random()*100)).padStart(3, "0")}`,
+-        weather: "晴", tempHigh: 28, tempLow: 18,
+-        supervisor: project?.supervisorName || "測試監造人員", contractor: project?.contractor || "測試營造公司",
+-        plannedProgress: 0, actualProgress: 0,
+-        progressNote: "",
+-        quantities: [],
+-        inspections: [],
+-        qualityTests: [],
+-        documents: [],
+-        specialNote: "",
+-    };
+-
+-    const [form, setForm] = useState(existing || emptyReport);
++    const [form, setForm] = useState(() => {
++        if (existing) return existing;
++        return {
++            id: `dr-${Date.now()}`, project_id: projectId, date: today(),
++            reportNo: `114-${String(Math.floor(Math.random()*100)).padStart(3, "0")}`,
++            weather: "晴", tempHigh: 28, tempLow: 18,
++            supervisor: project?.supervisorName || "測試監造人員", contractor: project?.contractor || "測試營造公司",
++            plannedProgress: 0, actualProgress: 0,
++            progressNote: "",
++            quantities: [],
++            inspections: [],
++            qualityTests: [],
++            documents: [],
++            specialNote: "",
++        };
++    });
+     const [activeTab, setActiveTab] = useState("basic");
+     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+     const updArr = (key, idx, field, val) => setForm(f => { const arr = [...f[key]]; arr[idx] = { ...arr[idx], [field]: val }; return { ...f, [key]: arr }; });
+diff --git a/src/pages/Dashboard.jsx b/src/pages/Dashboard.jsx
+index 3f39e09..97deb41 100644
+--- a/src/pages/Dashboard.jsx
++++ b/src/pages/Dashboard.jsx
+@@ -230,10 +230,10 @@ export function Dashboard() {
+   useEffect(() => {
+     if (loading || !projects.length) return;
+     const active = projects.filter(p => p.status === 'active');
+-    if (!active.length) { setAlerts([]); return; }
+-    const ids = active.map(p => p.id);
+ 
+     async function fetchAlerts() {
++      if (!active.length) { setAlerts([]); return; }
++      const ids = active.map(p => p.id);
+       const [qualRes, subRes] = await Promise.all([
+         supabase.from('quality_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']),
+         supabase.from('submissions').select('project_id').in('project_id', ids).in('status', ['pending', 'submitted', 'reviewing']),
+diff --git a/src/pages/DiaryLog.jsx b/src/pages/DiaryLog.jsx
+index a4bbd2f..a0ce053 100644
+--- a/src/pages/DiaryLog.jsx
++++ b/src/pages/DiaryLog.jsx
+@@ -26,10 +26,10 @@ export function DiaryLog() {
+   const [month, setMonth] = useState(today.getMonth());
+   const [selectedDay, setSelectedDay] = useState(null);
+ 
+-  const [project, setProject] = useState(null);
++  const [_project, setProject] = useState(null);
+   const [logs, setLogs] = useState([]);
+-  const [loading, setLoading] = useState(true);
+-  const [error, setError] = useState(null);
++  const [_loading, setLoading] = useState(true);
++  const [_error, setError] = useState(null);
+   
+   const [showImportModal, setShowImportModal] = useState(false);
+   const [showQuickModal, setShowQuickModal] = useState(false);
+diff --git a/src/pages/PhotoTable.jsx b/src/pages/PhotoTable.jsx
+index d4a0202..31fd983 100644
+--- a/src/pages/PhotoTable.jsx
++++ b/src/pages/PhotoTable.jsx
+@@ -106,7 +106,7 @@ async function parseExif(file) {
+       exifGps = `${lD.toFixed(6)}, ${gD.toFixed(6)}`;
+     }
+     return { exifDate, exifGps };
+-  } catch (_) { return { exifDate: '', exifGps: '' }; }
++  } catch { return { exifDate: '', exifGps: '' }; }
+ }
+ 
+ let _gapiPickerReady = false;
+@@ -166,15 +166,6 @@ async function openGooglePicker(viewId, token) {
+   });
+ }
+ 
+-/** 透過 Drive API 下載檔案 Blob */
+-async function fetchDriveBlob(fileId, token) {
+-  const res = await fetch(
+-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+-    { headers: { Authorization: `Bearer ${token}` } }
+-  );
+-  if (!res.ok) throw new Error(`Drive 下載失敗（${res.status}）`);
+-  return res.blob();
+-}
+ 
+ /* 共用列印 CSS
+    A4 可用高度：29.7cm - 2cm padding = 27.7cm
+@@ -258,7 +249,7 @@ function openPrintWindow(bodyHtml, windowTitle) {
+ }
+ 
+ /* ── 記錄詳情 / 編輯 ── */
+-function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
++function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
+   const locked = record.tags?.includes('日報已附註');
+   const info   = parseRemark(record.remark);
+ 
+@@ -451,7 +442,7 @@ function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDelet
+ }
+ 
+ /* ── 雙頁籤列表 ── */
+-function PhotoRecordDB({ projectId, projectName, onNew, onDetail }) {
++function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }) {
+   const [tab,      setTab]      = useState('records');
+   const [records,  setRecords]  = useState([]);
+   const [loading,  setLoading]  = useState(true);
+@@ -469,7 +460,7 @@ function PhotoRecordDB({ projectId, projectName, onNew, onDetail }) {
+       .then(({ data }) => { setRecords(data || []); setLoading(false); });
+   }
+ 
+-  useEffect(() => { fetchRecords(); }, [projectId]);
++  useEffect(() => { async function init() { await fetchRecords(); } init(); }, [projectId]);
+ 
+   const locked   = records.filter(r => r.tags?.includes('日報已附註'));
+   const unlocked = records.filter(r => !r.tags?.includes('日報已附註'));
+@@ -609,7 +600,7 @@ function StepUpload({ onPhotosReady, onBack }) {
+   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps }
+   const [items,   setItems]   = useState([]);
+   const [gToken,  setGToken]  = useState(null);
+-  const [gBusy,   setGBusy]   = useState(false);
++  const [_gBusy,   setGBusy]   = useState(false);
+   const fileInputRef = useRef(null);
+ 
+   /* 本機上傳 */
+@@ -657,8 +648,8 @@ function StepUpload({ onPhotosReady, onBack }) {
+     } catch (e) { alert(`${errLabel}失敗：${e.message}`); }
+     finally { setGBusy(false); }
+   }
+-  const handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
+-  const handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
++  const _handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
++  const _handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
+ 
+   /* 繼續：直接進填資料，不在此上傳（保留 blob 供後續存檔用）*/
+   function handleNext() {
+@@ -786,7 +777,7 @@ function StepEntry({ photos, onComplete, onBack }) {
+ const SUBTITLE_OPTIONS = ['施工抽查紀錄', '材料抽查紀錄'];
+ 
+ /* ── 報告預覽 ── */
+-function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo, projectId, onBack, onSaved }) {
++function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved }) {
+   const [saving,      setSaving]      = useState(false);
+   const [saved,       setSaved]       = useState(false);
+   const [logAttached, setLogAttached] = useState(false);
+diff --git a/src/pages/ProgressManagement.jsx b/src/pages/ProgressManagement.jsx
+index b047519..efa069e 100644
+--- a/src/pages/ProgressManagement.jsx
++++ b/src/pages/ProgressManagement.jsx
+@@ -40,7 +40,13 @@ export function ProgressManagement() {
+     if (data) setScheduleItems(data);
+   };
+ 
+-  useEffect(() => { fetchRecords(); fetchScheduleItems(); }, [id]);
++  useEffect(() => {
++    async function init() {
++      await fetchRecords();
++      await fetchScheduleItems();
++    }
++    init();
++  }, [id]);
+ 
+   const handleDelete = async (recordId) => {
+     if (!window.confirm('確定要刪除這筆進度紀錄嗎？')) return;
+diff --git a/src/pages/ProjectDashboard.jsx b/src/pages/ProjectDashboard.jsx
+index 6224d90..747f4e8 100644
+--- a/src/pages/ProjectDashboard.jsx
++++ b/src/pages/ProjectDashboard.jsx
+@@ -8,6 +8,7 @@ import {
+   TrendingUp, FileText, Calendar, Loader2,
+   AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
+   ChevronDown, ChevronUp,
++  ClipboardList, Package, ClipboardCheck, Shield, Archive, BarChart2, Camera,
+ } from 'lucide-react';
+ import { supabase } from '../lib/supabaseClient';
+ import { useProject } from '../hooks/useProject';
+@@ -108,6 +109,8 @@ export function ProjectDashboard() {
+     fetchStats();
+   }, [projectId]);
+ 
++  const [now] = useState(() => Date.now());
++
+   if (projectLoading) return (
+     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '8px', color: 'var(--color-text-muted)' }}>
+       <Loader2 size={18} className="animate-spin" /><span>載入專案資料中…</span>
+@@ -122,7 +125,7 @@ export function ProjectDashboard() {
+ 
+   const diff = stats.latestActual - stats.latestPlanned;
+   const daysRemaining = project.end_date
+-    ? Math.ceil((new Date(project.end_date).getTime() - Date.now()) / 86400000)
++    ? Math.ceil((new Date(project.end_date).getTime() - now) / 86400000)
+     : null;
+ 
+   // 本月底日期（供日誌截止標籤用）

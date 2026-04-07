@@ -17,5 +17,9 @@
       "Bash(npm run:*)",
       "Bash(git -C e:/RT-Pmis-Supervision diff --stat HEAD)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "enableAllProjectMcpServers": true
 }

@@ -8,6 +8,7 @@ import {
   TrendingUp, FileText, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
   ChevronDown, ChevronUp,
+  ClipboardList, Package, ClipboardCheck, Shield, Archive, BarChart2, Camera,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -108,6 +109,8 @@ export function ProjectDashboard() {
     fetchStats();
   }, [projectId]);
 
+  const [now] = useState(() => Date.now());
+
   if (projectLoading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '8px', color: 'var(--color-text-muted)' }}>
       <Loader2 size={18} className="animate-spin" /><span>載入專案資料中…</span>
@@ -122,7 +125,7 @@ export function ProjectDashboard() {
 
   const diff = stats.latestActual - stats.latestPlanned;
   const daysRemaining = project.end_date
-    ? Math.ceil((new Date(project.end_date).getTime() - Date.now()) / 86400000)
+    ? Math.ceil((new Date(project.end_date).getTime() - now) / 86400000)
     : null;
 
   // 本月底日期（供日誌截止標籤用）

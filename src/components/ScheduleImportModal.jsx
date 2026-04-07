@@ -11,7 +11,7 @@ function parseDate(raw) {
     const d = XLSX.SSF.parse_date_code(raw);
     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
-  let s = String(raw).trim().replace(/[年\/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
+  let s = String(raw).trim().replace(/[年/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
   const roc = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})/);
   if (roc && parseInt(roc[1]) < 1911)
     s = `${parseInt(roc[1])+1911}-${roc[2].padStart(2,'0')}-${roc[3].padStart(2,'0')}`;

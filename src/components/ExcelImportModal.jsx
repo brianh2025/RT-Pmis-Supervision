@@ -31,7 +31,7 @@ function parseExcelDate(val) {
     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
   // String: try to normalize
-  const s = String(val).trim().replace(/[年\/]/g, '-').replace(/月/g, '-').replace(/日/g, '');
+  const s = String(val).trim().replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '');
   const d = new Date(s);
   return isNaN(d) ? null : d.toISOString().split('T')[0];
 }

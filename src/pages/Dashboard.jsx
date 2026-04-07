@@ -230,10 +230,10 @@ export function Dashboard() {
   useEffect(() => {
     if (loading || !projects.length) return;
     const active = projects.filter(p => p.status === 'active');
-    if (!active.length) { setAlerts([]); return; }
-    const ids = active.map(p => p.id);
 
     async function fetchAlerts() {
+      if (!active.length) { setAlerts([]); return; }
+      const ids = active.map(p => p.id);
       const [qualRes, subRes] = await Promise.all([
         supabase.from('quality_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']),
         supabase.from('submissions').select('project_id').in('project_id', ids).in('status', ['pending', 'submitted', 'reviewing']),

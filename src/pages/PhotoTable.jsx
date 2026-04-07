@@ -106,7 +106,7 @@ async function parseExif(file) {
       exifGps = `${lD.toFixed(6)}, ${gD.toFixed(6)}`;
     }
     return { exifDate, exifGps };
-  } catch (_) { return { exifDate: '', exifGps: '' }; }
+  } catch { return { exifDate: '', exifGps: '' }; }
 }
 
 let _gapiPickerReady = false;
@@ -166,15 +166,6 @@ async function openGooglePicker(viewId, token) {
   });
 }
 
-/** 透過 Drive API 下載檔案 Blob */
-async function fetchDriveBlob(fileId, token) {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) throw new Error(`Drive 下載失敗（${res.status}）`);
-  return res.blob();
-}
 
 /* 共用列印 CSS
    A4 可用高度：29.7cm - 2cm padding = 27.7cm
@@ -258,7 +249,7 @@ function openPrintWindow(bodyHtml, windowTitle) {
 }
 
 /* ── 記錄詳情 / 編輯 ── */
-function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
+function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
   const locked = record.tags?.includes('日報已附註');
   const info   = parseRemark(record.remark);
 
@@ -451,7 +442,7 @@ function RecordDetail({ record, projectId, projectName, onBack, onSaved, onDelet
 }
 
 /* ── 雙頁籤列表 ── */
-function PhotoRecordDB({ projectId, projectName, onNew, onDetail }) {
+function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }) {
   const [tab,      setTab]      = useState('records');
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -469,7 +460,7 @@ function PhotoRecordDB({ projectId, projectName, onNew, onDetail }) {
       .then(({ data }) => { setRecords(data || []); setLoading(false); });
   }
 
-  useEffect(() => { fetchRecords(); }, [projectId]);
+  useEffect(() => { async function init() { await fetchRecords(); } init(); }, [projectId]);
 
   const locked   = records.filter(r => r.tags?.includes('日報已附註'));
   const unlocked = records.filter(r => !r.tags?.includes('日報已附註'));
@@ -609,7 +600,7 @@ function StepUpload({ onPhotosReady, onBack }) {
   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps }
   const [items,   setItems]   = useState([]);
   const [gToken,  setGToken]  = useState(null);
-  const [gBusy,   setGBusy]   = useState(false);
+  const [_gBusy,   setGBusy]   = useState(false);
   const fileInputRef = useRef(null);
 
   /* 本機上傳 */
@@ -657,8 +648,8 @@ function StepUpload({ onPhotosReady, onBack }) {
     } catch (e) { alert(`${errLabel}失敗：${e.message}`); }
     finally { setGBusy(false); }
   }
-  const handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
-  const handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
+  const _handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
+  const _handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
 
   /* 繼續：直接進填資料，不在此上傳（保留 blob 供後續存檔用）*/
   function handleNext() {
@@ -786,7 +777,7 @@ function StepEntry({ photos, onComplete, onBack }) {
 const SUBTITLE_OPTIONS = ['施工抽查紀錄', '材料抽查紀錄'];
 
 /* ── 報告預覽 ── */
-function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo, projectId, onBack, onSaved }) {
+function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved }) {
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
   const [logAttached, setLogAttached] = useState(false);

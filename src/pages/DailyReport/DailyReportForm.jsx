@@ -10,21 +10,22 @@ const tisStyle = { ...inpStyle, padding: "8px 16px", fontSize: 12 };
 const lblStyle = { fontSize: 12, fontWeight: 600, color: C.textMid, marginBottom: 8, display: "block" };
 const Field = ({ label, children }) => <div style={{ marginBottom: 16 }}><label style={lblStyle}>{label}</label>{children}</div>;
 export function DailyReportForm({ existing, onSave, onBack, projectId, project }) {
-    const emptyReport = {
-        id: `dr-${Date.now()}`, project_id: projectId, date: today(),
-        reportNo: `114-${String(Math.floor(Math.random()*100)).padStart(3, "0")}`,
-        weather: "晴", tempHigh: 28, tempLow: 18,
-        supervisor: project?.supervisorName || "測試監造人員", contractor: project?.contractor || "測試營造公司",
-        plannedProgress: 0, actualProgress: 0,
-        progressNote: "",
-        quantities: [],
-        inspections: [],
-        qualityTests: [],
-        documents: [],
-        specialNote: "",
-    };
-
-    const [form, setForm] = useState(existing || emptyReport);
+    const [form, setForm] = useState(() => {
+        if (existing) return existing;
+        return {
+            id: `dr-${Date.now()}`, project_id: projectId, date: today(),
+            reportNo: `114-${String(Math.floor(Math.random()*100)).padStart(3, "0")}`,
+            weather: "晴", tempHigh: 28, tempLow: 18,
+            supervisor: project?.supervisorName || "測試監造人員", contractor: project?.contractor || "測試營造公司",
+            plannedProgress: 0, actualProgress: 0,
+            progressNote: "",
+            quantities: [],
+            inspections: [],
+            qualityTests: [],
+            documents: [],
+            specialNote: "",
+        };
+    });
     const [activeTab, setActiveTab] = useState("basic");
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
     const updArr = (key, idx, field, val) => setForm(f => { const arr = [...f[key]]; arr[idx] = { ...arr[idx], [field]: val }; return { ...f, [key]: arr }; });

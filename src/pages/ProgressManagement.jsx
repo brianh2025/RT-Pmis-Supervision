@@ -40,7 +40,13 @@ export function ProgressManagement() {
     if (data) setScheduleItems(data);
   };
 
-  useEffect(() => { fetchRecords(); fetchScheduleItems(); }, [id]);
+  useEffect(() => {
+    async function init() {
+      await fetchRecords();
+      await fetchScheduleItems();
+    }
+    init();
+  }, [id]);
 
   const handleDelete = async (recordId) => {
     if (!window.confirm('確定要刪除這筆進度紀錄嗎？')) return;
