@@ -429,11 +429,15 @@ export function Dashboard() {
                     onClick={() => navigate(`/projects/${p.id}/dashboard`)}
                     style={{ animationDelay: `${0.3 + index * 0.04}s` }}
                   >
-                    {/* 左側色條：落後→紅、執行中→藍、暫停→黃、竣工→灰 */}
+                    {/* 左側色條：漸層 */}
                     <div className="card-accent-side" style={{
-                      background: isBehind(p)              ? 'var(--color-danger)' :
-                                  p.status === 'active'    ? 'var(--color-primary)' :
-                                  p.status === 'suspended' ? 'var(--color-warning)' : 'var(--color-text-muted)'
+                      background: isBehind(p)
+                        ? 'linear-gradient(to bottom, #dc2626, #f87171)'
+                        : p.status === 'active'
+                        ? 'linear-gradient(to bottom, #1565C0, #42a5f5)'
+                        : p.status === 'suspended'
+                        ? 'linear-gradient(to bottom, #d97706, #fbbf24)'
+                        : 'linear-gradient(to bottom, #94a3b8, #cbd5e1)'
                     }} />
 
                     {/* 右側內容 */}
@@ -452,10 +456,14 @@ export function Dashboard() {
                         </div>
                       </div>
 
-                      {/* 進度條 */}
+                      {/* 進度條（落後用紅色實際條） */}
                       <div className="layered-progress-bar" style={{ height: '4px' }}>
                         <div className="bar-planned" style={{ width: `${planned}%` }} />
-                        <div className="bar-actual" style={{ width: `${prog}%` }} />
+                        <div className="bar-actual" style={{
+                          width: `${prog}%`,
+                          background: isBehind(p) ? 'var(--color-danger)' :
+                                      p.status === 'completed' ? 'var(--color-text-muted)' : undefined
+                        }} />
                       </div>
 
                       {/* 下排：狀態徽章（左）＋ 承包廠商靠右＋ 刪除鈕 */}
