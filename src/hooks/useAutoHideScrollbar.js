@@ -12,7 +12,6 @@ export function useAutoHideScrollbar(ref) {
     let timer = null;
 
     function onScroll() {
-      const node = el || document.querySelectorAll('.custom-scrollbar');
       if (el) {
         el.classList.add('scrolling');
       } else {

@@ -31,7 +31,11 @@ GitHub 帳號：brianh2025，repo 為 public。
 - 每季：Supabase SQL 健檢 + 程式碼安全稽核
 - 發版前：完整清單
 
-## 建置基準（2026-04）
-- JS bundle: ~1.85 MB（gzip ~551 KB）
-- CSS bundle: ~88 KB（gzip ~15.5 KB）
-- 建置時間: ~650 ms
+## 建置基準（2026-04-06 更新）
+- JS 主 chunk: ~208 KB（gzip ~66 KB）— 已啟用 React.lazy code splitting
+- CSS bundle: ~117 KB（gzip ~20 KB）
+- 建置時間: ~4 s
+- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告）
+
+## 已知技術債
+- `xlsx` 套件有 Prototype Pollution（high）漏洞，官方無修復版。前端使用風險較低，但應評估替換為 `xlsx-js-style` 或 `exceljs`。

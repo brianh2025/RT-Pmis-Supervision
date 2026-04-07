@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
 
 export const DailyReportContext = createContext();
 
@@ -32,13 +31,16 @@ export function DailyReportProvider({ children, projectId }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const saved = localStorage.getItem(`daily_reports_${projectId}`);
-        if (saved) {
-            setReports(JSON.parse(saved));
-        } else {
-            setReports(INIT_DAILY_REPORTS.map(r => ({ ...r, project_id: projectId })));
+        async function init() {
+            const saved = localStorage.getItem(`daily_reports_${projectId}`);
+            if (saved) {
+                setReports(JSON.parse(saved));
+            } else {
+                setReports(INIT_DAILY_REPORTS.map(r => ({ ...r, project_id: projectId })));
+            }
+            setLoading(false);
         }
-        setLoading(false);
+        init();
     }, [projectId]);
 
     const saveReport = (form) => {

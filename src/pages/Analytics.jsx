@@ -2,7 +2,7 @@
    Analytics.jsx — 統計分析
    Ported from Manus_v1/Analytics.tsx
    ============================================================ */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, TrendingUp, BarChart3, PieChart as PieIcon, Activity, ShieldCheck, FlaskConical } from 'lucide-react';
 import {
@@ -14,6 +14,18 @@ import './Dashboard.css';
 
 const COLORS = ['#1565C0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#f97316'];
 
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px' }}>
+      <p style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }}>{label}</p>
+      {payload.map(p => (
+        <p key={p.name} style={{ color: p.color, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>
+      ))}
+    </div>
+  );
+}
+
 export function Analytics() {
   const { id: projectId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -21,14 +33,15 @@ export function Analytics() {
   const [submissionStats, setSubmissionStats] = useState([]);
   const [qualityStats, setQualityStats] = useState([]);
   const [diaryStats, setDiaryStats] = useState({});
-  const [materialStats, setMaterialStats] = useState({});
+  const [_materialStats, setMaterialStats] = useState({});
   const [qualityRateStats, setQualityRateStats] = useState({});
   const [inspectionStats, setInspectionStats] = useState({});
   const [activeTab, setActiveTab] = useState('progress');
 
-  const load = useCallback(async () => {
-    if (!supabase || !projectId) { setLoading(false); return; }
-    setLoading(true);
+  useEffect(() => {
+    async function load() {
+      if (!supabase || !projectId) { setLoading(false); return; }
+      setLoading(true);
 
     const [
       { data: progRows },
@@ -131,27 +144,15 @@ export function Analytics() {
     }
 
     setLoading(false);
+    }
+    load();
   }, [projectId]);
-
-  useEffect(() => { load(); }, [load]);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px', color: 'var(--color-text-muted)' }}>
       <Loader2 size={18} className="animate-spin" /><span>載入統計資料中…</span>
     </div>
   );
-
-  function CustomTooltip({ active, payload, label }) {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={{ background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 14px', fontSize: '12px' }}>
-        <p style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }}>{label}</p>
-        {payload.map(p => (
-          <p key={p.name} style={{ color: p.color, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>
-        ))}
-      </div>
-    );
-  }
 
   const TABS = [
     { key: 'progress', label: '施工進度' },

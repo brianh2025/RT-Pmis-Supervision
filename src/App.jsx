@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
@@ -6,19 +7,28 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Footer } from './components/Footer';
 import { ProjectLayout } from './components/ProjectLayout';
-import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { ProjectDashboard } from './pages/ProjectDashboard';
-import { Submission } from './pages/Submission';
-import { Quality } from './pages/Quality';
-import { Archive } from './pages/Archive';
-import { Analytics } from './pages/Analytics';
-import { DailyReportController } from './pages/DailyReport/DailyReportController';
-import { DiaryLog } from './pages/DiaryLog';
-import { DiaryPrintView } from './pages/DiaryPrintView';
-import { ProgressManagement } from './pages/ProgressManagement';
-import { MaterialControl } from './pages/MaterialControl';
-import { PhotoTable } from './pages/PhotoTable';
+
+const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const ProjectDashboard = React.lazy(() => import('./pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
+const Submission = React.lazy(() => import('./pages/Submission').then(m => ({ default: m.Submission })));
+const Quality = React.lazy(() => import('./pages/Quality').then(m => ({ default: m.Quality })));
+const Archive = React.lazy(() => import('./pages/Archive').then(m => ({ default: m.Archive })));
+const Analytics = React.lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
+const DailyReportController = React.lazy(() => import('./pages/DailyReport/DailyReportController').then(m => ({ default: m.DailyReportController })));
+const DiaryLog = React.lazy(() => import('./pages/DiaryLog').then(m => ({ default: m.DiaryLog })));
+const DiaryPrintView = React.lazy(() => import('./pages/DiaryPrintView').then(m => ({ default: m.DiaryPrintView })));
+const ProgressManagement = React.lazy(() => import('./pages/ProgressManagement').then(m => ({ default: m.ProgressManagement })));
+const MaterialControl = React.lazy(() => import('./pages/MaterialControl').then(m => ({ default: m.MaterialControl })));
+const PhotoTable = React.lazy(() => import('./pages/PhotoTable').then(m => ({ default: m.PhotoTable })));
+
+function PageLoader() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+      載入中…
+    </div>
+  );
+}
 
 function WelcomePage() {
   return (
@@ -36,47 +46,49 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <div className="app-container">
-            <Routes>
-              <Route path="/" element={<WelcomePage />} />
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* Per-project routes nested within ProjectLayout */}
-              <Route 
-                path="/projects/:id" 
-                element={
-                  <ProtectedRoute>
-                    <ProjectLayout />
-                  </ProtectedRoute>
-                }
-              >
-                {/* Redirect /projects/:id to /projects/:id/dashboard */}
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<ProjectDashboard />} />
-                <Route path="diary" element={<DailyReportController />} />
-                <Route path="supervision" element={<DiaryLog />} />
-                <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
-                <Route path="progress" element={<ProgressManagement />} />
-                <Route path="material" element={<MaterialControl />} />
-                <Route path="submission" element={<Submission />} />
-                <Route path="quality" element={<Quality />} />
-                <Route path="archive" element={<Archive />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="photos" element={<PhotoTable />} />
-              </Route>
-              
-              {/* Fallback: redirect unknown routes to home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <Suspense fallback={<PageLoader />}>
+            <div className="app-container">
+              <Routes>
+                <Route path="/" element={<WelcomePage />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Per-project routes nested within ProjectLayout */}
+                <Route
+                  path="/projects/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ProjectLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  {/* Redirect /projects/:id to /projects/:id/dashboard */}
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<ProjectDashboard />} />
+                  <Route path="diary" element={<DailyReportController />} />
+                  <Route path="supervision" element={<DiaryLog />} />
+                  <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
+                  <Route path="progress" element={<ProgressManagement />} />
+                  <Route path="material" element={<MaterialControl />} />
+                  <Route path="submission" element={<Submission />} />
+                  <Route path="quality" element={<Quality />} />
+                  <Route path="archive" element={<Archive />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="photos" element={<PhotoTable />} />
+                </Route>
+
+                {/* Fallback: redirect unknown routes to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </Suspense>
         </Router>
       </AuthProvider>
     </ThemeProvider>

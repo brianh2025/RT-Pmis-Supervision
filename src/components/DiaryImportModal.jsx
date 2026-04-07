@@ -61,31 +61,12 @@ async function extractPageItems(page) {
 }
 
 // ---------------------------------------------------------------------------
-// Find item value nearest to a label item using x/y constraints
-// ---------------------------------------------------------------------------
-function findNear(items, labelStr, opts = {}) {
-  const { maxDy = 5, minDx = 0, maxDx = 200, exactY = null } = opts;
-  const label = items.find(i => i.str.includes(labelStr));
-  if (!label) return null;
-  // Search items on roughly the same row (same y ± maxDy)
-  const sameRow = items.filter(i =>
-    Math.abs(i.y - label.y) <= maxDy &&
-    i.x > label.x + minDx &&
-    i.x <= label.x + maxDx &&
-    i.str !== labelStr
-  );
-  if (!sameRow.length) return null;
-  sameRow.sort((a, b) => a.x - b.x);
-  return sameRow[0].str;
-}
-
-// ---------------------------------------------------------------------------
 // Date parsers: handles CE and ROC year strings
 // ---------------------------------------------------------------------------
 function parseDate(raw) {
   if (!raw) return null;
   let s = String(raw).trim()
-    .replace(/[年\/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
+    .replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
     .trim();
   // ROC: 2~3 digit year like 113-05-12 or 99-05-12
   const rocMatch = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})$/);

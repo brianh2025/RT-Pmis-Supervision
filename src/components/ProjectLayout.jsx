@@ -16,7 +16,7 @@ export function ProjectLayout() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { project, loading } = useProject(projectId);
+  const { project: _project, loading: _loading } = useProject(projectId);
   const [time, setTime] = useState(new Date());
   const contentRef = useRef(null);
   useAutoHideScrollbar(contentRef);
