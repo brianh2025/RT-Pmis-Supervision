@@ -12,6 +12,7 @@ const EMPTY_FORM = {
   start_date: '',
   end_date: '',
   budget: '',
+  drive_folder_id: '',
 };
 
 export function AddProjectModal({ onClose, onSuccess }) {
@@ -53,6 +54,7 @@ export function AddProjectModal({ onClose, onSuccess }) {
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       budget: form.budget ? parseFloat(form.budget) : null,
+      drive_folder_id: form.drive_folder_id.trim() || null,
       created_by: user?.id ?? null,
     };
 
@@ -127,6 +129,25 @@ export function AddProjectModal({ onClose, onSuccess }) {
                 <option value="completed">已完工 Completed</option>
                 <option value="suspended">暫停 Suspended</option>
               </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label className="form-label">
+                <span>Google Drive 工程資料夾 ID</span>
+                <span className="en">DRIVE FOLDER ID（選填）</span>
+              </label>
+              <input
+                name="drive_folder_id"
+                className="form-input"
+                value={form.drive_folder_id}
+                onChange={handleChange}
+                placeholder="貼上 Google Drive 工程資料夾網址中的 ID（1ABC…）"
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                用於廠商施工日誌 Excel 自動同步。從 Drive 資料夾網址複製 ID：drive.google.com/drive/folders/<strong>此處</strong>
+              </p>
             </div>
           </div>
 

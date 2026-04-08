@@ -1,30 +1,26 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 
 export const DailyReportContext = createContext();
 
-// Mock Initial Data 
-const INIT_DAILY_REPORTS = [
-    {
-        id: "mock-1", project_id: "mock-project", date: new Date().toISOString().split("T")[0], reportNo: "114-001", weather: "晴",
-        tempHigh: 26, tempLow: 18, supervisor: "林工程師", contractor: "台灣營造股份有限公司",
-        plannedProgress: 15.5, actualProgress: 16.2,
-        progressNote: "本日進度正常，較預定進度超前0.7%，施工人員工作效率良好。",
-        quantities: [
-            { id: 1, item: "PC路面鋪設", unit: "m²", contractQty: 2500, todayQty: 80, cumQty: 520, note: "" },
-            { id: 2, item: "側溝施作", unit: "m", contractQty: 800, todayQty: 25, cumQty: 210, note: "" },
-        ],
-        inspections: [
-            { id: 1, no: "QC-001", item: "模板組立檢查", result: "合格", note: "尺寸符合設計圖說" }
-        ],
-        qualityTests: [
-            { id: 1, material: "預拌混凝土", contractQty: "500m³", doneQty: "120m³", testItem: "坍度試驗", result: "合格", note: "坍度8cm" }
-        ],
-        documents: [
-            { id: 1, type: "業主公文", no: "北工字第1130001234號", subject: "工程變更通知", date: "2026-03-04", note: "" }
-        ],
-        specialNote: "今日施工人數32人，機具運作正常。廠商申請第一期工程展延7天，已轉呈業主審核。",
-    }
-];
+// 將 daily_report_items（Supabase）合併進對應的 report
+function mergeItems(reports, itemsByDate) {
+    return reports.map(r => {
+        const dbItems = itemsByDate[r.date] || [];
+        if (!dbItems.length) return r;
+        // 轉換成 DailyReportForm 的 quantities 格式
+        const quantities = dbItems.map((it, i) => ({
+            id: it.id || i + 1,
+            item: it.item_name,
+            unit: it.unit || '',
+            contractQty: 0,
+            todayQty: it.today_qty || 0,
+            cumQty: it.cumulative_qty || 0,
+            note: it.note || '',
+        }));
+        return { ...r, quantities };
+    });
+}
 
 export function DailyReportProvider({ children, projectId }) {
     const [reports, setReports] = useState([]);
@@ -32,24 +28,85 @@ export function DailyReportProvider({ children, projectId }) {
 
     useEffect(() => {
         async function init() {
-            const saved = localStorage.getItem(`daily_reports_${projectId}`);
-            if (saved) {
-                setReports(JSON.parse(saved));
-            } else {
-                setReports(INIT_DAILY_REPORTS.map(r => ({ ...r, project_id: projectId })));
-            }
+            // 1. 從 localStorage 讀取手動建立的報表
+            let localReports = [];
+            try {
+                const saved = localStorage.getItem(`daily_reports_${projectId}`);
+                if (saved) localReports = JSON.parse(saved);
+            } catch {}
+
+            // 2. 從 Supabase 讀取 Drive 同步的工項明細
+            const { data: dbItems } = await supabase
+                .from('daily_report_items')
+                .select('*')
+                .eq('project_id', projectId)
+                .order('log_date', { ascending: false });
+
+            // 按日期分組
+            const itemsByDate = {};
+            (dbItems || []).forEach(it => {
+                if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
+                itemsByDate[it.log_date].push(it);
+            });
+
+            // 3. 合併：local 報表 + DB 工項；DB 有但 local 沒有的日期，建立骨架
+            const localDates = new Set(localReports.map(r => r.date));
+            const dbOnlyDates = Object.keys(itemsByDate).filter(d => !localDates.has(d));
+            const dbOnlyReports = dbOnlyDates.map(date => ({
+                id: `db-${date}`,
+                project_id: projectId,
+                date,
+                reportNo: `Drive-${date}`,
+                weather: '晴',
+                tempHigh: 0, tempLow: 0,
+                supervisor: '', contractor: '',
+                plannedProgress: 0, actualProgress: 0,
+                progressNote: '', quantities: [],
+                inspections: [], qualityTests: [], documents: [],
+                specialNote: '',
+            }));
+
+            const allReports = mergeItems(
+                [...localReports, ...dbOnlyReports],
+                itemsByDate
+            ).sort((a, b) => a.date.localeCompare(b.date));
+
+            setReports(allReports);
             setLoading(false);
         }
-        init();
+        if (projectId) init();
     }, [projectId]);
 
-    const saveReport = (form) => {
+    const saveReport = async (form) => {
+        // 更新 localStorage
         setReports(prev => {
             const exists = prev.find(r => r.id === form.id);
             const newList = exists ? prev.map(r => r.id === form.id ? form : r) : [...prev, form];
-            localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(newList));
+            // 只存 local（非 DB 骨架）記錄
+            const toStore = newList.filter(r => !r.id.startsWith('db-'));
+            localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(toStore));
             return newList;
         });
+
+        // 同步工項至 Supabase daily_report_items
+        if (form.quantities?.length > 0) {
+            const payload = form.quantities
+                .filter(q => q.item?.trim())
+                .map(q => ({
+                    project_id: projectId,
+                    log_date: form.date,
+                    item_name: q.item,
+                    unit: q.unit || null,
+                    today_qty: q.todayQty || 0,
+                    cumulative_qty: q.cumQty || 0,
+                    note: q.note || null,
+                }));
+            if (payload.length) {
+                await supabase.from('daily_report_items').upsert(
+                    payload, { onConflict: 'project_id,log_date,item_name' }
+                );
+            }
+        }
     };
 
     return (

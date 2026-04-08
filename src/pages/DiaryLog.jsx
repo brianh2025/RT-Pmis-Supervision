@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCw, RefreshCcw, PlusCircle } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
+import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryLog.css'; // Minimal specific styles, relying mostly on inline and generic styles
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
@@ -26,14 +27,16 @@ export function DiaryLog() {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const [_project, setProject] = useState(null);
+  const [project, setProject] = useState(null);
   const [logs, setLogs] = useState([]);
   const [_loading, setLoading] = useState(true);
   const [_error, setError] = useState(null);
   
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showQuickModal, setShowQuickModal] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showImportModal,  setShowImportModal]  = useState(false);
+  const [showQuickModal,   setShowQuickModal]   = useState(false);
+  const [showDriveSync,    setShowDriveSync]    = useState(false);
+  const [quickInitialData, setQuickInitialData] = useState(null);
+  const [refreshTrigger,   setRefreshTrigger]   = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -43,7 +46,7 @@ export function DiaryLog() {
       // Fetch project name
       const { data: proj } = await supabase
         .from('projects')
-        .select('name, contractor, status')
+        .select('name, contractor, status, start_date, drive_folder_id')
         .eq('id', projectId)
         .single();
       setProject(proj);
@@ -84,8 +87,10 @@ export function DiaryLog() {
         map[l.log_date] = {
             weather: weatherStr,
             summary: l.work_items || l.notes || '無施工記事',
-            tags: ['監造報表'], 
-            progress: l.cumulative_progress || 0 // Assuming progress may exist
+            tags: ['監造報表'],
+            progress: l.actual_progress || l.cumulative_progress || 0,
+            syncSource: l.sync_source || 'manual',
+            syncedAt: l.synced_at,
         };
     });
     return map;
@@ -94,6 +99,27 @@ export function DiaryLog() {
   const selectedKey = selectedDay ? toKey(year, month, selectedDay) : null;
   const selectedData = selectedKey ? importedData[selectedKey] : null;
   const importedCount = Object.keys(importedData).length;
+
+  // 從施工日誌（localStorage）讀取同日期資料，轉為 QuickDiaryModal 初始值
+  const getDiaryInitialData = (dateKey) => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
+      const match = stored.find(r => r.date === dateKey);
+      if (!match) return null;
+      const workText = [
+        ...(match.quantities || []).map(q => `${q.item}：${q.todayQty} ${q.unit}`).filter(s => s.trim() !== '：'),
+        match.specialNote,
+      ].filter(Boolean).join('\n');
+      return {
+        weather_am: match.weather || '晴',
+        weather_pm: match.weather || '晴',
+        work_items: workText || match.progressNote || '',
+        notes: match.progressNote || '',
+        planned_progress: match.plannedProgress || null,
+        actual_progress:  match.actualProgress  || null,
+      };
+    } catch { return null; }
+  };
 
   return (
     <div className="diary-log-page">
@@ -106,12 +132,22 @@ export function DiaryLog() {
             <span className="status-badge success">
                 本月 {importedCount} 筆已匯入
             </span>
-            <button 
+            {project?.drive_folder_id && (
+                <button
+                    onClick={() => setShowDriveSync(true)}
+                    className="btn-dash-action"
+                    style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)' }}
+                >
+                    <RefreshCcw size={13} />
+                    <span>Drive 回朔同步</span>
+                </button>
+            )}
+            <button
                 onClick={() => setShowImportModal(true)}
                 className="btn-dash-action"
             >
                 <CloudDownload size={14} />
-                <span>手動匯入</span>
+                <span>PDF 匯入</span>
             </button>
         </div>
       </header>
@@ -178,15 +214,21 @@ export function DiaryLog() {
                         >
                             <span style={{ fontSize: '13px', fontWeight: isToday || isSelected ? 600 : 400 }}>{day}</span>
                             {!isFuture && (
-                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '4px', background: hasData ? 'var(--color-success)' : 'var(--color-border)' }} />
+                                <div style={{
+                                    width: '6px', height: '6px', borderRadius: '50%', marginTop: '4px',
+                                    background: hasData
+                                        ? (importedData[key]?.syncSource === 'google_drive' ? '#2563eb' : 'var(--color-success)')
+                                        : 'var(--color-border)'
+                                }} />
                             )}
                         </button>
                     );
                 })}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-block-border)', fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)' }} />已匯入</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-block-border)', fontSize: '11px', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)' }} />手動建檔</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2563eb' }} />Drive 同步</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-border)' }} />未匯入</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary)' }} />今天</span>
             </div>
@@ -237,21 +279,30 @@ export function DiaryLog() {
                             </div>
                         </div>
                     ) : (
-                        <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-                            <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 12px' }} />
-                            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>尚未提送報表</p>
-                            <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>可快速新增或手動匯入 PDF</p>
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
-                                <button
-                                    onClick={() => setShowQuickModal(true)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 14px', background: 'rgba(15,82,186,0.1)', color: 'var(--color-primary)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600 }}>
-                                    <PlusCircle size={13} /> 快速新增
-                                </button>
-                                <button
-                                    onClick={() => setShowImportModal(true)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 14px', background: 'var(--color-bg2)', color: 'var(--color-text2)', borderRadius: '6px', fontSize: '12px', border: '1px solid var(--color-border)', cursor: 'pointer' }}>
-                                    <RefreshCcw size={12} /> PDF 匯入
-                                </button>
+                        <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+                            <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 10px' }} />
+                            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '2px' }}>尚未建立監造報表</p>
+                            <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>可從施工日誌帶入、手動填寫或 PDF 匯入</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '14px', alignItems: 'center' }}>
+                                {getDiaryInitialData(selectedKey) && (
+                                    <button
+                                        onClick={() => { setQuickInitialData(getDiaryInitialData(selectedKey)); setShowQuickModal(true); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 16px', background: 'rgba(245,158,11,0.1)', color: '#b45309', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(245,158,11,0.35)', cursor: 'pointer', fontWeight: 600, width: '100%', justifyContent: 'center' }}>
+                                        <BookOpen size={13} /> 從施工日誌帶出
+                                    </button>
+                                )}
+                                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                    <button
+                                        onClick={() => { setQuickInitialData(null); setShowQuickModal(true); }}
+                                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 10px', background: 'rgba(15,82,186,0.1)', color: 'var(--color-primary)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600, justifyContent: 'center' }}>
+                                        <PlusCircle size={13} /> 手動建檔
+                                    </button>
+                                    <button
+                                        onClick={() => setShowImportModal(true)}
+                                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px', padding: '7px 10px', background: 'var(--color-bg2)', color: 'var(--color-text2)', borderRadius: '6px', fontSize: '12px', border: '1px solid var(--color-border)', cursor: 'pointer', justifyContent: 'center' }}>
+                                        <RefreshCcw size={12} /> PDF 匯入
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -302,12 +353,21 @@ export function DiaryLog() {
           onSuccess={() => setRefreshTrigger(prev => prev + 1)}
         />
       )}
+      {showDriveSync && (
+        <DriveSyncModal
+          projectId={projectId}
+          startDate={project?.start_date || ''}
+          onClose={() => setShowDriveSync(false)}
+          onSuccess={() => { setShowDriveSync(false); setRefreshTrigger(prev => prev + 1); }}
+        />
+      )}
       {showQuickModal && selectedKey && (
         <QuickDiaryModal
           projectId={projectId}
           logDate={selectedKey}
-          onClose={() => setShowQuickModal(false)}
-          onSuccess={() => { setShowQuickModal(false); setRefreshTrigger(prev => prev + 1); }}
+          initialData={quickInitialData}
+          onClose={() => { setShowQuickModal(false); setQuickInitialData(null); }}
+          onSuccess={() => { setShowQuickModal(false); setQuickInitialData(null); setRefreshTrigger(prev => prev + 1); }}
         />
       )}
     </div>

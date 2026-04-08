@@ -4,12 +4,14 @@ import { DailyReportProvider } from './DailyReportContext';
 import { DailyReportList } from './DailyReportList';
 import { DailyReportView } from './DailyReportView';
 import { DailyReportForm } from './DailyReportForm';
+import { DiaryExcelImportModal } from '../../components/DiaryExcelImportModal';
 
 function DailyReportContainer() {
     const { id: projectId } = useParams();
     const [viewMode, setViewMode] = useState("list"); // list | view | form
     const [selectedReport, setSelectedReport] = useState(null);
     const [editReport, setEditReport] = useState(null);
+    const [showImport, setShowImport] = useState(false);
 
     const mockProject = {
         name: "測試工程專案",
@@ -44,9 +46,10 @@ function DailyReportContainer() {
             </div>
 
             {viewMode === "list" && (
-                <DailyReportList 
-                    onSelectReport={handleSelectReport} 
-                    onNewReport={handleNewReport} 
+                <DailyReportList
+                    onSelectReport={handleSelectReport}
+                    onNewReport={handleNewReport}
+                    onImport={() => setShowImport(true)}
                 />
             )}
 
@@ -59,14 +62,19 @@ function DailyReportContainer() {
             )}
 
             {viewMode === "form" && (
-                <DailyReportForm 
-                    existing={editReport} 
+                <DailyReportForm
+                    existing={editReport}
                     projectId={projectId}
                     project={mockProject}
-                    onBack={() => setViewMode(editReport && selectedReport ? "view" : "list")} 
-                    onSave={(form) => {
-                        handleSave(form);
-                    }}
+                    onBack={() => setViewMode(editReport && selectedReport ? "view" : "list")}
+                    onSave={(form) => { handleSave(form); }}
+                />
+            )}
+            {showImport && (
+                <DiaryExcelImportModal
+                    projectId={projectId}
+                    onClose={() => setShowImport(false)}
+                    onSuccess={() => { setShowImport(false); window.location.reload(); }}
                 />
             )}
         </div>

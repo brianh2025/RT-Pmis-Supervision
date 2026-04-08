@@ -1,8 +1,9 @@
 import React, { useContext } from 'react';
 import { DailyReportContext } from './DailyReportContext';
 import { Badge, Card, I, weatherIcon, thisMonth, C } from './utils';
+import { FileSpreadsheet } from 'lucide-react';
 
-export function DailyReportList({ onSelectReport, onNewReport }) {
+export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
     const { reports, loading } = useContext(DailyReportContext);
     const month = thisMonth();
 
@@ -41,13 +42,22 @@ export function DailyReportList({ onSelectReport, onNewReport }) {
                 </div>
 
                 {/* Action Bar */}
-                <button onClick={onNewReport} style={{
-                    width: "100%", padding: "13px", borderRadius: 12, border: `2px dashed ${C.primary}55`,
-                    background: C.primaryLight, color: C.primary, fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14,
-                }}>
-                    {I.plus(C.primary)} 新增施工日誌
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                    <button onClick={onNewReport} style={{
+                        flex: 1, padding: "13px", borderRadius: 12, border: `2px dashed ${C.primary}55`,
+                        background: C.primaryLight, color: C.primary, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }}>
+                        {I.plus(C.primary)} 新增施工日誌
+                    </button>
+                    <button onClick={onImport} style={{
+                        padding: "13px 18px", borderRadius: 12, border: `1.5px solid ${C.border}`,
+                        background: "#fff", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 6, whiteSpace: 'nowrap',
+                    }}>
+                        <FileSpreadsheet size={15} color={C.textMid} /> Excel 匯入
+                    </button>
+                </div>
 
                 {/* List */}
                 {reports.length === 0 ? (
