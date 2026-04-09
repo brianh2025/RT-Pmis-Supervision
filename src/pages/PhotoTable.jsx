@@ -139,8 +139,8 @@ async function getGoogleToken() {
   return new Promise((resolve, reject) => {
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GCLIENT_ID,
-      // drive：完整存取（上傳 + 讀取已有檔案 + 設權限）
-      scope: 'https://www.googleapis.com/auth/drive',
+      // drive.file：僅限本應用建立/開啟的檔案（不需 OAuth 驗證，sensitive 等級）
+      scope: 'https://www.googleapis.com/auth/drive.file',
       callback: resp => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
     });
     client.requestAccessToken({ prompt: '' });

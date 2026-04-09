@@ -315,8 +315,6 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         notes: r.notes || null,
         planned_progress: r.planned_progress || 0,
         actual_progress: r.actual_progress || 0,
-        // Map actual progress to cumulative_progress for legacy UI compatibility if needed
-        cumulative_progress: r.actual_progress || 0,
         created_by: user?.id || null,
       }));
 

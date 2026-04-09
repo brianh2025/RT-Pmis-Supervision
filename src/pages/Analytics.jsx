@@ -54,7 +54,7 @@ export function Analytics() {
       supabase.from('progress_items').select('*').eq('project_id', projectId).order('created_at'),
       supabase.from('submissions').select('status, category, created_at').eq('project_id', projectId),
       supabase.from('quality_issues').select('status, severity, inspection_date').eq('project_id', projectId).order('inspection_date'),
-      supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, cumulative_progress').eq('project_id', projectId).order('log_date'),
+      supabase.from('daily_logs').select('log_date, planned_progress, actual_progress').eq('project_id', projectId).order('log_date'),
       supabase.from('mcs_submission').select('result').eq('project_id', projectId),
       supabase.from('construction_inspections').select('result, work_item, inspect_date').eq('project_id', projectId).order('inspect_date'),
     ]);
@@ -91,7 +91,7 @@ export function Analytics() {
         date: r.log_date?.substring(5) || '',
         planned: r.planned_progress || 0,
         actual: r.actual_progress || 0,
-        cumulative: r.cumulative_progress || 0,
+        cumulative: r.actual_progress || 0,
       }));
       setDiaryStats({ timeline, total: diaryRows.length });
     }
