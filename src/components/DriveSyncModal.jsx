@@ -157,6 +157,13 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                   </table>
                 </div>
               )}
+              {results.truncated && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-warning, #f59e0b)', padding: '7px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                  <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2 }} />
+                  共找到 {results.total} 筆，本次處理前 {results.processed} 筆。
+                  請將起始日期改為 <strong>{results.lastSyncedDate}</strong> 後再次同步以繼續。
+                </div>
+              )}
               {results.total === 0 && (
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                   Drive 資料夾內未找到符合條件的施工日誌檔案。

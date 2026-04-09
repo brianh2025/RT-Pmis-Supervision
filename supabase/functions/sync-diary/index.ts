@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v15
+// Supabase Edge Function: sync-diary v20
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -612,9 +612,18 @@ Deno.serve(async (req) => {
           files: allFiles.map((f) => ({ name: f.name, id: f.id, parsedDate: parseDateFromFileName(f.name) })),
         });
       }
-      const files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate);
+      const MAX_FILES_PER_BATCH = 30;
+      let files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate);
+      // 依日期排序（有日期的優先，無法解析的排後面）
+      files.sort((a, b) => {
+        const da = parseDateFromFileName(a.name) ?? "9999";
+        const db = parseDateFromFileName(b.name) ?? "9999";
+        return da.localeCompare(db);
+      });
+      const truncated = files.length > MAX_FILES_PER_BATCH;
+      const batch = truncated ? files.slice(0, MAX_FILES_PER_BATCH) : files;
       const results = [];
-      for (const f of files) {
+      for (const f of batch) {
         try {
           const r = await syncFile(f.id, f.name, projectId, token);
           results.push({ file: f.name, date: r.date, dates: r.dates, itemCount: r.itemCount, success: true });
@@ -622,7 +631,8 @@ Deno.serve(async (req) => {
           results.push({ file: f.name, success: false, error: String(err) });
         }
       }
-      return json({ mode: "batch", total: files.length, results });
+      const lastSyncedDate = batch.map(f => parseDateFromFileName(f.name)).filter(Boolean).sort().pop() ?? null;
+      return json({ mode: "batch", total: files.length, processed: batch.length, truncated, lastSyncedDate, results });
     }
 
     const { fileId, fileName, projectFolderId } = body;
