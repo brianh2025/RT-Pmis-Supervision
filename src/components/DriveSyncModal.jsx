@@ -5,9 +5,19 @@ import './Modal.css';
 
 const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
 
+// 民國年轉西元（0114-12-25 → 2025-12-25）
+function toIsoDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const y = parseInt(parts[0]);
+  if (y < 200) return `${y + 1911}-${parts[1]}-${parts[2]}`;
+  return dateStr;
+}
+
 export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
   const today = new Date().toISOString().split('T')[0];
-  const [rangeStart, setRangeStart] = useState(startDate || '');
+  const [rangeStart, setRangeStart] = useState(toIsoDate(startDate) || '');
   const [rangeEnd,   setRangeEnd]   = useState(today);
   const [running,    setRunning]    = useState(false);
   const [results,    setResults]    = useState(null);

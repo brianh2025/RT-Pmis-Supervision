@@ -86,18 +86,43 @@ async function downloadDriveFile(fileId: string, token: string): Promise<ArrayBu
   return res.arrayBuffer();
 }
 
+// 列出單一資料夾的直接子項
+async function listFolderChildren(
+  folderId: string, token: string
+): Promise<{ id: string; name: string; mimeType: string }[]> {
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`列出 Drive 子項失敗: ${await res.text()}`);
+  const json = await res.json();
+  return json.files || [];
+}
+
+// 遞迴搜尋所有含「施工日誌」的 Excel 檔案（深度 ≤ 5 層）
+async function listDiaryFilesRecursive(
+  folderId: string, token: string, depth = 0
+): Promise<{ id: string; name: string }[]> {
+  if (depth > 5) return [];
+  const FOLDER = "application/vnd.google-apps.folder";
+  const children = await listFolderChildren(folderId, token);
+  const results: { id: string; name: string }[] = [];
+  for (const item of children) {
+    if (item.mimeType === FOLDER) {
+      const sub = await listDiaryFilesRecursive(item.id, token, depth + 1);
+      results.push(...sub);
+    } else if (item.name.includes("施工日誌")) {
+      results.push({ id: item.id, name: item.name });
+    }
+  }
+  return results;
+}
+
 async function listDiaryFiles(
   folderId: string, token: string, startDate?: string, endDate?: string
 ): Promise<{ id: string; name: string }[]> {
-  // 使用 ancestors 遞迴搜尋所有子資料夾（而非只搜直接子層 parents）
-  const q = encodeURIComponent(`'${folderId}' in ancestors and name contains '施工日誌' and mimeType != 'application/vnd.google-apps.folder' and trashed=false`);
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) throw new Error(`列出 Drive 檔案失敗: ${await res.text()}`);
-  const json = await res.json();
-  let files: { id: string; name: string }[] = json.files || [];
+  let files = await listDiaryFilesRecursive(folderId, token);
   if (startDate || endDate) {
     files = files.filter((f) => {
       const d = parseDateFromFileName(f.name);

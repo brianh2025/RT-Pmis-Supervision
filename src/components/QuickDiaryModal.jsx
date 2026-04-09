@@ -24,12 +24,14 @@ const WEATHER_OPTIONS = [
   { val: '停工', icon: CloudSnow, color: '#ef4444' },
 ];
 
-export function QuickDiaryModal({ projectId, logDate, onClose, onSuccess }) {
+export function QuickDiaryModal({ projectId, logDate, onClose, onSuccess, initialData }) {
   const { user } = useAuth();
-  const [weatherAm, setWeatherAm] = useState('晴');
-  const [weatherPm, setWeatherPm] = useState('晴');
-  const [workItems, setWorkItems] = useState('');
-  const [notes, setNotes] = useState('');
+  const [weatherAm, setWeatherAm] = useState(initialData?.weather_am || '晴');
+  const [weatherPm, setWeatherPm] = useState(initialData?.weather_pm || '晴');
+  const [workItems, setWorkItems] = useState(initialData?.work_items || '');
+  const [notes, setNotes] = useState(initialData?.notes || '');
+  const [plannedProgress, setPlannedProgress] = useState(initialData?.planned_progress ?? '');
+  const [actualProgress, setActualProgress]   = useState(initialData?.actual_progress  ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,6 +51,8 @@ export function QuickDiaryModal({ projectId, logDate, onClose, onSuccess }) {
       weather_pm: weatherPm,
       work_items: workItems.trim(),
       notes: notes.trim() || null,
+      planned_progress: plannedProgress !== '' ? parseFloat(plannedProgress) : null,
+      actual_progress:  actualProgress  !== '' ? parseFloat(actualProgress)  : null,
       created_by: user?.id,
     }, { onConflict: 'project_id,log_date' });
 
@@ -135,6 +139,24 @@ export function QuickDiaryModal({ projectId, logDate, onClose, onSuccess }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 進度 */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {[['預定進度 (%)', plannedProgress, setPlannedProgress], ['實際進度 (%)', actualProgress, setActualProgress]].map(([label, val, setter]) => (
+              <div key={label} style={{ flex: 1 }}>
+                <label className="form-label">{label}</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  min={0} max={100} step={0.1}
+                  placeholder="0.0"
+                  value={val}
+                  onChange={e => setter(e.target.value)}
+                  style={{ marginTop: 6 }}
+                />
+              </div>
+            ))}
           </div>
 
           {/* 施工記事 */}

@@ -6,13 +6,14 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useProjects } from '../hooks/useProjects';
 import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
+import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { ReportReminderBanner } from '../components/ReportReminderBanner';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  Trash2, TriangleAlert, Loader2, Search, ChevronRight, Star,
+  Trash2, TriangleAlert, Loader2, Search, ChevronRight, Star, Pencil,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -209,6 +210,7 @@ export function Dashboard() {
   const [showAddModal,    setShowAddModal]    = useState(false);
   const [showExcelModal,  setShowExcelModal]  = useState(false);
   const [deleteTarget,    setDeleteTarget]    = useState(null); // project to delete
+  const [editTarget,      setEditTarget]      = useState(null); // project to edit
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -495,6 +497,13 @@ export function Dashboard() {
                           <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} />
                         </button>
                         <button
+                          className="card-edit-btn"
+                          title="編輯工程資料"
+                          onClick={e => { e.stopPropagation(); setEditTarget(p); }}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
                           className="card-delete-btn"
                           title="刪除專案"
                           onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
@@ -510,6 +519,13 @@ export function Dashboard() {
           </div>
           {showAddModal && <AddProjectModal onClose={() => setShowAddModal(false)} onSuccess={handleDataAdded} />}
           {showExcelModal && <ExcelImportModal onClose={() => setShowExcelModal(false)} onSuccess={handleDataAdded} />}
+          {editTarget && (
+            <EditProjectModal
+              project={editTarget}
+              onClose={() => setEditTarget(null)}
+              onSuccess={() => { setEditTarget(null); refresh?.(); }}
+            />
+          )}
           {deleteTarget && (
             <DeleteProjectModal
               project={deleteTarget}
