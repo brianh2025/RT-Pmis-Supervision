@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v20
+// Supabase Edge Function: sync-diary v21
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -596,7 +596,8 @@ Deno.serve(async (req) => {
     if (secret !== SYNC_SECRET) return json({ error: "Unauthorized" }, 401);
     const token = await getGoogleAccessToken();
 
-    if (mode === "batch" || mode === "dry_run") {
+    // ── mode: list ── 列出檔案清單（不解析 Excel，快速）
+    if (mode === "list" || mode === "dry_run") {
       const { projectId, startDate, endDate } = body;
       if (!projectId) return json({ error: "缺少 projectId" }, 400);
       const { data: proj, error: projErr } = await supabase
@@ -604,24 +605,39 @@ Deno.serve(async (req) => {
       if (projErr || !proj?.drive_folder_id)
         return json({ error: "找不到工程或未設定 Drive 資料夾" }, 400);
       const diaryFolderId = await getDiaryFolderId(proj.drive_folder_id, token);
-      if (mode === "dry_run") {
-        const allFiles = await listDiaryFiles(diaryFolderId, token);
-        return json({
-          mode: "dry_run", drive_folder_id: proj.drive_folder_id,
-          diary_folder_id: diaryFolderId, total: allFiles.length,
-          files: allFiles.map((f) => ({ name: f.name, id: f.id, parsedDate: parseDateFromFileName(f.name) })),
-        });
-      }
-      const MAX_FILES_PER_BATCH = 30;
-      let files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate);
-      // 依日期排序（有日期的優先，無法解析的排後面）
+      const sd = startDate ?? proj.start_date ?? undefined;
+      const files = await listDiaryFiles(diaryFolderId, token, sd, endDate);
       files.sort((a, b) => {
         const da = parseDateFromFileName(a.name) ?? "9999";
         const db = parseDateFromFileName(b.name) ?? "9999";
         return da.localeCompare(db);
       });
-      const truncated = files.length > MAX_FILES_PER_BATCH;
-      const batch = truncated ? files.slice(0, MAX_FILES_PER_BATCH) : files;
+      return json({
+        mode: "list", total: files.length,
+        files: files.map((f) => ({ id: f.id, name: f.name, parsedDate: parseDateFromFileName(f.name) })),
+      });
+    }
+
+    // ── mode: sync_one ── 同步單一檔案（由前端逐一呼叫）
+    if (mode === "sync_one") {
+      const { projectId, fileId, fileName } = body;
+      if (!projectId || !fileId || !fileName) return json({ error: "缺少 projectId / fileId / fileName" }, 400);
+      const r = await syncFile(fileId, fileName, projectId, token);
+      return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount });
+    }
+
+    // ── legacy: batch ── 保留向下相容（小量資料）
+    if (mode === "batch") {
+      const { projectId, startDate, endDate } = body;
+      if (!projectId) return json({ error: "缺少 projectId" }, 400);
+      const { data: proj, error: projErr } = await supabase
+        .from("projects").select("drive_folder_id, start_date").eq("id", projectId).single();
+      if (projErr || !proj?.drive_folder_id)
+        return json({ error: "找不到工程或未設定 Drive 資料夾" }, 400);
+      const diaryFolderId = await getDiaryFolderId(proj.drive_folder_id, token);
+      let files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate);
+      files.sort((a, b) => (parseDateFromFileName(a.name) ?? "9999").localeCompare(parseDateFromFileName(b.name) ?? "9999"));
+      const batch = files.slice(0, 5); // 安全上限降為 5
       const results = [];
       for (const f of batch) {
         try {
@@ -632,7 +648,7 @@ Deno.serve(async (req) => {
         }
       }
       const lastSyncedDate = batch.map(f => parseDateFromFileName(f.name)).filter(Boolean).sort().pop() ?? null;
-      return json({ mode: "batch", total: files.length, processed: batch.length, truncated, lastSyncedDate, results });
+      return json({ mode: "batch", total: files.length, processed: batch.length, truncated: files.length > 5, lastSyncedDate, results });
     }
 
     const { fileId, fileName, projectFolderId } = body;

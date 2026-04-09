@@ -15,44 +15,62 @@ function toIsoDate(dateStr) {
   return dateStr;
 }
 
+async function callEdgeFn(token, body) {
+  const res = await fetch(EDGE_FN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ ...body, secret: import.meta.env.VITE_SYNC_SECRET || '' }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
+}
+
 export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
   const today = new Date().toISOString().split('T')[0];
   const [rangeStart, setRangeStart] = useState(toIsoDate(startDate) || '');
   const [rangeEnd,   setRangeEnd]   = useState(today);
   const [running,    setRunning]    = useState(false);
-  const [results,    setResults]    = useState(null);
+  const [progress,   setProgress]   = useState(null); // { current, total, results[] }
   const [error,      setError]      = useState('');
 
   const handleSync = async () => {
     if (!rangeStart) { setError('請選擇起始日期'); return; }
     setRunning(true);
     setError('');
-    setResults(null);
+    setProgress(null);
 
-    // 取得 SYNC_SECRET（從 Supabase Function 的 anon key 呼叫，secret 由後端驗證）
-    // 前端只需傳 mode=batch + projectId + 日期範圍，secret 由環境變數注入
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const res = await fetch(EDGE_FN_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          mode: 'batch',
-          projectId,
-          startDate: rangeStart,
-          endDate:   rangeEnd,
-          secret:    import.meta.env.VITE_SYNC_SECRET || '',
-        }),
+      // 第一步：取得檔案清單（僅列目錄，不解析 Excel）
+      const listRes = await callEdgeFn(token, {
+        mode: 'list', projectId, startDate: rangeStart, endDate: rangeEnd,
       });
+      const files = listRes.files || [];
+      if (files.length === 0) {
+        setProgress({ current: 0, total: 0, results: [] });
+        return;
+      }
 
-      const json = await res.json();
-      if (!res.ok) { setError(json.error || `HTTP ${res.status}`); return; }
-      setResults(json);
+      setProgress({ current: 0, total: files.length, results: [] });
+
+      // 第二步：逐一同步每個檔案（每次呼叫只處理一個 Excel）
+      const results = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        try {
+          const r = await callEdgeFn(token, {
+            mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
+          });
+          results.push({ file: f.name, date: r.date, itemCount: r.itemCount, success: true });
+        } catch (err) {
+          results.push({ file: f.name, success: false, error: String(err) });
+        }
+        setProgress({ current: i + 1, total: files.length, results: [...results] });
+      }
+
       onSuccess?.();
     } catch (err) {
       setError(String(err));
@@ -61,8 +79,8 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
     }
   };
 
-  const successCount = results?.results?.filter(r => r.success).length ?? 0;
-  const failCount    = results?.results?.filter(r => !r.success).length ?? 0;
+  const successCount = progress?.results?.filter(r => r.success).length ?? 0;
+  const failCount    = progress?.results?.filter(r => !r.success).length ?? 0;
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -118,8 +136,26 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
             同日期資料將覆蓋舊紀錄（增量校正）。
           </div>
 
+          {/* 進度列 */}
+          {running && progress && progress.total > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                <span>同步進度</span>
+                <span>{progress.current} / {progress.total}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: 'var(--color-surface-border)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 3,
+                  background: 'var(--color-primary)',
+                  width: `${(progress.current / progress.total) * 100}%`,
+                  transition: 'width 0.3s',
+                }} />
+              </div>
+            </div>
+          )}
+
           {/* 結果 */}
-          {results && (
+          {progress && !running && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', gap: 12, fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -131,7 +167,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                   </span>
                 )}
               </div>
-              {results.results?.length > 0 && (
+              {progress.results?.length > 0 && (
                 <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.74rem', borderRadius: 6, border: '1px solid var(--color-surface-border)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
@@ -143,7 +179,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {results.results.map((r, i) => (
+                      {progress.results.map((r, i) => (
                         <tr key={i} style={{ borderTop: '1px solid var(--color-surface-border)' }}>
                           <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.file}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.date ?? '—'}</td>
@@ -157,14 +193,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                   </table>
                 </div>
               )}
-              {results.truncated && (
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-warning, #f59e0b)', padding: '7px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                  <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2 }} />
-                  共找到 {results.total} 筆，本次處理前 {results.processed} 筆。
-                  請將起始日期改為 <strong>{results.lastSyncedDate}</strong> 後再次同步以繼續。
-                </div>
-              )}
-              {results.total === 0 && (
+              {progress.total === 0 && (
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                   Drive 資料夾內未找到符合條件的施工日誌檔案。
                 </div>
