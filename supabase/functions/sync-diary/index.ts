@@ -89,7 +89,8 @@ async function downloadDriveFile(fileId: string, token: string): Promise<ArrayBu
 async function listDiaryFiles(
   folderId: string, token: string, startDate?: string, endDate?: string
 ): Promise<{ id: string; name: string }[]> {
-  const q = encodeURIComponent(`'${folderId}' in parents and name contains '施工日誌' and trashed=false`);
+  // 使用 ancestors 遞迴搜尋所有子資料夾（而非只搜直接子層 parents）
+  const q = encodeURIComponent(`'${folderId}' in ancestors and name contains '施工日誌' and mimeType != 'application/vnd.google-apps.folder' and trashed=false`);
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${token}` } }
