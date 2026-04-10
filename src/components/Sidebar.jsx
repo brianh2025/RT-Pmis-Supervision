@@ -23,6 +23,7 @@ import {
 const MENU_GROUPS_PROJECT = [
   {
     items: [
+      { icon: Camera, label: "照片記錄", path: "photos" },
       { icon: Activity, label: "專案儀表板", path: "dashboard" },
       { icon: ClipboardList, label: "監造報表", path: "supervision" },
       { icon: ClipboardList, label: "施工日誌", path: "diary" },
@@ -35,7 +36,6 @@ const MENU_GROUPS_PROJECT = [
       { icon: Archive, label: "歸檔管理", path: "archive" },
       { icon: Send, label: "送審管理", path: "submission" },
       { icon: ShieldCheck, label: "品管管理", path: "quality" },
-      { icon: Camera, label: "照片記錄", path: "photos" },
       { icon: BarChart3, label: "統計分析", path: "analytics" },
     ],
   },

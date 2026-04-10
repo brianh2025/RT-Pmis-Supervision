@@ -633,8 +633,8 @@
 }
 .pt-thumb-cell {
   position: relative;
-  width: 90px;
-  height: 90px;
+  width: 130px;
+  height: 130px;
 }
 .pt-thumb-img {
   width: 100%;
@@ -916,7 +916,7 @@
   .pt-upload-source-btn { padding: 16px 8px; font-size: 0.72rem; }
 
   /* 縮圖列 */
-  .pt-thumb-cell { width: 72px; height: 72px; }
+  .pt-thumb-cell { width: 100px; height: 100px; }
 
   /* ── 填資料：上下堆疊 ── */
   .pt-step-entry { padding: 12px 14px; }
@@ -981,7 +981,7 @@
   .pt-upload-source-btn { padding: 12px 8px; flex-direction: row; gap: 10px; }
 
   /* 縮圖更小 */
-  .pt-thumb-cell { width: 60px; height: 60px; }
+  .pt-thumb-cell { width: 85px; height: 85px; }
 
   /* 批次 bar 縮字 */
   .pt-bulk-bar { font-size: 0.67rem; }
