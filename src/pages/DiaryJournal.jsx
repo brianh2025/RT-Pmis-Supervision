@@ -195,98 +195,103 @@ export function DiaryJournal() {
             <div style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', padding: '20px 0' }}>載入中…</div>
           )}
 
-          {selectedKey && !loadingSummary && summary && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text1)' }}>{selectedKey}</div>
+          {selectedKey && !loadingSummary && summary && (() => {
+            // 過濾有意義的施工項（數量 >= 0.1，排除合約比例型細項）
+            const meaningfulItems = summary.workItems.filter(wi => wi.today_qty >= 0.1);
+            const noteText = summary.log?.notes || summary.log?.work_items || '';
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text1)' }}>{selectedKey}</div>
 
-              {/* 1. 上傳狀態 */}
-              <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>上傳狀態</div>
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: diaryDates.has(selectedKey) ? 'var(--color-success, #10b981)' : 'var(--color-text-muted)' }}>
-                    {diaryDates.has(selectedKey) ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                    施工日誌
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: supervisionDates.has(selectedKey) ? 'var(--color-success, #10b981)' : 'var(--color-text-muted)' }}>
-                    {supervisionDates.has(selectedKey) ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                    監造報表
-                  </span>
+                {/* 操作按鈕（固定顯示在最上方） */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => navigate(`/projects/${projectId}/diary`)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--color-primary)', background: 'rgba(37,99,235,0.07)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}
+                  >
+                    <ClipboardList size={14} /> 施工日誌
+                  </button>
+                  <button
+                    onClick={() => navigate(`/projects/${projectId}/supervision`)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', borderRadius: 8, border: '1px solid #10b981', background: 'rgba(16,185,129,0.07)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}
+                  >
+                    <BookOpen size={14} /> 監造報表
+                  </button>
                 </div>
-              </div>
 
-              {/* 2. 施工項目摘要 */}
-              {summary.workItems.length > 0 && (
+                {/* 1. 上傳狀態 */}
                 <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6 }}>施工項目摘要</div>
-                  {summary.workItems.map((wi, i) => (
-                    <div key={i} style={{ fontSize: '0.8rem', color: 'var(--color-text1)', padding: '2px 0', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{wi.item_name}</span>
-                      <span style={{ color: 'var(--color-text-muted)' }}>{wi.today_qty} {wi.unit || ''}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 3. 特別註記 */}
-              {(summary.log?.notes || summary.log?.work_items) && (
-                <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6 }}>特別註記</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text1)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                    {summary.log?.notes || summary.log?.work_items}
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>上傳狀態</div>
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    {[
+                      { label: '施工日誌', has: diaryDates.has(selectedKey) },
+                      { label: '監造報表', has: supervisionDates.has(selectedKey) },
+                    ].map(({ label, has }) => (
+                      <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: has ? '#10b981' : 'var(--color-text-muted)', fontWeight: has ? 600 : 400 }}>
+                        {has ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                        {label}
+                      </span>
+                    ))}
                   </div>
+                </div>
+
+                {/* 2. 施工項目摘要 */}
+                <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>施工項目摘要</div>
+                  {meaningfulItems.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {meaningfulItems.map((wi, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--color-text1)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wi.item_name}</span>
+                          <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{wi.today_qty} {wi.unit || ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無施工項目記錄</div>
+                  )}
+                </div>
+
+                {/* 3. 特別註記 */}
+                <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>特別註記</div>
+                  {noteText ? (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text1)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{noteText}</div>
+                  ) : (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無備註</div>
+                  )}
                   {summary.log?.weather_am && (
                     <div style={{ marginTop: 6, fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
                       天氣：上午 {summary.log.weather_am}{summary.log.weather_pm ? ` · 下午 ${summary.log.weather_pm}` : ''}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* 4. 進度 */}
-              {(selActual != null || selPlanned != null) && (
+                {/* 4. 當日進度 / 累積進度 */}
                 <div style={{ background: 'var(--color-surface-hover)', borderRadius: 10, padding: '10px 14px' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>當日進度</div>
-                  <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                      預定 <strong style={{ color: 'var(--color-text1)' }}>{selPlanned ?? '—'}%</strong>
-                    </span>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                      實際 <strong style={{ color: progressColor(selActual, selPlanned) }}>{selActual ?? '—'}%</strong>
-                    </span>
-                  </div>
-                  {selPlanned != null && (
-                    <div style={{ height: 6, borderRadius: 3, background: 'var(--color-surface-border)', overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selPlanned, 100)}%`, background: 'rgba(148,163,184,0.5)', borderRadius: 3 }} />
-                      {selActual != null && (
-                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selActual, 100)}%`, background: progressColor(selActual, selPlanned), borderRadius: 3, transition: 'width 0.3s' }} />
-                      )}
-                    </div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>進度</div>
+                  {(selActual != null || selPlanned != null) ? (
+                    <>
+                      <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          預定 <strong style={{ color: 'var(--color-text1)', fontSize: '1rem' }}>{selPlanned ?? '—'}%</strong>
+                        </span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          實際 <strong style={{ color: progressColor(selActual, selPlanned), fontSize: '1rem' }}>{selActual ?? '—'}%</strong>
+                        </span>
+                      </div>
+                      <div style={{ height: 8, borderRadius: 4, background: 'var(--color-surface-border)', overflow: 'hidden', position: 'relative' }}>
+                        {selPlanned != null && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selPlanned, 100)}%`, background: 'rgba(148,163,184,0.4)', borderRadius: 4 }} />}
+                        {selActual != null && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selActual, 100)}%`, background: progressColor(selActual, selPlanned), borderRadius: 4, transition: 'width 0.3s' }} />}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無進度資料</div>
                   )}
                 </div>
-              )}
-
-              {/* 操作按鈕 */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => navigate(`/projects/${projectId}/diary`)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-surface-border)', background: 'var(--color-surface)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text1)' }}
-                >
-                  <ClipboardList size={14} /> 施工日誌
-                </button>
-                <button
-                  onClick={() => navigate(`/projects/${projectId}/supervision`)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-surface-border)', background: 'var(--color-surface)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text1)' }}
-                >
-                  <BookOpen size={14} /> 監造報表
-                </button>
               </div>
-
-              {/* 無資料提示 */}
-              {summary.workItems.length === 0 && !summary.log && !summary.progress && (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>此日尚無資料</div>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
