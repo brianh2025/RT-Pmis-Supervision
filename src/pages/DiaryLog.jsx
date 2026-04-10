@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, SH, I, C, ProgressBar } from './DailyReport/utils';
+import { C } from './DailyReport/utils';
+import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
+import { DailyReportView } from './DailyReport/DailyReportView';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
-import './DiaryLog.css'; // Minimal specific styles, relying mostly on inline and generic styles
+import './DiaryLog.css';
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -38,9 +40,20 @@ function toRoc(y, m, d) {
 
 export function DiaryLog() {
   const { id: projectId } = useParams();
+  return (
+    <DailyReportProvider projectId={projectId}>
+      <DiaryLogInner />
+    </DailyReportProvider>
+  );
+}
+
+function DiaryLogInner() {
+  const { id: projectId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initDate = searchParams.get('date');
+
+  const { reports, loading: reportsLoading } = useContext(DailyReportContext);
 
   const today = new Date();
   const [year, setYear] = useState(() => initDate ? parseInt(initDate.slice(0, 4)) : today.getFullYear());
@@ -117,10 +130,10 @@ export function DiaryLog() {
     return map;
   }, [logs]);
 
-  const selectedKey = selectedDay ? toKey(year, month, selectedDay) : null;
-  const selectedData = selectedKey ? importedData[selectedKey] : null;
-  const selectedLog  = selectedKey ? (logs.find(l => l.log_date === selectedKey) ?? null) : null;
-  const importedCount = Object.keys(importedData).length;
+  const selectedKey    = selectedDay ? toKey(year, month, selectedDay) : null;
+  const selectedLog    = selectedKey ? (logs.find(l => l.log_date === selectedKey) ?? null) : null;
+  const selectedReport = selectedKey ? (reports.find(r => r.date === selectedKey) ?? null) : null;
+  const importedCount  = Object.keys(importedData).length;
 
   // 選擇日期時，從施工日誌（DB + localStorage）預取資料供「從施工日誌帶出」使用
   const fetchDiaryInitialData = async (dateKey) => {
@@ -168,20 +181,55 @@ export function DiaryLog() {
     }));
   };
 
+  // ── initDate 模式：直接從 DiaryJournal 跳入，不顯示日曆 ─────────────
+  if (initDate) {
+    const goBack = () => navigate(`/projects/${projectId}/journal`);
+    if (reportsLoading) return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: C.textMuted, fontSize: '0.82rem' }}>載入中…</div>
+    );
+    if (selectedReport) return (
+      <div style={{ padding: '16px', overflow: 'auto', height: '100%', boxSizing: 'border-box' }}>
+        <DailyReportView
+          report={selectedReport}
+          supervision={true}
+          onBack={goBack}
+          onEdit={() => navigate(`/projects/${projectId}/diary?date=${initDate}`)}
+        />
+      </div>
+    );
+    // 施工日誌尚未建立
+    return (
+      <div style={{ padding: '16px', overflow: 'auto', height: '100%', boxSizing: 'border-box' }}>
+        <header className="page-section-header" style={{ marginBottom: 12 }}>
+          <div className="header-left">
+            <button className="btn-dash-action" onClick={goBack} style={{ marginRight: 8 }}>
+              <ArrowLeft size={13} /><span>返回日誌報表</span>
+            </button>
+            <span className="section-label">監造報表　{initDate}</span>
+          </div>
+        </header>
+        <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+          <CloudOff size={36} color="var(--color-border)" style={{ margin: '0 auto 12px', display: 'block' }} />
+          <p style={{ fontSize: '0.85rem', color: C.textMuted, marginBottom: 4 }}>尚未建立施工日誌</p>
+          <p style={{ fontSize: '0.75rem', color: C.textMuted, marginBottom: 16 }}>請先建立施工日誌，監造報表將自動複製其內容</p>
+          <button onClick={() => navigate(`/projects/${projectId}/diary?date=${initDate}`)}
+            style={{ padding: '8px 20px', borderRadius: 8, border: '1.5px solid var(--color-primary)', background: 'rgba(37,99,235,0.07)', color: 'var(--color-primary)', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+            前往建立施工日誌
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="diary-log-page">
       <header className="page-section-header">
         <div className="header-left">
-          {initDate && (
-            <button className="btn-dash-action" onClick={() => navigate(`/projects/${projectId}/journal`)} style={{ marginRight: 8 }}>
-              <ArrowLeft size={13} /><span>返回日誌報表</span>
-            </button>
-          )}
-          <span className="section-label">{initDate ? `監造報表　${initDate}` : '監造報表檢索'}</span>
-          {!initDate && <span className="section-sub-label">MAPPING SYSTEM</span>}
+          <span className="section-label">監造報表檢索</span>
+          <span className="section-sub-label">MAPPING SYSTEM</span>
         </div>
         <div className="header-actions">
-            {!initDate && <span className="status-badge success">本月 {importedCount} 筆已匯入</span>}
+            <span className="status-badge success">本月 {importedCount} 筆已匯入</span>
             <button
                 onClick={() => setShowImportModal(true)}
                 className="btn-dash-action"
@@ -275,129 +323,26 @@ export function DiaryLog() {
          </div>}
 
          {/* Right: Detail panel */}
-         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 8 }}>
+         <div style={{ overflow: 'auto' }}>
             {selectedDay && selectedKey ? (
-              <>
-                {/* 標題列 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-                  <div>
-                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: C.text }}>監造報表　{selectedKey}</h2>
-                    <div style={{ fontSize: '0.68rem', color: C.textMuted }}>{toRoc(year, month, selectedDay)}</div>
-                  </div>
+              selectedReport ? (
+                <DailyReportView
+                  report={selectedReport}
+                  supervision={true}
+                  onBack={() => setSelectedDay(null)}
+                  onEdit={() => navigate(`/projects/${projectId}/diary?date=${selectedKey}`)}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                  <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 10px', display: 'block' }} />
+                  <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: 4 }}>尚未建立施工日誌</p>
+                  <p style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: 14 }}>請先建立施工日誌，監造報表將自動複製其內容</p>
+                  <button onClick={() => navigate(`/projects/${projectId}/diary?date=${selectedKey}`)}
+                    style={{ padding: '7px 16px', borderRadius: 8, border: '1.5px solid var(--color-primary)', background: 'rgba(37,99,235,0.07)', color: 'var(--color-primary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
+                    前往建立施工日誌
+                  </button>
                 </div>
-
-                {/* 基本資訊 */}
-                <Card mb={0} p="10px 14px">
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '7px 16px' }}>
-                    {[
-                      ['日期',     selectedKey],
-                      ['天氣上午', selectedLog?.weather_am || '—'],
-                      ['天氣下午', selectedLog?.weather_pm || '—'],
-                      ['來源',     selectedLog?.sync_source === 'google_drive' ? 'Drive 同步' : selectedLog ? '手動建檔' : '—'],
-                    ].map(([k, v]) => (
-                      <div key={k}>
-                        <div style={{ fontSize: '0.62rem', color: C.textMuted, marginBottom: 1 }}>{k}</div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: C.text }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* 編輯按鈕 */}
-                <button
-                  onClick={() => navigate(`/projects/${projectId}/supervision/print/${selectedKey}`)}
-                  style={{ width: '100%', padding: '7px', borderRadius: 8, border: `1px solid var(--color-border)`, background: 'var(--color-surface)', color: C.textMid, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; }}>
-                  {I.edit(C.textMid)} 檢視 / 編輯報表
-                </button>
-
-                {selectedLog ? (
-                  <>
-                    {/* Tabs */}
-                    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none' }}>
-                      {[{ key: 'work', label: '施工概況' }, { key: 'note', label: '特別註記' }, { key: 'progress', label: '進度' }].map(t => (
-                        <button key={t.key} onClick={() => setTabD(t.key)} style={{
-                          padding: '5px 12px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0,
-                          border: `1.5px solid ${tabD === t.key ? C.primary : 'var(--color-border)'}`,
-                          background: tabD === t.key ? C.primary : 'var(--color-surface)',
-                          color: tabD === t.key ? '#fff' : C.textMid,
-                          fontSize: '0.75rem', fontWeight: tabD === t.key ? 700 : 400,
-                          cursor: 'pointer', transition: 'all 0.15s',
-                        }}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {tabD === 'work' && (
-                      <Card mb={0} p="12px 14px">
-                        <SH icon={I.chart} title="施工概況" />
-                        {selectedLog.work_items
-                          ? <div style={{ fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{selectedLog.work_items}</div>
-                          : <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無施工概況</div>
-                        }
-                      </Card>
-                    )}
-
-                    {tabD === 'note' && (
-                      <Card mb={0} p="12px 14px">
-                        <SH icon={I.doc} title="特別註記" />
-                        {cleanNotes(selectedLog.notes)
-                          ? <div style={{ background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, borderLeft: `3px solid ${C.primary}`, whiteSpace: 'pre-wrap' }}>{cleanNotes(selectedLog.notes)}</div>
-                          : <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無備註</div>
-                        }
-                      </Card>
-                    )}
-
-                    {tabD === 'progress' && (
-                      <Card mb={0} p="12px 14px">
-                        <SH icon={I.chart} title="進度" />
-                        {(selectedLog.actual_progress != null || selectedLog.planned_progress != null) ? (
-                          <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: '0.78rem' }}>
-                              <span style={{ color: C.textMid }}>整體施工進度</span>
-                              <span style={{ fontWeight: 700, color: progressColor(selectedLog.actual_progress, selectedLog.planned_progress) }}>
-                                {fmtPct(selectedLog.actual_progress)} / {fmtPct(selectedLog.planned_progress)} 計畫
-                              </span>
-                            </div>
-                            <ProgressBar value={selectedLog.actual_progress || 0} planned={selectedLog.planned_progress} color={progressColor(selectedLog.actual_progress, selectedLog.planned_progress)} height={7} />
-                          </>
-                        ) : (
-                          <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無進度資料</div>
-                        )}
-                      </Card>
-                    )}
-                  </>
-                ) : (
-                  <Card mb={0} p="28px 20px" style={{ textAlign: 'center' }}>
-                    <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 10px', display: 'block' }} />
-                    <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: 2 }}>尚未建立監造報表</p>
-                    <p style={{ fontSize: '0.72rem', lineHeight: 1.4, color: C.textMuted }}>可從施工日誌帶入、手動填寫或 PDF 匯入</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14, alignItems: 'center' }}>
-                      {diaryDataCache[selectedKey] && (
-                        <button
-                          onClick={() => { setQuickInitialData(diaryDataCache[selectedKey]); setShowQuickModal(true); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 16px', background: 'rgba(245,158,11,0.1)', color: '#b45309', borderRadius: 6, fontSize: '0.75rem', border: '1px solid rgba(245,158,11,0.35)', cursor: 'pointer', fontWeight: 600, width: '100%', justifyContent: 'center' }}>
-                          <BookOpen size={13} /> 從施工日誌帶出
-                        </button>
-                      )}
-                      <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-                        <button
-                          onClick={() => { setQuickInitialData(null); setShowQuickModal(true); }}
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: 'rgba(15,82,186,0.1)', color: C.primary, borderRadius: 6, fontSize: '0.75rem', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600, justifyContent: 'center' }}>
-                          <PlusCircle size={13} /> 手動建檔
-                        </button>
-                        <button
-                          onClick={() => setShowImportModal(true)}
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: C.card, color: C.textMid, borderRadius: 6, fontSize: '0.75rem', border: `1px solid ${C.border}`, cursor: 'pointer', justifyContent: 'center' }}>
-                          <RefreshCcw size={12} /> PDF 匯入
-                        </button>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-              </>
+              )
             ) : (
               <div className="b-content-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
                 <Calendar size={36} color="var(--color-border)" style={{ marginBottom: '12px' }} />

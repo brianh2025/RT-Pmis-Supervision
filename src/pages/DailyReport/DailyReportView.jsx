@@ -18,10 +18,12 @@ function fmtPct(v) {
     return isNaN(n) ? '—' : parseFloat(n.toFixed(2)) + '%';
 }
 
-export function DailyReportView({ report, onBack, onEdit }) {
+export function DailyReportView({ report, onBack, onEdit, supervision = false }) {
     const [tab, setTab] = useState("progress");
     const diff = parseFloat((report.actualProgress - report.plannedProgress).toFixed(2));
     const ahead = diff >= 0;
+    const docTitle  = supervision ? '監造報表' : '施工日誌';
+    const editLabel = supervision ? '前往施工日誌編輯' : '編輯此施工日誌';
 
     const tabs = [
         { key: "progress", label: "工程進度" },
@@ -29,6 +31,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
         { key: "inspect",  label: "施工抽查" },
         { key: "quality",  label: "品質試驗" },
         { key: "docs",     label: "文件管理" },
+        ...(supervision ? [{ key: "chk", label: "抽查驗" }] : []),
     ];
 
     return (
@@ -40,7 +43,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
                     {I.back(C.textMid)}
                 </button>
                 <div>
-                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: C.text }}>施工日誌　{report.date}</h2>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: C.text }}>{docTitle}　{report.date}</h2>
                     <div style={{ fontSize: '0.68rem', color: C.textMuted }}>編號：{report.reportNo}</div>
                 </div>
             </div>
@@ -75,7 +78,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; }}>
-                {I.edit(C.textMid)} 編輯此施工日誌
+                {I.edit(C.textMid)} {editLabel}
             </button>
 
             {/* Tabs */}
@@ -213,6 +216,47 @@ export function DailyReportView({ report, onBack, onEdit }) {
                         </Card>
                     )}
                 </>
+            )}
+
+            {tab === 'chk' && (
+                <Card mb={0} p="12px 14px">
+                    <SH icon={I.shield} title="抽查驗" />
+                    {(report.inspections?.length > 0 || report.qualityTests?.length > 0) ? (
+                        <>
+                            {report.inspections?.map((ins, i) => (
+                                <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', color: C.textMuted, marginRight: 7 }}>{ins.no}</span>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.item}</span>
+                                        </div>
+                                        <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : 'danger'} />
+                                    </div>
+                                    {ins.note && <div style={{ fontSize: '0.73rem', color: C.textMid }}>📌 {ins.note}</div>}
+                                </div>
+                            ))}
+                            {report.qualityTests?.map((qt, i) => (
+                                <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{qt.material}</span>
+                                        <Badge label={qt.result} variant={qt.result === '合格' ? 'success' : 'danger'} />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: qt.note ? 5 : 0 }}>
+                                        {[['契約數量', fmtNum(qt.contractQty)], ['已作數量', fmtNum(qt.doneQty)], ['試驗項目', qt.testItem]].map(([k, v]) => (
+                                            <div key={k}>
+                                                <div style={{ fontSize: '0.6rem', color: C.textMuted }}>{k}</div>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: C.text }}>{v}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {qt.note && <div style={{ fontSize: '0.7rem', color: C.textMid }}>📌 {qt.note}</div>}
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無抽查驗紀錄</div>
+                    )}
+                </Card>
             )}
         </div>
     );
