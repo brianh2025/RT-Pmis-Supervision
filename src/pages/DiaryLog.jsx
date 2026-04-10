@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCcw, PlusCircle, BookOpen, Cloud } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { Card, SH, I, C, ProgressBar } from './DailyReport/utils';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
 import './DiaryLog.css'; // Minimal specific styles, relying mostly on inline and generic styles
@@ -56,6 +57,7 @@ export function DiaryLog() {
   const [quickInitialData, setQuickInitialData] = useState(null);
   const [refreshTrigger,   setRefreshTrigger]   = useState(0);
   const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
+  const [tabD, setTabD] = useState('work');
 
   useEffect(() => {
     async function fetchData() {
@@ -273,81 +275,105 @@ export function DiaryLog() {
          </div>}
 
          {/* Right: Detail panel */}
-         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 8 }}>
             {selectedDay && selectedKey ? (
               <>
                 {/* 標題列 */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                   <div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text1)' }}>監造報表　{selectedKey}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{toRoc(year, month, selectedDay)}</div>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: C.text }}>監造報表　{selectedKey}</h2>
+                    <div style={{ fontSize: '0.68rem', color: C.textMuted }}>{toRoc(year, month, selectedDay)}</div>
                   </div>
-                  <span style={{ fontSize: '0.72rem', padding: '3px 9px', borderRadius: 6, background: selectedLog ? 'rgba(16,185,129,0.1)' : 'var(--color-bg2)', color: selectedLog ? '#10b981' : 'var(--color-text-muted)', border: `1px solid ${selectedLog ? 'rgba(16,185,129,0.3)' : 'var(--color-border)'}` }}>
-                    {selectedLog ? '已匯入' : '尚未提送'}
-                  </span>
                 </div>
+
+                {/* 基本資訊 */}
+                <Card mb={0} p="10px 14px">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '7px 16px' }}>
+                    {[
+                      ['日期',     selectedKey],
+                      ['天氣上午', selectedLog?.weather_am || '—'],
+                      ['天氣下午', selectedLog?.weather_pm || '—'],
+                      ['來源',     selectedLog?.sync_source === 'google_drive' ? 'Drive 同步' : selectedLog ? '手動建檔' : '—'],
+                    ].map(([k, v]) => (
+                      <div key={k}>
+                        <div style={{ fontSize: '0.62rem', color: C.textMuted, marginBottom: 1 }}>{k}</div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: C.text }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* 編輯按鈕 */}
+                <button
+                  onClick={() => navigate(`/projects/${projectId}/supervision/print/${selectedKey}`)}
+                  style={{ width: '100%', padding: '7px', borderRadius: 8, border: `1px solid var(--color-border)`, background: 'var(--color-surface)', color: C.textMid, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; }}>
+                  {I.edit(C.textMid)} 檢視 / 編輯報表
+                </button>
 
                 {selectedLog ? (
                   <>
-                    {/* 天氣 */}
-                    {(selectedLog.weather_am || selectedLog.weather_pm) && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 20, background: 'rgba(96,165,250,0.13)', border: '1px solid rgba(96,165,250,0.3)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600 }}>
-                        <Cloud size={12} />
-                        <span>上午 {selectedLog.weather_am || '—'}</span>
-                        <span style={{ width: 1, height: 10, background: 'rgba(96,165,250,0.4)', margin: '0 2px', display: 'inline-block' }} />
-                        <span>下午 {selectedLog.weather_pm || '—'}</span>
-                      </div>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                      {[{ key: 'work', label: '施工概況' }, { key: 'note', label: '特別註記' }, { key: 'progress', label: '進度' }].map(t => (
+                        <button key={t.key} onClick={() => setTabD(t.key)} style={{
+                          padding: '5px 12px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0,
+                          border: `1.5px solid ${tabD === t.key ? C.primary : 'var(--color-border)'}`,
+                          background: tabD === t.key ? C.primary : 'var(--color-surface)',
+                          color: tabD === t.key ? '#fff' : C.textMid,
+                          fontSize: '0.75rem', fontWeight: tabD === t.key ? 700 : 400,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                        }}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {tabD === 'work' && (
+                      <Card mb={0} p="12px 14px">
+                        <SH icon={I.chart} title="施工概況" />
+                        {selectedLog.work_items
+                          ? <div style={{ fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{selectedLog.work_items}</div>
+                          : <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無施工概況</div>
+                        }
+                      </Card>
                     )}
 
-                    {/* 施工概況 */}
-                    <div style={{ background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ fontSize: '0.67rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7 }}>施工概況</div>
-                      {selectedLog.work_items
-                        ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text1)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{selectedLog.work_items}</div>
-                        : <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無施工概況</div>
-                      }
-                    </div>
+                    {tabD === 'note' && (
+                      <Card mb={0} p="12px 14px">
+                        <SH icon={I.doc} title="特別註記" />
+                        {cleanNotes(selectedLog.notes)
+                          ? <div style={{ background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, borderLeft: `3px solid ${C.primary}`, whiteSpace: 'pre-wrap' }}>{cleanNotes(selectedLog.notes)}</div>
+                          : <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無備註</div>
+                        }
+                      </Card>
+                    )}
 
-                    {/* 特別註記 */}
-                    <div style={{ background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ fontSize: '0.67rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7 }}>特別註記</div>
-                      {cleanNotes(selectedLog.notes)
-                        ? <div style={{ fontSize: '0.8rem', color: 'var(--color-text1)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{cleanNotes(selectedLog.notes)}</div>
-                        : <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無備註</div>
-                      }
-                    </div>
-
-                    {/* 進度 */}
-                    <div style={{ background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ fontSize: '0.67rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7 }}>進度</div>
-                      {(selectedLog.actual_progress != null || selectedLog.planned_progress != null) ? (
-                        <>
-                          <div style={{ display: 'flex', gap: 20, marginBottom: 8, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                            <span>預定 {fmtPct(selectedLog.planned_progress)}</span>
-                            <span style={{ color: progressColor(selectedLog.actual_progress, selectedLog.planned_progress) }}>實際 {fmtPct(selectedLog.actual_progress)}</span>
-                          </div>
-                          <div style={{ height: 8, borderRadius: 4, background: 'var(--color-border)', overflow: 'hidden', position: 'relative' }}>
-                            {selectedLog.planned_progress != null && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selectedLog.planned_progress, 100)}%`, borderRadius: 4, background: 'rgba(148,163,184,0.35)' }} />}
-                            {selectedLog.actual_progress != null && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(selectedLog.actual_progress, 100)}%`, borderRadius: 4, background: progressColor(selectedLog.actual_progress, selectedLog.planned_progress) }} />}
-                          </div>
-                        </>
-                      ) : <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>尚無進度資料</div>}
-                    </div>
-
-                    {/* 編輯按鈕 */}
-                    <button
-                      onClick={() => navigate(`/projects/${projectId}/supervision/print/${selectedKey}`)}
-                      style={{ width: '100%', padding: '7px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; }}>
-                      <Edit size={14} /> 檢視 / 編輯報表
-                    </button>
+                    {tabD === 'progress' && (
+                      <Card mb={0} p="12px 14px">
+                        <SH icon={I.chart} title="進度" />
+                        {(selectedLog.actual_progress != null || selectedLog.planned_progress != null) ? (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: '0.78rem' }}>
+                              <span style={{ color: C.textMid }}>整體施工進度</span>
+                              <span style={{ fontWeight: 700, color: progressColor(selectedLog.actual_progress, selectedLog.planned_progress) }}>
+                                {fmtPct(selectedLog.actual_progress)} / {fmtPct(selectedLog.planned_progress)} 計畫
+                              </span>
+                            </div>
+                            <ProgressBar value={selectedLog.actual_progress || 0} planned={selectedLog.planned_progress} color={progressColor(selectedLog.actual_progress, selectedLog.planned_progress)} height={7} />
+                          </>
+                        ) : (
+                          <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無進度資料</div>
+                        )}
+                      </Card>
+                    )}
                   </>
                 ) : (
-                  <div style={{ background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '28px 20px', textAlign: 'center' }}>
+                  <Card mb={0} p="28px 20px" style={{ textAlign: 'center' }}>
                     <CloudOff size={32} color="var(--color-border)" style={{ margin: '0 auto 10px', display: 'block' }} />
-                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>尚未建立監造報表</p>
-                    <p style={{ fontSize: '0.72rem', lineHeight: 1.4, color: 'var(--color-text-muted)' }}>可從施工日誌帶入、手動填寫或 PDF 匯入</p>
+                    <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: 2 }}>尚未建立監造報表</p>
+                    <p style={{ fontSize: '0.72rem', lineHeight: 1.4, color: C.textMuted }}>可從施工日誌帶入、手動填寫或 PDF 匯入</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14, alignItems: 'center' }}>
                       {diaryDataCache[selectedKey] && (
                         <button
@@ -359,23 +385,23 @@ export function DiaryLog() {
                       <div style={{ display: 'flex', gap: 8, width: '100%' }}>
                         <button
                           onClick={() => { setQuickInitialData(null); setShowQuickModal(true); }}
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: 'rgba(15,82,186,0.1)', color: 'var(--color-primary)', borderRadius: 6, fontSize: '0.75rem', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600, justifyContent: 'center' }}>
+                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: 'rgba(15,82,186,0.1)', color: C.primary, borderRadius: 6, fontSize: '0.75rem', border: '1px solid rgba(15,82,186,0.3)', cursor: 'pointer', fontWeight: 600, justifyContent: 'center' }}>
                           <PlusCircle size={13} /> 手動建檔
                         </button>
                         <button
                           onClick={() => setShowImportModal(true)}
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: 'var(--color-bg2)', color: 'var(--color-text-muted)', borderRadius: 6, fontSize: '0.75rem', border: '1px solid var(--color-border)', cursor: 'pointer', justifyContent: 'center' }}>
+                          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: C.card, color: C.textMid, borderRadius: 6, fontSize: '0.75rem', border: `1px solid ${C.border}`, cursor: 'pointer', justifyContent: 'center' }}>
                           <RefreshCcw size={12} /> PDF 匯入
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 )}
               </>
             ) : (
               <div className="b-content-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
                 <Calendar size={36} color="var(--color-border)" style={{ marginBottom: '12px' }} />
-                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>點選左方日期查看報表內容</p>
+                <p style={{ fontSize: '13px', color: C.textMuted }}>點選左方日期查看報表內容</p>
               </div>
             )}
 

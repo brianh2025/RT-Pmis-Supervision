@@ -1,9 +1,26 @@
 import React, { useState } from 'react';
 import { Card, SH, I, Badge, ProgressBar, weatherIcon, C } from './utils';
 
+function cleanNotes(raw) {
+    if (!raw) return '';
+    const lines = raw.split('\n');
+    const cut = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
+    return (cut === -1 ? lines : lines.slice(0, cut)).join('\n').trim();
+}
+function fmtNum(v) {
+    if (v == null || v === '') return '—';
+    const n = parseFloat(v);
+    return isNaN(n) ? String(v) : String(parseFloat(n.toFixed(2)));
+}
+function fmtPct(v) {
+    if (v == null) return '—';
+    const n = parseFloat(v);
+    return isNaN(n) ? '—' : parseFloat(n.toFixed(2)) + '%';
+}
+
 export function DailyReportView({ report, onBack, onEdit }) {
     const [tab, setTab] = useState("progress");
-    const diff = (report.actualProgress - report.plannedProgress).toFixed(1);
+    const diff = parseFloat((report.actualProgress - report.plannedProgress).toFixed(2));
     const ahead = diff >= 0;
 
     const tabs = [
@@ -85,7 +102,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: '0.78rem' }}>
                             <span style={{ color: C.textMid }}>整體施工進度</span>
                             <span style={{ fontWeight: 700, color: ahead ? C.success : C.danger }}>
-                                {report.actualProgress}% / {report.plannedProgress}% 計畫
+                                {fmtPct(report.actualProgress)} / {fmtPct(report.plannedProgress)} 計畫
                             </span>
                         </div>
                         <ProgressBar value={report.actualProgress} planned={report.plannedProgress} color={ahead ? '#10b981' : '#f43f5e'} height={7} />
@@ -93,9 +110,9 @@ export function DailyReportView({ report, onBack, onEdit }) {
                             {ahead ? '▲' : '▼'} 進度差異 {ahead ? '+' : ''}{diff}%
                         </div>
                     </div>
-                    {report.progressNote && (
-                        <div style={{ background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, borderLeft: `3px solid ${C.primary}` }}>
-                            {report.progressNote}
+                    {cleanNotes(report.progressNote) && (
+                        <div style={{ background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', fontSize: '0.78rem', color: C.textMid, lineHeight: 1.7, borderLeft: `3px solid ${C.primary}`, whiteSpace: 'pre-wrap' }}>
+                            {cleanNotes(report.progressNote)}
                         </div>
                     )}
                 </Card>
@@ -110,7 +127,7 @@ export function DailyReportView({ report, onBack, onEdit }) {
                             <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < report.quantities.length - 1 ? `1px solid var(--color-border)` : 'none' }}>
                                 <div style={{ fontWeight: 700, fontSize: '0.8rem', color: C.text, marginBottom: 6 }}>{q.item}</div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                                    {[['單位', q.unit], ['契約數量', q.contractQty], ['本日數量', q.todayQty], ['累計數量', q.cumQty]].map(([k, v]) => (
+                                    {[['單位', q.unit], ['契約數量', fmtNum(q.contractQty)], ['本日數量', fmtNum(q.todayQty)], ['累計數量', fmtNum(q.cumQty)]].map(([k, v]) => (
                                         <div key={k} style={{ background: 'var(--color-bg2)', borderRadius: 7, padding: '5px 7px' }}>
                                             <div style={{ fontSize: '0.6rem', color: C.textMuted }}>{k}</div>
                                             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{v}</div>
@@ -187,11 +204,11 @@ export function DailyReportView({ report, onBack, onEdit }) {
                             ))
                         }
                     </Card>
-                    {report.specialNote && (
+                    {cleanNotes(report.specialNote) && (
                         <Card mb={0} p="12px 14px">
                             <SH icon={I.doc} title="特別記載事項" />
-                            <div style={{ fontSize: '0.78rem', color: C.textMid, lineHeight: 1.8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', borderLeft: '3px solid var(--color-warning, #f59e0b)' }}>
-                                {report.specialNote}
+                            <div style={{ fontSize: '0.78rem', color: C.textMid, lineHeight: 1.8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px', borderLeft: '3px solid var(--color-warning, #f59e0b)', whiteSpace: 'pre-wrap' }}>
+                                {cleanNotes(report.specialNote)}
                             </div>
                         </Card>
                     )}
