@@ -53,17 +53,22 @@ export function DiaryJournal() {
 
   // ── 取當月有資料的日期 ──────────────────────────────────────
   useEffect(() => {
+    setDiaryDates(new Set());
+    setSupervisionDates(new Set());
     const start = toKey(year, month, 1);
     const end   = toKey(year, month, getDaysInMonth(year, month));
+    let cancelled = false;
     Promise.all([
       supabase.from('daily_report_items').select('log_date')
         .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
       supabase.from('daily_logs').select('log_date')
         .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
     ]).then(([dri, dl]) => {
+      if (cancelled) return;
       setDiaryDates(new Set((dri.data || []).map(r => r.log_date)));
       setSupervisionDates(new Set((dl.data || []).map(r => r.log_date)));
     });
+    return () => { cancelled = true; };
   }, [projectId, year, month]);
 
   // ── 取選定日期摘要 ─────────────────────────────────────────

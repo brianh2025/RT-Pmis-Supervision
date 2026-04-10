@@ -73,6 +73,8 @@ function DiaryLogInner() {
   const [tabD, setTabD] = useState('work');
 
   useEffect(() => {
+    setLogs([]);
+    let cancelled = false;
     async function fetchData() {
       setLoading(true);
       setError(null);
@@ -95,12 +97,14 @@ function DiaryLogInner() {
         .gte('log_date', startOfMonth)
         .lte('log_date', endOfMonth);
 
+      if (cancelled) return;
       if (logErr) setError(logErr.message);
       else setLogs(data ?? []);
 
       setLoading(false);
     }
     if (projectId) fetchData();
+    return () => { cancelled = true; };
   }, [projectId, year, month, refreshTrigger]);
 
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
