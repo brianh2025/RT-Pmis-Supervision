@@ -16,7 +16,7 @@ export function ProjectLayout() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { project: _project, loading: _loading } = useProject(projectId);
+  const { project, loading: _loading } = useProject(projectId);
   const [time, setTime] = useState(new Date());
   const contentRef = useRef(null);
   useAutoHideScrollbar(contentRef);
@@ -64,12 +64,13 @@ export function ProjectLayout() {
         onClick={() => setIsMobileOpen(false)}
       />
 
-      <Sidebar 
+      <Sidebar
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
         projectId={projectId}
+        project={project}
         onSignOut={handleSignOut}
         user={user}
         isDarkMode={isDarkMode}

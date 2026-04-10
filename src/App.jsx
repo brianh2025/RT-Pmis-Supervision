@@ -21,6 +21,7 @@ const DiaryPrintView = React.lazy(() => import('./pages/DiaryPrintView').then(m 
 const ProgressManagement = React.lazy(() => import('./pages/ProgressManagement').then(m => ({ default: m.ProgressManagement })));
 const MaterialControl = React.lazy(() => import('./pages/MaterialControl').then(m => ({ default: m.MaterialControl })));
 const PhotoTable = React.lazy(() => import('./pages/PhotoTable').then(m => ({ default: m.PhotoTable })));
+const DiaryJournal = React.lazy(() => import('./pages/DiaryJournal').then(m => ({ default: m.DiaryJournal })));
 
 function PageLoader() {
   return (
@@ -82,6 +83,7 @@ function App() {
                   <Route path="archive" element={<Archive />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="photos" element={<PhotoTable />} />
+                  <Route path="journal" element={<DiaryJournal />} />
                 </Route>
 
                 {/* Fallback: redirect unknown routes to home */}

@@ -837,6 +837,127 @@
   }
 }
 
+/* ─── 新版專案側欄：返回 / 案名 / 3-col row / card ─── */
+.pl-nav-back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-surface-border);
+  transition: color 0.15s;
+  position: relative;
+}
+.pl-nav-back-link:hover { color: var(--color-primary); }
+
+.pl-project-name-header {
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--color-surface-border);
+}
+.pl-project-name-text {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.pl-nav-row3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 8px 6px;
+}
+.pl-nav-row3-collapsed {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px;
+  gap: 2px;
+}
+.pl-nav-row3-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.63rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  position: relative;
+}
+.pl-nav-row3-item:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text1);
+}
+.pl-nav-row3-item.active {
+  background: rgba(37,99,235,0.08);
+  color: var(--color-primary);
+  border-color: rgba(37,99,235,0.2);
+  font-weight: 700;
+}
+.pl-nav-row3-collapsed .pl-nav-row3-item {
+  flex-direction: row;
+  justify-content: center;
+  padding: 8px;
+  font-size: 0;
+}
+
+.pl-nav-divider {
+  height: 1px;
+  background: var(--color-surface-border);
+  margin: 2px 8px;
+  flex-shrink: 0;
+}
+
+.pl-nav-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px 8px;
+}
+.pl-nav-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-surface-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text1);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.pl-nav-card:hover {
+  background: rgba(37,99,235,0.07);
+  border-color: rgba(37,99,235,0.3);
+  color: var(--color-primary);
+}
+.pl-nav-card.active {
+  background: rgba(37,99,235,0.1);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.pl-sidebar.collapsed .pl-nav-cards .pl-nav-card {
+  justify-content: center;
+  padding: 10px;
+}
+
 /* ─── 列印樣式 ─── */
 @media print {
   .pl-sidebar,
