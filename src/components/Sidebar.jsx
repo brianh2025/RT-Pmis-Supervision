@@ -5,8 +5,11 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Activity,
   Archive,
+  Send,
   ShieldCheck,
+  ClipboardList,
   ClipboardCheck,
   LayoutDashboard,
   Sun,
@@ -18,19 +21,24 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-const ROW1_ITEMS = [
-  { icon: Camera,      label: '照片記錄', path: 'photos'   },
-  { icon: BookOpen,    label: '日誌報表', path: 'journal'  },
-  { icon: TrendingUp,  label: '進度管理', path: 'progress' },
-];
-const CARD_ITEMS = [
-  { icon: ClipboardCheck, label: '今日查驗工作', path: 'material' },
-  { icon: TrendingUp,     label: '工程進度',     path: 'progress' },
-];
-const ROW2_ITEMS = [
-  { icon: ShieldCheck, label: '品質管理', path: 'quality'   },
-  { icon: Archive,     label: '歸檔管理', path: 'archive'   },
-  { icon: BarChart3,   label: '統計分析', path: 'analytics' },
+const MENU_GROUPS_PROJECT = [
+  {
+    items: [
+      { icon: Camera,        label: '照片記錄', path: 'photos'    },
+      { icon: Activity,      label: '專案儀表板', path: 'dashboard' },
+      { icon: BookOpen,      label: '日誌報表',   path: 'journal'   },
+      { icon: TrendingUp,    label: '進度管理',   path: 'progress'  },
+      { icon: ClipboardCheck, label: '材料管制',  path: 'material'  },
+    ],
+  },
+  {
+    items: [
+      { icon: Archive,       label: '歸檔管理', path: 'archive'    },
+      { icon: Send,          label: '送審管理', path: 'submission' },
+      { icon: ShieldCheck,   label: '品管管理', path: 'quality'    },
+      { icon: BarChart3,     label: '統計分析', path: 'analytics'  },
+    ],
+  },
 ];
 
 export function Sidebar({
@@ -124,110 +132,43 @@ export function Sidebar({
           </div>
         )}
 
-        {/* 專案模式：新版快捷版型 */}
+        {/* 專案模式：nav groups + 主題切換 */}
         {projectId && (
           <>
-            {/* 返回捷徑 */}
-            <Link to="/dashboard" className="pl-nav-back-link" onClick={() => setIsMobileOpen(false)}>
-              <ChevronLeft size={14} />
-              {!isCollapsed && <span>返回捷徑</span>}
-              {isCollapsed && <div className="pl-nav-tooltip">返回捷徑</div>}
-            </Link>
-
-            {/* 案名 */}
-            {!isCollapsed && (
-              <div className="pl-project-name-header">
-                <span className="pl-project-name-text">{project?.name || '工程專案'}</span>
+            {MENU_GROUPS_PROJECT.map((group, idx) => (
+              <div key={idx} className="pl-nav-group">
+                <div className="pl-nav-items">
+                  {group.items.map((item, i) => {
+                    const targetPath = `/projects/${projectId}/${item.path}`;
+                    const isActive = location.pathname.startsWith(targetPath);
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={i}
+                        to={targetPath}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`pl-nav-link ${isActive ? 'active' : ''}`}
+                        title={isCollapsed ? item.label : ''}
+                      >
+                        <Icon size={18} className="pl-nav-icon" />
+                        {!isCollapsed && <span className="pl-nav-label">{item.label}</span>}
+                        {isCollapsed && <div className="pl-nav-tooltip">{item.label}</div>}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-
-            {/* Row 1：照片記錄 / 日誌報表 / 進度管理 */}
-            <div className={`pl-nav-row3${isCollapsed ? ' pl-nav-row3-collapsed' : ''}`}>
-              {ROW1_ITEMS.map(({ icon: Icon, label, path }) => {
-                const isActive = location.pathname.includes(`/${path}`);
-                return (
-                  <Link
-                    key={path}
-                    to={`/projects/${projectId}/${path}`}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={`pl-nav-row3-item${isActive ? ' active' : ''}`}
-                    title={label}
-                  >
-                    <Icon size={18} />
-                    {!isCollapsed && <span>{label}</span>}
-                    {isCollapsed && <div className="pl-nav-tooltip">{label}</div>}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {!isCollapsed && <div className="pl-nav-divider" />}
-
-            {/* Cards：今日查驗工作 / 工程進度 */}
-            <div className="pl-nav-cards">
-              {CARD_ITEMS.map(({ icon: Icon, label, path }) => {
-                const isActive = location.pathname.endsWith(`/${path}`) && !ROW1_ITEMS.some(r => r.path === path && location.pathname !== `/projects/${projectId}/${path}`);
-                const fullActive = location.pathname === `/projects/${projectId}/${path}`;
-                return (
-                  <Link
-                    key={label}
-                    to={`/projects/${projectId}/${path}`}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={`pl-nav-card${fullActive ? ' active' : ''}`}
-                    title={isCollapsed ? label : ''}
-                  >
-                    <Icon size={16} />
-                    {!isCollapsed && <span>{label}</span>}
-                    {isCollapsed && <div className="pl-nav-tooltip">{label}</div>}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {!isCollapsed && <div className="pl-nav-divider" />}
-
-            {/* Row 2：品質管理 / 歸檔管理 / 統計分析 */}
-            <div className={`pl-nav-row3${isCollapsed ? ' pl-nav-row3-collapsed' : ''}`}>
-              {ROW2_ITEMS.map(({ icon: Icon, label, path }) => {
-                const isActive = location.pathname.includes(`/${path}`);
-                return (
-                  <Link
-                    key={path}
-                    to={`/projects/${projectId}/${path}`}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={`pl-nav-row3-item${isActive ? ' active' : ''}`}
-                    title={label}
-                  >
-                    <Icon size={18} />
-                    {!isCollapsed && <span>{label}</span>}
-                    {isCollapsed && <div className="pl-nav-tooltip">{label}</div>}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {!isCollapsed && <div className="pl-nav-divider" />}
-
-            {/* Card：工程資訊 */}
-            <div className="pl-nav-cards">
-              <Link
-                to={`/projects/${projectId}/dashboard`}
-                onClick={() => setIsMobileOpen(false)}
-                className={`pl-nav-card${location.pathname === `/projects/${projectId}/dashboard` ? ' active' : ''}`}
-                title={isCollapsed ? '工程資訊' : ''}
-              >
-                <LayoutDashboard size={16} />
-                {!isCollapsed && <span>工程資訊</span>}
-                {isCollapsed && <div className="pl-nav-tooltip">工程資訊</div>}
-              </Link>
-            </div>
-
-            {/* 主題切換 */}
-            <div className="pl-nav-group" style={{ marginTop: 'auto' }}>
+            ))}
+            {/* 主題切換（專案模式） */}
+            <div className="pl-nav-group">
               <div className="pl-nav-items">
                 {!isCollapsed ? (
                   <div className="pl-nav-row-tools" style={{ padding: '4px 6px' }}>
-                    <button className="pl-tool-btn" onClick={toggleTheme} title={isDarkMode ? '切換亮色' : '切換暗色'}>
+                    <button
+                      className="pl-tool-btn"
+                      onClick={toggleTheme}
+                      title={isDarkMode ? '切換亮色' : '切換暗色'}
+                    >
                       {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
                     </button>
                     <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
