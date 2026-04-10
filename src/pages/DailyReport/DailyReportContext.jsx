@@ -35,12 +35,11 @@ export function DailyReportProvider({ children, projectId }) {
                 if (saved) localReports = JSON.parse(saved);
             } catch {}
 
-            // 2. 從 Supabase 讀取 Drive 同步的工項明細
-            const { data: dbItems } = await supabase
-                .from('daily_report_items')
-                .select('*')
-                .eq('project_id', projectId)
-                .order('log_date', { ascending: false });
+            // 2. 從 Supabase 並行讀取工項明細 + 進度記錄
+            const [{ data: dbItems }, { data: progressData }] = await Promise.all([
+                supabase.from('daily_report_items').select('*').eq('project_id', projectId).order('log_date', { ascending: false }),
+                supabase.from('progress_records').select('report_date, planned_progress, actual_progress').eq('project_id', projectId),
+            ]);
 
             // 按日期分組
             const itemsByDate = {};
@@ -48,6 +47,8 @@ export function DailyReportProvider({ children, projectId }) {
                 if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
                 itemsByDate[it.log_date].push(it);
             });
+            const progressByDate = {};
+            (progressData || []).forEach(p => { progressByDate[p.report_date] = p; });
 
             // 3. 合併：local 報表 + DB 工項；DB 有但 local 沒有的日期，建立骨架
             const localDates = new Set(localReports.map(r => r.date));
@@ -60,14 +61,26 @@ export function DailyReportProvider({ children, projectId }) {
                 weather: '晴',
                 tempHigh: 0, tempLow: 0,
                 supervisor: '', contractor: '',
-                plannedProgress: 0, actualProgress: 0,
+                plannedProgress: progressByDate[date]?.planned_progress || 0,
+                actualProgress:  progressByDate[date]?.actual_progress  || 0,
                 progressNote: '', quantities: [],
                 inspections: [], qualityTests: [], documents: [],
                 specialNote: '',
             }));
 
+            // 4. 對 local 報表：若本身沒有進度，也從 progress_records 回填
+            const localWithProgress = localReports.map(r => {
+                const prog = progressByDate[r.date];
+                if (!prog) return r;
+                return {
+                    ...r,
+                    plannedProgress: r.plannedProgress || prog.planned_progress || 0,
+                    actualProgress:  r.actualProgress  || prog.actual_progress  || 0,
+                };
+            });
+
             const allReports = mergeItems(
-                [...localReports, ...dbOnlyReports],
+                [...localWithProgress, ...dbOnlyReports],
                 itemsByDate
             ).sort((a, b) => a.date.localeCompare(b.date));
 
@@ -88,6 +101,8 @@ export function DailyReportProvider({ children, projectId }) {
             return newList;
         });
 
+        const writes = [];
+
         // 同步工項至 Supabase daily_report_items
         if (form.quantities?.length > 0) {
             const payload = form.quantities
@@ -102,11 +117,25 @@ export function DailyReportProvider({ children, projectId }) {
                     note: q.note || null,
                 }));
             if (payload.length) {
-                await supabase.from('daily_report_items').upsert(
-                    payload, { onConflict: 'project_id,log_date,item_name' }
+                writes.push(
+                    supabase.from('daily_report_items').upsert(payload, { onConflict: 'project_id,log_date,item_name' })
                 );
             }
         }
+
+        // 同步進度至 progress_records（儀表板與進度管理共用）
+        if (form.actualProgress > 0 || form.plannedProgress > 0) {
+            writes.push(
+                supabase.from('progress_records').upsert({
+                    project_id: projectId,
+                    report_date: form.date,
+                    planned_progress: form.plannedProgress || 0,
+                    actual_progress:  form.actualProgress  || 0,
+                }, { onConflict: 'project_id,report_date' })
+            );
+        }
+
+        if (writes.length) await Promise.all(writes);
     };
 
     return (

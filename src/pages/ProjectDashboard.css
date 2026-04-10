@@ -601,7 +601,7 @@
   padding: 16px;
 }
 .proj-info-modal {
-  background: var(--color-bg);
+  background: var(--color-background-base);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   width: 100%;
