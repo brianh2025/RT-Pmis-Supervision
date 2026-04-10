@@ -15,16 +15,15 @@ import { useProject } from '../hooks/useProject';
 import { EmergencyStopModal } from '../components/EmergencyStopModal';
 import './ProjectDashboard.css';
 
-const QUICK_LINKS = [
-  { label: '監造報表', icon: FileText,      path: 'supervision', color: '#f59e0b' },
-  { label: '施工日誌', icon: ClipboardList,  path: 'diary',       color: '#60a5fa' },
-  { label: '進度管理', icon: TrendingUp,     path: 'progress',    color: 'var(--color-primary-light)' },
-  { label: '材料管制', icon: Package,        path: 'material',    color: 'var(--color-success)' },
-  { label: '送審管理', icon: ClipboardCheck, path: 'submission',  color: '#a78bfa' },
-  { label: '品質管理', icon: Shield,         path: 'quality',     color: '#f472b6' },
-  { label: '歸檔管理', icon: Archive,        path: 'archive',     color: '#34d399' },
-  { label: '統計分析', icon: BarChart2,      path: 'analytics',   color: '#818cf8' },
-  { label: '照片記錄', icon: Camera,         path: 'photos',      color: '#f472b6' },
+const SHORTCUT_ROW1 = [
+  { label: '照片記錄', icon: Camera,     path: 'photos',   color: '#f472b6' },
+  { label: '日誌報表', icon: BookOpen,   path: 'journal',  color: '#60a5fa' },
+  { label: '進度管理', icon: TrendingUp, path: 'progress', color: 'var(--color-primary)' },
+];
+const SHORTCUT_ROW2 = [
+  { label: '品質管理', icon: Shield,    path: 'quality',   color: '#f472b6' },
+  { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#34d399' },
+  { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#818cf8' },
 ];
 
 export function ProjectDashboard() {
@@ -43,7 +42,6 @@ export function ProjectDashboard() {
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [showEmergency, setShowEmergency] = useState(false);
-  const [navCollapsed, setNavCollapsed] = useState(false);
 
   useEffect(() => {
     if (!projectId || !supabase) { setStatsLoading(false); return; }
@@ -230,32 +228,57 @@ export function ProjectDashboard() {
         </span>
       </div>
 
-      {/* ── 頂部快速捷徑列 ── */}
-      <div className={`dash-quick-nav ${navCollapsed ? 'collapsed' : ''}`}>
-        <button
-          className="dash-quick-collapse-btn"
-          onClick={() => setNavCollapsed(v => !v)}
-          title={navCollapsed ? '展開捷徑' : '收合捷徑'}
-        >
-          {navCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-          {navCollapsed ? '功能捷徑' : ''}
-        </button>
-        {!navCollapsed && QUICK_LINKS.map(link => {
-          const Icon = link.icon;
-          return (
-            <button
-              key={link.path}
-              className="dash-quick-btn"
-              style={{ color: link.color, borderColor: 'var(--color-border)' }}
-              onClick={() => navigate(`/projects/${projectId}/${link.path}`)}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = link.color; e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Icon size={13} />
-              {link.label}
+      {/* ── 功能捷徑 ── */}
+      <div className="dash-shortcut-grid">
+        {/* Row 1：照片記錄 / 日誌報表 / 進度管理 */}
+        <div className="dash-shortcut-row3">
+          {SHORTCUT_ROW1.map(({ icon: Icon, label, path, color }) => (
+            <button key={path} className="dash-shortcut-row3-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+              <Icon size={22} style={{ color }} />
+              <span>{label}</span>
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* 大卡片：今日查驗工作 */}
+        <button className="dash-shortcut-card" onClick={() => navigate(`/projects/${projectId}/material`)}>
+          <ClipboardCheck size={16} style={{ color: '#10b981' }} />
+          <span>今日查驗工作</span>
+          <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
+        </button>
+
+        {/* 大卡片：工程進度 */}
+        <button className="dash-shortcut-card" onClick={() => navigate(`/projects/${projectId}/progress`)}>
+          <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} />
+          <span>工程進度</span>
+          <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
+        </button>
+
+        {/* Row 2：品質管理 / 歸檔管理 / 統計分析 */}
+        <div className="dash-shortcut-row3">
+          {SHORTCUT_ROW2.map(({ icon: Icon, label, path, color }) => (
+            <button key={path} className="dash-shortcut-row3-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+              <Icon size={22} style={{ color }} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 工程資訊 */}
+        <div className="dash-shortcut-info-card">
+          <div className="dash-shortcut-info-title">工程資訊</div>
+          <div className="dash-shortcut-info-row"><span>承包商</span><span>{project.contractor || '—'}</span></div>
+          <div className="dash-shortcut-info-row"><span>開工</span><span>{project.start_date || '—'}</span></div>
+          <div className="dash-shortcut-info-row"><span>預計完工</span><span>{project.end_date || '—'}</span></div>
+          {daysRemaining !== null && (
+            <div className="dash-shortcut-info-row">
+              <span>剩餘工期</span>
+              <span style={{ color: daysRemaining <= 14 ? 'var(--color-danger,#ef4444)' : daysRemaining <= 30 ? 'var(--color-warning,#f59e0b)' : 'var(--color-text1)', fontWeight: 600 }}>
+                {daysRemaining > 0 ? `${daysRemaining} 天` : '已到期'}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── 查驗任務看板 ── */}

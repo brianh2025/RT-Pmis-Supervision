@@ -163,6 +163,84 @@
 .task-due-urgent  { background: rgba(239,68,68,0.1);  color: var(--color-danger); }
 .task-due-warning { background: rgba(245,158,11,0.1); color: var(--color-warning); }
 
+/* ── 新版功能捷徑 ── */
+.dash-shortcut-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.dash-shortcut-row3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.dash-shortcut-row3-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border-radius: 9px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text1);
+  transition: background 0.14s, border-color 0.14s;
+}
+.dash-shortcut-row3-item:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+}
+.dash-shortcut-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-hover);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--color-text1);
+  transition: all 0.15s;
+  text-align: left;
+}
+.dash-shortcut-card:hover {
+  border-color: var(--color-primary);
+  background: rgba(37,99,235,0.06);
+}
+.dash-shortcut-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-hover);
+}
+.dash-shortcut-info-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+.dash-shortcut-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+.dash-shortcut-info-row span:first-child { color: var(--color-text-muted); }
+.dash-shortcut-info-row span:last-child  { color: var(--color-text1); }
+
 /* Quick Nav Bar (top shortcut strip) */
 .dash-quick-nav {
   display: flex;
