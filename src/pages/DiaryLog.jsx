@@ -4,7 +4,6 @@ import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCc
 import { supabase } from '../lib/supabaseClient';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
-import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryLog.css'; // Minimal specific styles, relying mostly on inline and generic styles
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
@@ -34,9 +33,9 @@ export function DiaryLog() {
   
   const [showImportModal,  setShowImportModal]  = useState(false);
   const [showQuickModal,   setShowQuickModal]   = useState(false);
-  const [showDriveSync,    setShowDriveSync]    = useState(false);
   const [quickInitialData, setQuickInitialData] = useState(null);
   const [refreshTrigger,   setRefreshTrigger]   = useState(0);
+  const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
 
   useEffect(() => {
     async function fetchData() {
@@ -100,25 +99,50 @@ export function DiaryLog() {
   const selectedData = selectedKey ? importedData[selectedKey] : null;
   const importedCount = Object.keys(importedData).length;
 
-  // 從施工日誌（localStorage）讀取同日期資料，轉為 QuickDiaryModal 初始值
-  const getDiaryInitialData = (dateKey) => {
+  // 選擇日期時，從施工日誌（DB + localStorage）預取資料供「從施工日誌帶出」使用
+  const fetchDiaryInitialData = async (dateKey) => {
+    if (diaryDataCache[dateKey] !== undefined) return;
+
+    // 1. 先查 daily_report_items（Drive 同步寫入的工項）
+    const { data: dbItems } = await supabase
+      .from('daily_report_items')
+      .select('item_name, unit, today_qty')
+      .eq('project_id', projectId)
+      .eq('log_date', dateKey);
+
+    // 2. 再查 localStorage（手動建立的施工日誌）
+    let localMatch = null;
     try {
       const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
-      const match = stored.find(r => r.date === dateKey);
-      if (!match) return null;
-      const workText = [
-        ...(match.quantities || []).map(q => `${q.item}：${q.todayQty} ${q.unit}`).filter(s => s.trim() !== '：'),
-        match.specialNote,
-      ].filter(Boolean).join('\n');
-      return {
-        weather_am: match.weather || '晴',
-        weather_pm: match.weather || '晴',
-        work_items: workText || match.progressNote || '',
-        notes: match.progressNote || '',
-        planned_progress: match.plannedProgress || null,
-        actual_progress:  match.actualProgress  || null,
-      };
-    } catch { return null; }
+      localMatch = stored.find(r => r.date === dateKey) || null;
+    } catch {}
+
+    // 3. 組合工項文字
+    const dbWorkText = (dbItems || [])
+      .map(it => `${it.item_name}：${it.today_qty} ${it.unit || ''}`.trim())
+      .join('\n');
+    const localWorkText = localMatch
+      ? [...(localMatch.quantities || []).map(q => `${q.item}：${q.todayQty} ${q.unit}`).filter(s => s.trim() !== '：'), localMatch.specialNote]
+          .filter(Boolean).join('\n')
+      : '';
+
+    const workText = dbWorkText || localWorkText;
+    if (!workText && !localMatch) {
+      setDiaryDataCache(prev => ({ ...prev, [dateKey]: null }));
+      return;
+    }
+
+    setDiaryDataCache(prev => ({
+      ...prev,
+      [dateKey]: {
+        weather_am: localMatch?.weather || '晴',
+        weather_pm: localMatch?.weather || '晴',
+        work_items: workText,
+        notes: localMatch?.progressNote || '',
+        planned_progress: localMatch?.plannedProgress || null,
+        actual_progress:  localMatch?.actualProgress  || null,
+      },
+    }));
   };
 
   return (
@@ -132,16 +156,6 @@ export function DiaryLog() {
             <span className="status-badge success">
                 本月 {importedCount} 筆已匯入
             </span>
-            {project?.drive_folder_id && (
-                <button
-                    onClick={() => setShowDriveSync(true)}
-                    className="btn-dash-action"
-                    style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)' }}
-                >
-                    <RefreshCcw size={13} />
-                    <span>Drive 回朔同步</span>
-                </button>
-            )}
             <button
                 onClick={() => setShowImportModal(true)}
                 className="btn-dash-action"
@@ -204,7 +218,7 @@ export function DiaryLog() {
                     if (isSelected) color = 'var(--color-primary)';
 
                     return (
-                        <button key={day} disabled={isFuture} onClick={() => setSelectedDay(isSelected ? null : day)}
+                        <button key={day} disabled={isFuture} onClick={() => { const d = isSelected ? null : day; setSelectedDay(d); if (d) fetchDiaryInitialData(toKey(year, month, d)); }}
                             style={{ 
                                 aspectRatio: '1/1', borderRadius: '8px', border: isSelected ? '1px solid var(--color-primary)' : '1px solid transparent',
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -284,9 +298,9 @@ export function DiaryLog() {
                             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '2px' }}>尚未建立監造報表</p>
                             <p style={{ fontSize: '11px', lineHeight: '1.4', color: 'var(--color-text-muted)' }}>可從施工日誌帶入、手動填寫或 PDF 匯入</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '14px', alignItems: 'center' }}>
-                                {getDiaryInitialData(selectedKey) && (
+                                {diaryDataCache[selectedKey] && (
                                     <button
-                                        onClick={() => { setQuickInitialData(getDiaryInitialData(selectedKey)); setShowQuickModal(true); }}
+                                        onClick={() => { setQuickInitialData(diaryDataCache[selectedKey]); setShowQuickModal(true); }}
                                         style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 16px', background: 'rgba(245,158,11,0.1)', color: '#b45309', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(245,158,11,0.35)', cursor: 'pointer', fontWeight: 600, width: '100%', justifyContent: 'center' }}>
                                         <BookOpen size={13} /> 從施工日誌帶出
                                     </button>
@@ -351,14 +365,6 @@ export function DiaryLog() {
           projectId={projectId}
           onClose={() => setShowImportModal(false)}
           onSuccess={() => setRefreshTrigger(prev => prev + 1)}
-        />
-      )}
-      {showDriveSync && (
-        <DriveSyncModal
-          projectId={projectId}
-          startDate={project?.start_date || ''}
-          onClose={() => setShowDriveSync(false)}
-          onSuccess={() => { setShowDriveSync(false); setRefreshTrigger(prev => prev + 1); }}
         />
       )}
       {showQuickModal && selectedKey && (

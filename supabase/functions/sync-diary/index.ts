@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v21
+// Supabase Edge Function: sync-diary v22
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -549,7 +549,9 @@ async function syncFile(
     }, { onConflict: "project_id,log_date" });
     if (e1) throw new Error(`daily_logs 寫入失敗 (${logDate}): ` + e1.message);
 
-    if (parsed.plannedProgress !== null || parsed.actualProgress !== null) {
+    // 無論有無進度欄位，均回填 progress_records（確保日期出現在進度管理）
+    // onConflict 採 merge-duplicates：若已存在且有值則不覆蓋為 null
+    if (parsed.actualProgress !== null || parsed.plannedProgress !== null) {
       const { error: e2 } = await supabase.from("progress_records").upsert({
         project_id: projectId, report_date: logDate,
         planned_progress: parsed.plannedProgress ?? 0,
@@ -557,6 +559,18 @@ async function syncFile(
         notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
       }, { onConflict: "project_id,report_date" });
       if (e2) console.warn("progress_records:", e2.message);
+    } else {
+      // 進度欄位為空：寫入 0/0，但不覆蓋已有的實際進度資料
+      const { data: existing } = await supabase.from("progress_records")
+        .select("id, actual_progress").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
+      if (!existing) {
+        const { error: e2 } = await supabase.from("progress_records").insert({
+          project_id: projectId, report_date: logDate,
+          planned_progress: 0, actual_progress: 0,
+          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+        });
+        if (e2) console.warn("progress_records insert:", e2.message);
+      }
     }
 
     if (parsed.workItems.length > 0) {
