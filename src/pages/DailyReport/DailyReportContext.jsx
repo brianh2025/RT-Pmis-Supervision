@@ -35,10 +35,11 @@ export function DailyReportProvider({ children, projectId }) {
                 if (saved) localReports = JSON.parse(saved);
             } catch {}
 
-            // 2. 從 Supabase 並行讀取工項明細 + 進度記錄
-            const [{ data: dbItems }, { data: progressData }] = await Promise.all([
+            // 2. 從 Supabase 並行讀取工項明細 + progress_records + daily_logs（進度來源三選一）
+            const [{ data: dbItems }, { data: progressData }, { data: logsData }] = await Promise.all([
                 supabase.from('daily_report_items').select('*').eq('project_id', projectId).order('log_date', { ascending: false }),
                 supabase.from('progress_records').select('report_date, planned_progress, actual_progress').eq('project_id', projectId),
+                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress').eq('project_id', projectId),
             ]);
 
             // 按日期分組
@@ -47,8 +48,13 @@ export function DailyReportProvider({ children, projectId }) {
                 if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
                 itemsByDate[it.log_date].push(it);
             });
+            // progress_records 優先，daily_logs 為 fallback
             const progressByDate = {};
-            (progressData || []).forEach(p => { progressByDate[p.report_date] = p; });
+            (logsData || []).forEach(l => {
+                if (l.actual_progress != null || l.planned_progress != null)
+                    progressByDate[l.log_date] = { planned_progress: l.planned_progress, actual_progress: l.actual_progress };
+            });
+            (progressData || []).forEach(p => { progressByDate[p.report_date] = p; }); // 覆寫
 
             // 3. 合併：local 報表 + DB 工項；DB 有但 local 沒有的日期，建立骨架
             const localDates = new Set(localReports.map(r => r.date));
