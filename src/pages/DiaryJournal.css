@@ -29,21 +29,37 @@
   display: none;
 }
 
-/* Mobile date nav bar */
-.dj-mobile-datebar {
+/* Calendar collapse toggle */
+.dj-cal-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 3px 5px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  transition: background 0.12s;
+}
+.dj-cal-toggle:hover { background: var(--color-surface-hover); color: var(--color-text1); }
+
+/* Collapsed state: date + prev/next */
+.dj-cal-collapsed-date {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 2px 0;
+  gap: 12px;
+  padding: 6px 0 2px;
 }
-.dj-mobile-date {
+.dj-collapsed-datetext {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--color-text1);
   min-width: 100px;
   text-align: center;
 }
+
 .dj-nav-btn {
   background: none;
   border: 1px solid var(--color-border);
@@ -220,8 +236,7 @@
 
 /* ── Desktop ── */
 @media (min-width: 769px) {
-  .dj-header-date    { display: block; }
-  .dj-mobile-datebar { display: none !important; }
+  .dj-header-date { display: block; }
 }
 
 /* ── Mobile ── */
@@ -232,7 +247,6 @@
     flex: unset;
   }
   .dj-cal-col { width: 100%; }
-  .dj-cal-col.has-selection { display: none; }
   .dj-summary-col { overflow: visible; }
   .dj-body:not(.has-selection) .dj-placeholder { display: none; }
 }

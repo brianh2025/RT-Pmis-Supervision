@@ -717,6 +717,20 @@ function StepEntry({ photos, onComplete, onBack }) {
   })));
 
   function update(f, v) { setData(prev => prev.map((d, i) => i === index ? { ...d, [f]: v } : d)); }
+
+  // 前往下一張時，若下一張位置/說明為空，自動帶入當前值（暫存）
+  function goNext() {
+    setData(prev => prev.map((d, i) => {
+      if (i !== index + 1) return d;
+      return {
+        ...d,
+        location: d.location || prev[index].location,
+        description: d.description || prev[index].description,
+      };
+    }));
+    setIndex(i => i + 1);
+  }
+
   const cur = photos[index], curD = data[index];
 
   return (
@@ -760,7 +774,7 @@ function StepEntry({ photos, onComplete, onBack }) {
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
           <button className="pt-btn" disabled={index === 0} onClick={() => setIndex(i => i - 1)}><ChevronLeft size={14} />上一張</button>
           {index < photos.length - 1
-            ? <button className="pt-btn pt-btn-primary" onClick={() => setIndex(i => i + 1)}>下一張<ChevronRight size={14} /></button>
+            ? <button className="pt-btn pt-btn-primary" onClick={goNext}>下一張<ChevronRight size={14} /></button>
             : <button className="pt-btn pt-btn-primary" onClick={() => onComplete(data)}><Check size={14} />產生報告</button>
           }
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CloudDownload, Calendar, Edit, FileText, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DiaryImportModal } from '../components/DiaryImportModal';
@@ -20,11 +20,13 @@ function toRoc(y, m, d) {
 export function DiaryLog() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initDate = searchParams.get('date');
 
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [year, setYear] = useState(() => initDate ? parseInt(initDate.slice(0, 4)) : today.getFullYear());
+  const [month, setMonth] = useState(() => initDate ? parseInt(initDate.slice(5, 7)) - 1 : today.getMonth());
+  const [selectedDay, setSelectedDay] = useState(() => initDate ? parseInt(initDate.slice(8, 10)) : null);
 
   const [project, setProject] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -149,13 +151,16 @@ export function DiaryLog() {
     <div className="diary-log-page">
       <header className="page-section-header">
         <div className="header-left">
-          <span className="section-label">監造報表檢索</span>
-          <span className="section-sub-label">MAPPING SYSTEM</span>
+          {initDate && (
+            <button className="btn-dash-action" onClick={() => navigate(`/projects/${projectId}/journal`)} style={{ marginRight: 8 }}>
+              <ArrowLeft size={13} /><span>返回日誌報表</span>
+            </button>
+          )}
+          <span className="section-label">{initDate ? `監造報表　${initDate}` : '監造報表檢索'}</span>
+          {!initDate && <span className="section-sub-label">MAPPING SYSTEM</span>}
         </div>
         <div className="header-actions">
-            <span className="status-badge success">
-                本月 {importedCount} 筆已匯入
-            </span>
+            {!initDate && <span className="status-badge success">本月 {importedCount} 筆已匯入</span>}
             <button
                 onClick={() => setShowImportModal(true)}
                 className="btn-dash-action"
@@ -167,9 +172,9 @@ export function DiaryLog() {
       </header>
       
       {/* B-version Calendar and details grid */}
-      <div className="b-dash-content-grid">
-         {/* Left: Calendar */}
-         <div className="b-content-panel">
+      <div className={initDate ? '' : 'b-dash-content-grid'}>
+         {/* Left: Calendar — hidden when navigated from DiaryJournal */}
+         {!initDate && <div className="b-content-panel">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <button onClick={prevMonth} style={{ width: '28px', height: '28px', borderRadius: '8px', border: 'none', background: 'var(--color-bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text2)' }}>
                     &lt;
@@ -246,7 +251,7 @@ export function DiaryLog() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-border)' }} />未匯入</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary)' }} />今天</span>
             </div>
-         </div>
+         </div>}
 
          {/* Right: Detail panel */}
          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

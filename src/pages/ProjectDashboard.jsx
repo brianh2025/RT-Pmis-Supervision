@@ -8,7 +8,8 @@ import {
   TrendingUp, FileText, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
   ChevronDown, ChevronUp,
-  ClipboardList, Package, ClipboardCheck, Shield, Archive, BarChart2, Camera,
+  ClipboardList, Package, Shield, Archive, BarChart2, Camera,
+  Pencil, X,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -30,6 +31,11 @@ export function ProjectDashboard() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
   const { project, loading: projectLoading } = useProject(projectId);
+
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
   const [stats, setStats] = useState({
     totalLogs: 0, thisMonthLogs: 0, pendingLogs: 0,
@@ -228,59 +234,6 @@ export function ProjectDashboard() {
         </span>
       </div>
 
-      {/* ── 功能捷徑 ── */}
-      <div className="dash-shortcut-grid">
-        {/* Row 1：照片記錄 / 日誌報表 / 進度管理 */}
-        <div className="dash-shortcut-row3">
-          {SHORTCUT_ROW1.map(({ icon: Icon, label, path, color }) => (
-            <button key={path} className="dash-shortcut-row3-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-              <Icon size={22} style={{ color }} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 大卡片：今日查驗工作 */}
-        <button className="dash-shortcut-card" onClick={() => navigate(`/projects/${projectId}/material`)}>
-          <ClipboardCheck size={16} style={{ color: '#10b981' }} />
-          <span>今日查驗工作</span>
-          <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
-        </button>
-
-        {/* 大卡片：工程進度 */}
-        <button className="dash-shortcut-card" onClick={() => navigate(`/projects/${projectId}/progress`)}>
-          <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} />
-          <span>工程進度</span>
-          <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.4 }} />
-        </button>
-
-        {/* Row 2：品質管理 / 歸檔管理 / 統計分析 */}
-        <div className="dash-shortcut-row3">
-          {SHORTCUT_ROW2.map(({ icon: Icon, label, path, color }) => (
-            <button key={path} className="dash-shortcut-row3-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-              <Icon size={22} style={{ color }} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 工程資訊 */}
-        <div className="dash-shortcut-info-card">
-          <div className="dash-shortcut-info-title">工程資訊</div>
-          <div className="dash-shortcut-info-row"><span>承包商</span><span>{project.contractor || '—'}</span></div>
-          <div className="dash-shortcut-info-row"><span>開工</span><span>{project.start_date || '—'}</span></div>
-          <div className="dash-shortcut-info-row"><span>預計完工</span><span>{project.end_date || '—'}</span></div>
-          {daysRemaining !== null && (
-            <div className="dash-shortcut-info-row">
-              <span>剩餘工期</span>
-              <span style={{ color: daysRemaining <= 14 ? 'var(--color-danger,#ef4444)' : daysRemaining <= 30 ? 'var(--color-warning,#f59e0b)' : 'var(--color-text1)', fontWeight: 600 }}>
-                {daysRemaining > 0 ? `${daysRemaining} 天` : '已到期'}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* ── 查驗任務看板 ── */}
       <div className="task-board">
         <div className="task-board-header">
@@ -343,71 +296,180 @@ export function ProjectDashboard() {
         })}
       </div>
 
-      {/* ── Bento Grid ── */}
-      <div className="stunning-bento-grid">
-
-        {/* 施工進度（寬卡） */}
-        <div className="stunning-card stunning-card-wide">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><TrendingUp size={14} /></div>
-            <h3 className="stunning-card-title">施工進度</h3>
-            {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>預定進度</span>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text2)' }}>{stats.latestPlanned}%</span>
-            </div>
-            <div className="stunning-progress-wrap">
-              <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
-              <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }}>
-                {stats.latestActual > 5 && `${stats.latestActual}%`}
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>實際進度</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)' }}>
-                  {stats.latestActual}%
-                </span>
-                {stats.latestPlanned > 0 && (
-                  <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                    {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 工程資訊 */}
-        <div className="stunning-card">
-          <div className="stunning-card-header">
-            <div className="stunning-icon-box"><Calendar size={14} /></div>
-            <h3 className="stunning-card-title">工程資訊</h3>
-          </div>
-          <div className="neon-stats-grid">
-            <div className="neon-stat-box neon-yellow">
-              <span className="neon-val">{daysRemaining !== null ? Math.max(0, daysRemaining) : '—'}</span>
-              <span className="neon-label">剩餘工期(天)</span>
-            </div>
-            <div className="neon-stat-box neon-blue">
-              <span className="neon-val">{project.start_date ? project.start_date.slice(0, 7) : '—'}</span>
-              <span className="neon-label">開工年月</span>
-            </div>
-            <div className="neon-stat-box neon-red">
-              <span className="neon-val">{daysRemaining !== null && daysRemaining < 0 ? Math.abs(daysRemaining) : '—'}</span>
-              <span className="neon-label">逾期天數</span>
-            </div>
-            <div className="neon-stat-box neon-green">
-              <span className="neon-val">{project.end_date ? project.end_date.slice(0, 7) : '—'}</span>
-              <span className="neon-label">預計完工</span>
-            </div>
-          </div>
-        </div>
-
-
+      {/* ── 捷徑區塊 A ── */}
+      <div className="dash-sc-strip">
+        {SHORTCUT_ROW1.map(({ icon: Icon, label, path, color }) => (
+          <button key={path} className="dash-sc-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+            <Icon size={20} style={{ color }} />
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
+
+      {/* ── 工程進度 ── */}
+      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
+        <div className="stunning-card-header">
+          <div className="stunning-icon-box"><TrendingUp size={14} /></div>
+          <h3 className="stunning-card-title">工程進度</h3>
+          {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>預定進度</span>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text2)' }}>{stats.latestPlanned}%</span>
+          </div>
+          <div className="stunning-progress-wrap">
+            <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
+            <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }}>
+              {stats.latestActual > 5 && `${stats.latestActual}%`}
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>實際進度</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)' }}>
+                {stats.latestActual}%
+              </span>
+              {stats.latestPlanned > 0 && (
+                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                  {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 捷徑區塊 B ── */}
+      <div className="dash-sc-strip">
+        {SHORTCUT_ROW2.map(({ icon: Icon, label, path, color }) => (
+          <button key={path} className="dash-sc-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+            <Icon size={20} style={{ color }} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 工程資訊 ── */}
+      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active' }); setShowProjectInfo(true); }}>
+        <div className="stunning-card-header">
+          <div className="stunning-icon-box"><Calendar size={14} /></div>
+          <h3 className="stunning-card-title">工程資訊</h3>
+          <button
+            className="proj-info-edit-btn"
+            onClick={e => { e.stopPropagation(); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active' }); setEditMode(true); setShowProjectInfo(true); }}
+            title="編輯工程資訊"
+          >
+            <Pencil size={12} />
+          </button>
+        </div>
+        <div className="neon-stats-grid">
+          <div className="neon-stat-box neon-yellow">
+            <span className="neon-val">{daysRemaining !== null ? Math.max(0, daysRemaining) : '—'}</span>
+            <span className="neon-label">剩餘工期(天)</span>
+          </div>
+          <div className="neon-stat-box neon-blue">
+            <span className="neon-val">{project.start_date ? project.start_date.slice(0, 7) : '—'}</span>
+            <span className="neon-label">開工年月</span>
+          </div>
+          <div className="neon-stat-box neon-red">
+            <span className="neon-val">{daysRemaining !== null && daysRemaining < 0 ? Math.abs(daysRemaining) : '—'}</span>
+            <span className="neon-label">逾期天數</span>
+          </div>
+          <div className="neon-stat-box neon-green">
+            <span className="neon-val">{project.end_date ? project.end_date.slice(0, 7) : '—'}</span>
+            <span className="neon-label">預計完工</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 工程資訊 Modal ── */}
+      {showProjectInfo && (
+        <div className="proj-info-overlay" onClick={() => setShowProjectInfo(false)}>
+          <div className="proj-info-modal" onClick={e => e.stopPropagation()}>
+            <div className="proj-info-modal-header">
+              <span className="proj-info-modal-title">工程基本資料</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {!editMode && (
+                  <button className="proj-info-edit-btn" onClick={() => setEditMode(true)} title="編輯">
+                    <Pencil size={13} />
+                  </button>
+                )}
+                <button className="proj-info-close-btn" onClick={() => setShowProjectInfo(false)}>
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {editMode ? (
+              <div className="proj-info-modal-body">
+                {[
+                  { label: '工程名稱', key: 'name', type: 'text' },
+                  { label: '承包商',   key: 'contractor', type: 'text' },
+                  { label: '開工日期', key: 'start_date', type: 'date' },
+                  { label: '完工日期', key: 'end_date',   type: 'date' },
+                ].map(({ label, key, type }) => (
+                  <div key={key} className="proj-info-field">
+                    <label>{label}</label>
+                    <input
+                      type={type}
+                      value={editForm[key]}
+                      onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+                <div className="proj-info-field">
+                  <label>狀態</label>
+                  <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="active">執行中</option>
+                    <option value="completed">已完工</option>
+                    <option value="suspended">暫停</option>
+                  </select>
+                </div>
+                <div className="proj-info-modal-actions">
+                  <button className="proj-info-cancel-btn" onClick={() => setEditMode(false)}>取消</button>
+                  <button
+                    className="proj-info-save-btn"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      await supabase.from('projects').update({
+                        name: editForm.name,
+                        contractor: editForm.contractor,
+                        start_date: editForm.start_date || null,
+                        end_date: editForm.end_date || null,
+                        status: editForm.status,
+                      }).eq('id', projectId);
+                      setSaving(false);
+                      setEditMode(false);
+                      setShowProjectInfo(false);
+                      window.location.reload();
+                    }}
+                  >
+                    {saving ? '儲存中…' : '儲存'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="proj-info-modal-body">
+                {[
+                  { label: '工程名稱', value: project.name },
+                  { label: '承包商',   value: project.contractor },
+                  { label: '開工日期', value: project.start_date },
+                  { label: '完工日期', value: project.end_date },
+                  { label: '狀態',     value: project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : '暫停' },
+                  daysRemaining !== null && { label: '剩餘工期', value: daysRemaining > 0 ? `${daysRemaining} 天` : `已逾期 ${Math.abs(daysRemaining)} 天` },
+                ].filter(Boolean).map(({ label, value }) => (
+                  <div key={label} className="proj-info-row">
+                    <span className="proj-info-row-label">{label}</span>
+                    <span className="proj-info-row-value">{value || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showEmergency && (
         <EmergencyStopModal

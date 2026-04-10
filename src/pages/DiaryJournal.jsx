@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './DiaryJournal.css';
 
@@ -11,6 +11,14 @@ function toKey(y, m, d) {
 }
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDow(y, m)    { return new Date(y, m, 1).getDay(); }
+
+/** 過濾施工日誌模板樣板文字，保留真正的備註 */
+function cleanNotes(raw) {
+  if (!raw) return '';
+  const lines = raw.split('\n');
+  const cutIdx = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
+  return (cutIdx === -1 ? lines : lines.slice(0, cutIdx)).join('\n').trim();
+}
 
 /** 格式化百分比，最多 2 位小數 */
 function fmtPct(v) {
@@ -35,6 +43,8 @@ export function DiaryJournal() {
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedKey, setSelectedKey] = useState(null);
+
+  const [calCollapsed, setCalCollapsed] = useState(false);
 
   const [diaryDates,       setDiaryDates]       = useState(new Set());
   const [supervisionDates, setSupervisionDates] = useState(new Set());
@@ -116,7 +126,13 @@ export function DiaryJournal() {
 
   // 過濾有意義的施工項（排除合約比例型小數）
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
-  const noteText = summary?.log?.notes || '';
+  const noteText = cleanNotes(summary?.log?.notes);
+
+  // 選日期：行動版自動收合日曆
+  function handleSelectDate(key, isSelected) {
+    setSelectedKey(isSelected ? null : key);
+    if (!isSelected && window.innerWidth <= 768) setCalCollapsed(true);
+  }
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -125,42 +141,61 @@ export function DiaryJournal() {
         <button onClick={prevMonth}><ChevronLeft size={16} /></button>
         <span className="dj-month-label">{year} 年 {month + 1} 月</span>
         <button onClick={nextMonth}><ChevronRight size={16} /></button>
+        {/* 收合切換 */}
+        <button className="dj-cal-toggle" onClick={() => setCalCollapsed(c => !c)} title={calCollapsed ? '展開日曆' : '收合日曆'}>
+          {calCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
       </div>
-      <div className="dj-dow-row">
-        {DOW.map(d => <div key={d} className="dj-dow-cell">{d}</div>)}
-      </div>
-      <div className="dj-day-grid">
-        {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
-        {Array.from({ length: daysInMonth }, (_, i) => {
-          const d   = i + 1;
-          const key = toKey(year, month, d);
-          const hasDi = diaryDates.has(key);
-          const hasSu = supervisionDates.has(key);
-          const isToday    = key === todayKey;
-          const isSelected = key === selectedKey;
-          const dow = (firstDow + i) % 7;
-          return (
-            <button
-              key={d}
-              className={`dj-day-btn${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
-              style={{ color: dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : undefined }}
-              onClick={() => setSelectedKey(isSelected ? null : key)}
-            >
-              {d}
-              {(hasDi || hasSu) && (
-                <div className="dj-day-dots">
-                  <span className={`dj-dot${hasDi ? ' diary' : ''}`} />
-                  <span className={`dj-dot${hasSu ? ' sup' : ''}`} />
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-      <div className="dj-legend">
-        <span><span className="dj-dot diary" />施工日誌</span>
-        <span><span className="dj-dot sup" />監造報表</span>
-      </div>
+
+      {/* 收合時：若有選定日期則顯示日期 + 前後一天導覽 */}
+      {calCollapsed && selectedKey && (
+        <div className="dj-cal-collapsed-date">
+          <button className="dj-nav-btn" onClick={() => changeDay(-1)}><ChevronLeft size={15} /></button>
+          <span className="dj-collapsed-datetext">{selectedKey}</span>
+          <button className="dj-nav-btn" onClick={() => changeDay(1)}><ChevronRight size={15} /></button>
+        </div>
+      )}
+
+      {/* 展開時：完整日曆 */}
+      {!calCollapsed && (
+        <>
+          <div className="dj-dow-row">
+            {DOW.map(d => <div key={d} className="dj-dow-cell">{d}</div>)}
+          </div>
+          <div className="dj-day-grid">
+            {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
+            {Array.from({ length: daysInMonth }, (_, i) => {
+              const d   = i + 1;
+              const key = toKey(year, month, d);
+              const hasDi = diaryDates.has(key);
+              const hasSu = supervisionDates.has(key);
+              const isToday    = key === todayKey;
+              const isSelected = key === selectedKey;
+              const dow = (firstDow + i) % 7;
+              return (
+                <button
+                  key={d}
+                  className={`dj-day-btn${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}`}
+                  style={{ color: dow === 0 ? '#ef4444' : dow === 6 ? '#3b82f6' : undefined }}
+                  onClick={() => handleSelectDate(key, isSelected)}
+                >
+                  {d}
+                  {(hasDi || hasSu) && (
+                    <div className="dj-day-dots">
+                      <span className={`dj-dot${hasDi ? ' diary' : ''}`} />
+                      <span className={`dj-dot${hasSu ? ' sup' : ''}`} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="dj-legend">
+            <span><span className="dj-dot diary" />施工日誌</span>
+            <span><span className="dj-dot sup" />監造報表</span>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -171,12 +206,22 @@ export function DiaryJournal() {
     ) : !summary ? null : (
       <div className="dj-summary">
 
+        {/* 天氣（最上方） */}
+        {(summary.log?.weather_am || summary.log?.weather_pm) && (
+          <div className="dj-weather-row">
+            <Cloud size={12} />
+            <span>上午 {summary.log.weather_am || '—'}</span>
+            <span className="dj-weather-sep" />
+            <span>下午 {summary.log.weather_pm || '—'}</span>
+          </div>
+        )}
+
         {/* 合併上傳狀態＋按鈕 */}
         <div className="dj-action-row">
           <button
             className={`dj-action-btn${hasDiary ? '' : ' disabled'}`}
             onClick={() => {
-              if (hasDiary) navigate(`/projects/${projectId}/diary`);
+              if (hasDiary) navigate(`/projects/${projectId}/diary?date=${selectedKey}`);
               else alert('施工日誌尚未上傳，請先 Drive 回朔同步或手動填寫');
             }}
             title={hasDiary ? '查看施工日誌' : '施工日誌尚未上傳'}
@@ -187,7 +232,7 @@ export function DiaryJournal() {
           <button
             className={`dj-action-btn supervision${hasSup ? '' : ' disabled'}`}
             onClick={() => {
-              if (hasSup) navigate(`/projects/${projectId}/supervision`);
+              if (hasSup) navigate(`/projects/${projectId}/supervision?date=${selectedKey}`);
               else alert('監造報表尚未上傳，請先 Drive 回朔同步或手動填寫');
             }}
             title={hasSup ? '查看監造報表' : '監造報表尚未上傳'}
@@ -219,14 +264,6 @@ export function DiaryJournal() {
             ? <div className="dj-note-text">{noteText}</div>
             : <div className="dj-empty">尚無備註</div>
           }
-          {(summary.log?.weather_am || summary.log?.weather_pm) && (
-            <div className="dj-weather-row">
-              <Cloud size={12} />
-              <span>上午 {summary.log.weather_am || '—'}</span>
-              <span className="dj-weather-sep" />
-              <span>下午 {summary.log.weather_pm || '—'}</span>
-            </div>
-          )}
         </div>
 
         {/* 進度 */}
@@ -235,8 +272,8 @@ export function DiaryJournal() {
           {(selActual != null || selPlanned != null) ? (
             <>
               <div className="dj-progress-nums">
-                <span>預定 <strong>{fmtPct(selPlanned)}</strong></span>
-                <span>實際 <strong style={{ color: progressColor(selActual, selPlanned) }}>{fmtPct(selActual)}</strong></span>
+                <span>預定 {fmtPct(selPlanned)}</span>
+                <span style={{ color: progressColor(selActual, selPlanned) }}>實際 {fmtPct(selActual)}</span>
               </div>
               <div className="dj-progress-bar-bg">
                 {selPlanned != null && (
@@ -266,19 +303,9 @@ export function DiaryJournal() {
         {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
       </div>
 
-      {/* 行動版：收合後的日期導覽列 */}
-      {selectedKey && (
-        <div className="dj-mobile-datebar">
-          <button className="dj-nav-btn" onClick={() => changeDay(-1)}><ChevronLeft size={16} /></button>
-          <span className="dj-mobile-date">{selectedKey}</span>
-          <button className="dj-nav-btn" onClick={() => changeDay(1)}><ChevronRight size={16} /></button>
-        </div>
-      )}
-
       {/* 主體 */}
       <div className={`dj-body${selectedKey ? ' has-selection' : ''}`}>
-        {/* 日曆欄（行動版有選擇時隱藏） */}
-        <div className={`dj-cal-col${selectedKey ? ' has-selection' : ''}`}>
+        <div className="dj-cal-col">
           {calendarEl}
         </div>
 
