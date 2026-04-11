@@ -16,10 +16,13 @@ function toIsoDate(dateStr) {
 }
 
 async function callEdgeFn(token, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ ...body, secret: import.meta.env.VITE_SYNC_SECRET || '' }),
+    headers,
+    body: JSON.stringify({ ...body, secret: syncSecret }),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);

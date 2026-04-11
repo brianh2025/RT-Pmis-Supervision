@@ -601,13 +601,31 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+// ── JWT 驗證（從 Authorization header 驗證 Supabase 使用者）────
+async function verifySupabaseJwt(req: Request): Promise<boolean> {
+  try {
+    const authHeader = req.headers.get("authorization") || "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    if (!jwt) return false;
+    const { data: { user }, error } = await supabase.auth.getUser(jwt);
+    return !error && !!user;
+  } catch {
+    return false;
+  }
+}
+
 // ── Main Handler ───────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
   try {
     const body = await req.json();
     const { secret, mode } = body;
-    if (secret !== SYNC_SECRET) return json({ error: "Unauthorized" }, 401);
+
+    // 認證：secret 比對 或 Supabase JWT 二擇一通過即可
+    const secretOk = !!SYNC_SECRET && secret === SYNC_SECRET;
+    const jwtOk = await verifySupabaseJwt(req);
+    if (!secretOk && !jwtOk) return json({ error: "Unauthorized" }, 401);
+
     const token = await getGoogleAccessToken();
 
     // ── mode: list ── 列出檔案清單（不解析 Excel，快速）
