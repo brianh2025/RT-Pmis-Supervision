@@ -60,23 +60,28 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
 
       setProgress({ current: 0, total: files.length, results: [] });
 
-      // 第二步：並行同步所有檔案
-      let done = 0;
+      // 第二步：限流並行同步（同時最多 5 個）
+      const CONCURRENCY = 5;
+      let idx = 0, done = 0;
       const allResults = [];
-      await Promise.allSettled(files.map(async f => {
-        let entry;
-        try {
-          const r = await callEdgeFn(token, {
-            mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
-          });
-          entry = { file: f.name, date: r.date, itemCount: r.itemCount, success: true };
-        } catch (err) {
-          entry = { file: f.name, success: false, error: String(err) };
+      async function worker() {
+        while (idx < files.length) {
+          const f = files[idx++];
+          let entry;
+          try {
+            const r = await callEdgeFn(token, {
+              mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
+            });
+            entry = { file: f.name, date: r.date, itemCount: r.itemCount, success: true };
+          } catch (err) {
+            entry = { file: f.name, success: false, error: String(err) };
+          }
+          allResults.push(entry);
+          done++;
+          setProgress(p => ({ ...p, current: done, results: [...allResults] }));
         }
-        allResults.push(entry);
-        done += 1;
-        setProgress(p => ({ ...p, current: done, results: [...allResults] }));
-      }));
+      }
+      await Promise.allSettled(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
 
       onSuccess?.();
     } catch (err) {

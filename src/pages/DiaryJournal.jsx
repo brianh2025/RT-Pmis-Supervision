@@ -17,12 +17,18 @@ async function runBackgroundSync(projectId, startDate) {
   });
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
-  await Promise.allSettled(files.map(f =>
-    fetch(EDGE_FN_URL, {
-      method: 'POST', headers,
-      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
-    })
-  ));
+  const CONCURRENCY = 5;
+  let i = 0;
+  async function worker() {
+    while (i < files.length) {
+      const f = files[i++];
+      await fetch(EDGE_FN_URL, {
+        method: 'POST', headers,
+        body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+      }).catch(() => {});
+    }
+  }
+  await Promise.allSettled(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
   return files.length;
 }
 
