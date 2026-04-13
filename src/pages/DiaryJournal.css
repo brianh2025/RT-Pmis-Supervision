@@ -234,6 +234,16 @@
 }
 .dj-progress-bar.planned { background: rgba(148,163,184,0.35); }
 
+/* Drive 同步狀態文字 */
+.dj-sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
 /* Drive 同步按鈕 */
 .dj-sync-btn {
   display: inline-flex;

@@ -193,6 +193,14 @@ export function DiaryJournal() {
         <button onClick={prevMonth}><ChevronLeft size={16} /></button>
         <span className="dj-month-label">{year} 年 {month + 1} 月</span>
         <button onClick={nextMonth}><ChevronRight size={16} /></button>
+        {autoSyncing
+          ? <span className="dj-sync-status"><Loader2 size={11} className="animate-spin" />同步中</span>
+          : project?.drive_folder_id && (
+            <button className="dj-sync-btn" onClick={() => setShowDriveSync(true)}>
+              <RefreshCcw size={11} />同步
+            </button>
+          )
+        }
         {/* 收合切換 */}
         <button className="dj-cal-toggle" onClick={() => setCalCollapsed(c => !c)} title={calCollapsed ? '展開日曆' : '收合日曆'}>
           {calCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -352,19 +360,7 @@ export function DiaryJournal() {
       {/* Header：標題 + Drive同步按鈕 + PC端選定日期 */}
       <div className="dj-header">
         <h1 className="dj-title">日誌報表</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {autoSyncing && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
-              <Loader2 size={12} className="animate-spin" />同步中…
-            </span>
-          )}
-          {project?.drive_folder_id && (
-            <button className="dj-sync-btn" onClick={() => setShowDriveSync(true)}>
-              <RefreshCcw size={12} />Drive 回朔同步
-            </button>
-          )}
-          {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
-        </div>
+        {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
       </div>
 
       {/* 主體 */}
