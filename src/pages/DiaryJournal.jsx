@@ -111,15 +111,23 @@ export function DiaryJournal() {
     const start = toKey(year, month, 1);
     const end   = toKey(year, month, getDaysInMonth(year, month));
     let cancelled = false;
-    // 兩種點都以 daily_logs 為依據，確保 Drive 同步後兩點同步出現
-    supabase.from('daily_logs').select('log_date')
-      .eq('project_id', projectId).gte('log_date', start).lte('log_date', end)
-      .then(({ data }) => {
-        if (cancelled) return;
-        const dates = new Set((data || []).map(r => r.log_date));
-        setDiaryDates(dates);
-        setSupervisionDates(dates);
-      });
+    Promise.all([
+      supabase.from('daily_report_items').select('log_date')
+        .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
+      supabase.from('daily_logs').select('log_date')
+        .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
+    ]).then(([dri, dl]) => {
+      if (cancelled) return;
+      const dlDates = new Set((dl.data || []).map(r => r.log_date));
+      // 藍點：daily_report_items 或 daily_logs 有資料（手動填寫 or Drive 同步皆涵蓋）
+      const combined = new Set([
+        ...(dri.data || []).map(r => r.log_date),
+        ...dlDates,
+      ]);
+      setDiaryDates(combined);
+      // 綠點：daily_logs 有資料（Drive 同步寫入）
+      setSupervisionDates(dlDates);
+    });
     return () => { cancelled = true; };
   }, [projectId, year, month, refreshKey]);
 
