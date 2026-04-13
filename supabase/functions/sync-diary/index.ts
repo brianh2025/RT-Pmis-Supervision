@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v22
+// Supabase Edge Function: sync-diary v23
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -601,6 +601,8 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+
 // ── JWT 驗證（從 Authorization header 驗證 Supabase 使用者）────
 async function verifySupabaseJwt(req: Request): Promise<boolean> {
   try {
@@ -621,10 +623,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { secret, mode } = body;
 
-    // 認證：secret 比對 或 Supabase JWT 二擇一通過即可
+    // 認證：secret 比對 OR Supabase anon key OR user JWT，三擇一通過即可
     const secretOk = !!SYNC_SECRET && secret === SYNC_SECRET;
-    const jwtOk = await verifySupabaseJwt(req);
-    if (!secretOk && !jwtOk) return json({ error: "Unauthorized" }, 401);
+    const bearerToken = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const anonOk = !!SUPABASE_ANON_KEY && bearerToken === SUPABASE_ANON_KEY;
+    const jwtOk = !anonOk && await verifySupabaseJwt(req);
+    if (!secretOk && !anonOk && !jwtOk) return json({ error: "Unauthorized" }, 401);
 
     const token = await getGoogleAccessToken();
 

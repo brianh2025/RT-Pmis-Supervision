@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 export const DailyReportContext = createContext();
@@ -25,6 +25,8 @@ function mergeItems(reports, itemsByDate) {
 export function DailyReportProvider({ children, projectId }) {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
     useEffect(() => {
         async function init() {
@@ -94,7 +96,7 @@ export function DailyReportProvider({ children, projectId }) {
             setLoading(false);
         }
         if (projectId) init();
-    }, [projectId]);
+    }, [projectId, refreshKey]);
 
     const saveReport = async (form) => {
         // 更新 localStorage
@@ -145,7 +147,7 @@ export function DailyReportProvider({ children, projectId }) {
     };
 
     return (
-        <DailyReportContext.Provider value={{ reports, saveReport, loading, projectId }}>
+        <DailyReportContext.Provider value={{ reports, saveReport, loading, refresh, projectId }}>
             {children}
         </DailyReportContext.Provider>
     );

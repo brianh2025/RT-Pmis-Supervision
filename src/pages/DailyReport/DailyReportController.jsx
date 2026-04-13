@@ -1,7 +1,32 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+
+const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+
+async function runBackgroundSync(projectId, startDate) {
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? anonKey;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+    const listRes = await fetch(EDGE_FN_URL, {
+        method: 'POST', headers,
+        body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
+    });
+    if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+    const { files = [] } = await listRes.json();
+
+    for (const f of files) {
+        await fetch(EDGE_FN_URL, {
+            method: 'POST', headers,
+            body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+        }).catch(() => {});
+    }
+    return files.length;
+}
 import { DailyReportProvider, DailyReportContext } from './DailyReportContext';
 import { DailyReportList } from './DailyReportList';
 import { DailyReportView } from './DailyReportView';
@@ -15,7 +40,7 @@ function DailyReportContainer() {
     const [searchParams] = useSearchParams();
     const initDate = searchParams.get('date');
 
-    const { reports, loading: reportsLoading } = useContext(DailyReportContext);
+    const { reports, loading: reportsLoading, refresh } = useContext(DailyReportContext);
 
     const [viewMode, setViewMode] = useState(initDate ? "loading" : "list"); // list | view | form | loading
     const [selectedReport, setSelectedReport] = useState(null);
@@ -23,6 +48,8 @@ function DailyReportContainer() {
     const [showImport, setShowImport] = useState(false);
     const [showDriveSync, setShowDriveSync] = useState(false);
     const [project, setProject] = useState(null);
+    const [autoSyncing, setAutoSyncing] = useState(false);
+    const autoSyncedRef = useRef(false);
 
     useEffect(() => {
         supabase.from('projects')
@@ -30,6 +57,17 @@ function DailyReportContainer() {
             .eq('id', projectId).single()
             .then(({ data }) => { if (data) setProject(data); });
     }, [projectId]);
+
+    // 進頁自動背景同步（每次進入頁面執行一次）
+    useEffect(() => {
+        if (!project?.drive_folder_id || autoSyncedRef.current) return;
+        autoSyncedRef.current = true;
+        setAutoSyncing(true);
+        runBackgroundSync(projectId, project.start_date)
+            .then(count => { if (count > 0) refresh(); })
+            .catch(() => {})
+            .finally(() => setAutoSyncing(false));
+    }, [project?.drive_folder_id, projectId, refresh]);
 
     // 若帶入指定日期，報表載入後自動跳至該日
     useEffect(() => {
@@ -89,10 +127,13 @@ function DailyReportContainer() {
                     <button
                         onClick={() => setShowDriveSync(true)}
                         className="btn-dash-action"
-                        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)' }}
+                        disabled={autoSyncing}
+                        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)', opacity: autoSyncing ? 0.7 : 1 }}
                     >
-                        <RefreshCcw size={13} />
-                        <span>Drive 回朔同步</span>
+                        {autoSyncing
+                            ? <><Loader2 size={13} className="animate-spin" /><span>同步中…</span></>
+                            : <><RefreshCcw size={13} /><span>Drive 回朔同步</span></>
+                        }
                     </button>
                 )}
             </div>

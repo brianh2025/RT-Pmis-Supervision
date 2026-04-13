@@ -17,7 +17,8 @@ function toIsoDate(dateStr) {
 
 async function callEdgeFn(token, body) {
   const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const effectiveToken = token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+  if (effectiveToken) headers['Authorization'] = `Bearer ${effectiveToken}`;
   const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
