@@ -17,19 +17,14 @@ async function runBackgroundSync(projectId, startDate) {
   });
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
-  const CONCURRENCY = 5;
-  let i = 0;
-  async function worker() {
-    while (i < files.length) {
-      const f = files[i++];
-      await fetch(EDGE_FN_URL, {
-        method: 'POST', headers,
-        body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
-      }).catch(() => {});
-    }
-  }
-  await Promise.allSettled(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
-  return files.length;
+  if (files.length === 0) return 0;
+  // 最新檔案已包含所有日期，只同步它即可
+  const latest = files[files.length - 1];
+  await fetch(EDGE_FN_URL, {
+    method: 'POST', headers,
+    body: JSON.stringify({ mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name, secret: syncSecret }),
+  }).catch(() => {});
+  return 1;
 }
 
 const DOW = ['日', '一', '二', '三', '四', '五', '六'];

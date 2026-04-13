@@ -58,30 +58,19 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
         return;
       }
 
-      setProgress({ current: 0, total: files.length, results: [] });
-
-      // 第二步：限流並行同步（同時最多 5 個）
-      const CONCURRENCY = 5;
-      let idx = 0, done = 0;
-      const allResults = [];
-      async function worker() {
-        while (idx < files.length) {
-          const f = files[idx++];
-          let entry;
-          try {
-            const r = await callEdgeFn(token, {
-              mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
-            });
-            entry = { file: f.name, date: r.date, itemCount: r.itemCount, success: true };
-          } catch (err) {
-            entry = { file: f.name, success: false, error: String(err) };
-          }
-          allResults.push(entry);
-          done++;
-          setProgress(p => ({ ...p, current: done, results: [...allResults] }));
-        }
+      // 第二步：只同步最新檔案（累積型日誌，最新檔包含所有日期）
+      const latest = files[files.length - 1];
+      setProgress({ current: 0, total: 1, results: [] });
+      let entry;
+      try {
+        const r = await callEdgeFn(token, {
+          mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name,
+        });
+        entry = { file: latest.name, date: r.date, dates: r.dates, itemCount: r.itemCount, success: true };
+      } catch (err) {
+        entry = { file: latest.name, success: false, error: String(err) };
       }
-      await Promise.allSettled(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+      setProgress({ current: 1, total: 1, results: [entry] });
 
       onSuccess?.();
     } catch (err) {
@@ -185,7 +174,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                     <thead>
                       <tr style={{ background: 'var(--color-surface-hover)' }}>
                         <th style={{ padding: '5px 8px', textAlign: 'left', fontWeight: 600 }}>檔案</th>
-                        <th style={{ padding: '5px 8px', textAlign: 'center' }}>日期</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'center' }}>日期數</th>
                         <th style={{ padding: '5px 8px', textAlign: 'center' }}>工項</th>
                         <th style={{ padding: '5px 8px', textAlign: 'center' }}>狀態</th>
                       </tr>
@@ -194,7 +183,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                       {progress.results.map((r, i) => (
                         <tr key={i} style={{ borderTop: '1px solid var(--color-surface-border)' }}>
                           <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.file}</td>
-                          <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.date ?? '—'}</td>
+                          <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.dates?.length ?? (r.date ? 1 : 0)}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.itemCount ?? 0}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center', color: r.success ? 'var(--color-success)' : 'var(--color-danger)' }}>
                             {r.success ? '✓' : '✗'}
