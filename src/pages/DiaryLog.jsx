@@ -1,12 +1,34 @@
-import React, { useState, useEffect, useMemo, useContext } from 'react';
+import React, { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { C } from './DailyReport/utils';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
+import { DriveSyncModal } from '../components/DriveSyncModal';
+
+const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+async function runBackgroundSync(projectId, startDate) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+  const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
+  const listRes = await fetch(EDGE_FN_URL, {
+    method: 'POST', headers,
+    body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
+  });
+  if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+  const { files = [] } = await listRes.json();
+  for (const f of files) {
+    await fetch(EDGE_FN_URL, {
+      method: 'POST', headers,
+      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+    }).catch(() => {});
+  }
+  return files.length;
+}
 import './DiaryLog.css';
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
@@ -53,7 +75,7 @@ function DiaryLogInner() {
   const [searchParams] = useSearchParams();
   const initDate = searchParams.get('date');
 
-  const { reports, loading: reportsLoading } = useContext(DailyReportContext);
+  const { reports, loading: reportsLoading, refresh } = useContext(DailyReportContext);
 
   const today = new Date();
   const [year, setYear] = useState(() => initDate ? parseInt(initDate.slice(0, 4)) : today.getFullYear());
@@ -69,6 +91,9 @@ function DiaryLogInner() {
   const [showQuickModal,   setShowQuickModal]   = useState(false);
   const [quickInitialData, setQuickInitialData] = useState(null);
   const [refreshTrigger,   setRefreshTrigger]   = useState(0);
+  const [showDriveSync,    setShowDriveSync]    = useState(false);
+  const [autoSyncing,      setAutoSyncing]      = useState(false);
+  const autoSyncedRef = useRef(false);
   const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
   const [tabD, setTabD] = useState('work');
 
@@ -106,6 +131,17 @@ function DiaryLogInner() {
     if (projectId) fetchData();
     return () => { cancelled = true; };
   }, [projectId, year, month, refreshTrigger]);
+
+  // 進頁自動背景同步（每次進入頁面執行一次）
+  useEffect(() => {
+    if (!project?.drive_folder_id || autoSyncedRef.current) return;
+    autoSyncedRef.current = true;
+    setAutoSyncing(true);
+    runBackgroundSync(projectId, project.start_date)
+      .then(count => { if (count > 0) { setRefreshTrigger(t => t + 1); refresh?.(); } })
+      .catch(() => {})
+      .finally(() => setAutoSyncing(false));
+  }, [project?.drive_folder_id, projectId, refresh]);
 
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const firstDow = useMemo(() => getFirstDow(year, month), [year, month]);
@@ -234,6 +270,19 @@ function DiaryLogInner() {
         </div>
         <div className="header-actions">
             <span className="status-badge success">本月 {importedCount} 筆已匯入</span>
+            {project?.drive_folder_id && (
+              <button
+                onClick={() => setShowDriveSync(true)}
+                className="btn-dash-action"
+                disabled={autoSyncing}
+                style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)', opacity: autoSyncing ? 0.7 : 1 }}
+              >
+                {autoSyncing
+                  ? <><Loader2 size={13} className="animate-spin" /><span>同步中…</span></>
+                  : <><RefreshCcw size={13} /><span>Drive 回朔同步</span></>
+                }
+              </button>
+            )}
             <button
                 onClick={() => setShowImportModal(true)}
                 className="btn-dash-action"
@@ -402,6 +451,14 @@ function DiaryLogInner() {
           initialData={quickInitialData}
           onClose={() => { setShowQuickModal(false); setQuickInitialData(null); }}
           onSuccess={() => { setShowQuickModal(false); setQuickInitialData(null); setRefreshTrigger(prev => prev + 1); }}
+        />
+      )}
+      {showDriveSync && (
+        <DriveSyncModal
+          projectId={projectId}
+          startDate={project?.start_date || ''}
+          onClose={() => setShowDriveSync(false)}
+          onSuccess={() => { setShowDriveSync(false); setRefreshTrigger(t => t + 1); refresh?.(); }}
         />
       )}
     </div>
