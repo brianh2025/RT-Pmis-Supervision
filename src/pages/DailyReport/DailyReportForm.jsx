@@ -49,7 +49,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                 </div>
 
                 {/* Tab bar */}
-                <div style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "0 12px", display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", borderRadius: "12px 12px 0 0" }}>
+                <div style={{ background: "var(--color-surface)", borderBottom: `1px solid ${C.border}`, padding: "0 12px", display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", borderRadius: "12px 12px 0 0" }}>
                     {tabs.map((t, i) => (
                         <button key={i} onClick={() => setActiveTab(tabKeys[i])} style={{
                             padding: "13px 14px", border: "none", background: "none", whiteSpace: "nowrap", flexShrink: 0,
@@ -62,7 +62,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                 </div>
 
                 {/* Progress dots */}
-                <div style={{ display: "flex", justifyContent: "center", gap: 6, padding: "10px 0", background: "#fff", borderBottom: `1px solid ${C.bg}`, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", justifyContent: "center", gap: 6, padding: "10px 0", background: "var(--color-surface)", borderBottom: `1px solid ${C.bg}`, borderLeft: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}` }}>
                     {tabKeys.map((k, i) => (
                         <div key={k} style={{ width: i === tabIdx ? 20 : 8, height: 8, borderRadius: 99, background: i < tabIdx ? C.success : i === tabIdx ? C.primary : C.border, transition: "all .3s" }} />
                     ))}
@@ -290,10 +290,10 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
             </div>
 
             {/* Bottom nav */}
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", gap: 10, zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--color-background-base)", borderTop: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", gap: 10, zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     {tabIdx > 0 && (
-                        <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "#fff", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "var(--color-surface)", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             ← 上一頁
                         </button>
                     )}

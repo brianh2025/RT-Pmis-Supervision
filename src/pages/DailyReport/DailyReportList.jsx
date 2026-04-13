@@ -52,7 +52,7 @@ export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
                     </button>
                     <button onClick={onImport} style={{
                         padding: "13px 18px", borderRadius: 12, border: `1.5px solid ${C.border}`,
-                        background: "#fff", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        background: "var(--color-surface)", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer",
                         display: "flex", alignItems: "center", gap: 6, whiteSpace: 'nowrap',
                     }}>
                         <FileSpreadsheet size={15} color={C.textMid} /> Excel 匯入

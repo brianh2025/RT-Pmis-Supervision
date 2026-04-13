@@ -125,18 +125,18 @@ async function parseMonitoringPage(page) {
   const pmIdx = weatherItems.findIndex(i => i.str === '下午');
   weatherItems.sort((a, b) => a.x - b.x);
   
+  const VALID_WEATHER = ['晴', '多雲', '陰', '小雨', '中雨', '大雨', '颱風'];
   let weatherAm = null;
   let weatherPm = null;
   if (amIdx >= 0) {
     const amItem = weatherItems.find(i => i.str === '上午');
     const afterAm = weatherItems.filter(i => i.x > (amItem?.x ?? 0) + 10).sort((a,b) => a.x - b.x);
-    weatherAm = afterAm[0]?.str ?? null;
+    weatherAm = afterAm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
   }
   if (pmIdx >= 0) {
     const pmItem = weatherItems.find(i => i.str === '下午');
     const afterPm = weatherItems.filter(i => i.x > (pmItem?.x ?? 0) + 10).sort((a,b) => a.x - b.x);
-    // Skip weather_am value
-    weatherPm = afterPm.find(i => i.str !== weatherAm)?.str ?? null;
+    weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str) && i.str !== weatherAm)?.str ?? null;
   }
 
   // --- 3. Progress (y≈745, "預定" → next float; "實際" → next float) ---
