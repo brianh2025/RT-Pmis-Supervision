@@ -290,19 +290,19 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
             </div>
 
             {/* Bottom nav */}
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--color-background-base)", borderTop: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", gap: 10, zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}>
-                <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 800, margin: "0 auto" }}>
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--color-background-base)", borderTop: `1px solid ${C.border}`, padding: "8px 16px", display: "flex", gap: 8, zIndex: 50, boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" }}>
+                <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     {tabIdx > 0 && (
-                        <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "var(--color-surface)", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: "var(--color-surface)", color: C.textMid, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             ← 上一頁
                         </button>
                     )}
                     {tabIdx < tabKeys.length - 1 ? (
-                        <button onClick={() => setActiveTab(tabKeys[tabIdx + 1])} style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                        <button onClick={() => setActiveTab(tabKeys[tabIdx + 1])} style={{ flex: 2, padding: "7px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                             下一頁 →
                         </button>
                     ) : (
-                        <button onClick={() => { onSave(form); }} style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#059669,#10b981)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <button onClick={() => { onSave(form); }} style={{ flex: 2, padding: "7px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#059669,#10b981)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                             {I.check("#fff")} 儲存施工日誌
                         </button>
                     )}

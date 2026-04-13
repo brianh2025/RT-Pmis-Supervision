@@ -38,7 +38,7 @@ function DailyReportContainer() {
     const [searchParams] = useSearchParams();
     const initDate = searchParams.get('date');
 
-    const { reports, loading: reportsLoading, refresh, deleteReport } = useContext(DailyReportContext);
+    const { reports, loading: reportsLoading, refresh } = useContext(DailyReportContext);
 
     const [viewMode, setViewMode] = useState(initDate ? "loading" : "list"); // list | view | form | loading
     const [selectedReport, setSelectedReport] = useState(null);
@@ -113,12 +113,6 @@ function DailyReportContainer() {
         setViewMode("view");
     };
 
-    const handleDelete = async (date) => {
-        if (!window.confirm(`確定刪除 ${date} 的施工日誌？此操作無法復原。`)) return;
-        await deleteReport(date);
-        setViewMode("list");
-        setSelectedReport(null);
-    };
 
     return (
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -143,7 +137,6 @@ function DailyReportContainer() {
                     report={selectedReport}
                     onBack={handleBack}
                     onEdit={handleEditReport}
-                    onDelete={() => handleDelete(selectedReport.date)}
                 />
             )}
 
