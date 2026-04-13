@@ -358,7 +358,7 @@ export function DiaryJournal() {
               <Loader2 size={13} className="animate-spin" />同步中…
             </span>
           )}
-          {project?.drive_folder_id && !autoSyncing && (
+          {project?.drive_folder_id && (
             <button
               onClick={() => setShowDriveSync(true)}
               className="btn-dash-action"
