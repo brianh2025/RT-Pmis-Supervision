@@ -6,11 +6,27 @@ import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryJournal.css';
 
 const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+
+/**
+ * 補漏同步：
+ * 1. 查 DB 現有日期
+ * 2. 同步最新累積檔（含所有歷史日期）
+ * 3. 回傳新增日期數（0 = 無缺漏或同步無新增）
+ */
 async function runBackgroundSync(projectId, startDate) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
   const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
+
+  // 1. 同步前：紀錄現有日期數
+  const { data: before } = await supabase
+    .from('daily_logs').select('log_date')
+    .eq('project_id', projectId)
+    .gte('log_date', startDate || '2020-01-01');
+  const beforeSet = new Set((before || []).map(r => r.log_date));
+
+  // 2. 取最新累積檔並同步
   const listRes = await fetch(EDGE_FN_URL, {
     method: 'POST', headers,
     body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
@@ -18,13 +34,19 @@ async function runBackgroundSync(projectId, startDate) {
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
   if (files.length === 0) return 0;
-  // 最新檔案已包含所有日期，只同步它即可
   const latest = files[files.length - 1];
   await fetch(EDGE_FN_URL, {
     method: 'POST', headers,
     body: JSON.stringify({ mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name, secret: syncSecret }),
   }).catch(() => {});
-  return 1;
+
+  // 3. 同步後：計算新增日期數
+  const { data: after } = await supabase
+    .from('daily_logs').select('log_date')
+    .eq('project_id', projectId)
+    .gte('log_date', startDate || '2020-01-01');
+  const newDates = (after || []).filter(r => !beforeSet.has(r.log_date));
+  return newDates.length;
 }
 
 const DOW = ['日', '一', '二', '三', '四', '五', '六'];
@@ -72,6 +94,7 @@ export function DiaryJournal() {
   const [project,        setProject]        = useState(null);
   const [showDriveSync,  setShowDriveSync]  = useState(false);
   const [autoSyncing,    setAutoSyncing]    = useState(false);
+  const [syncFilled,     setSyncFilled]     = useState(0); // 補漏新增的日期數
   const autoSyncedRef = useRef(false);
   const [refreshKey,     setRefreshKey]     = useState(0);
 
@@ -94,7 +117,12 @@ export function DiaryJournal() {
     autoSyncedRef.current = true;
     setAutoSyncing(true);
     runBackgroundSync(projectId, project.start_date)
-      .then(count => { if (count > 0) setRefreshKey(k => k + 1); })
+      .then(count => {
+        if (count > 0) {
+          setSyncFilled(count);
+          setRefreshKey(k => k + 1);
+        }
+      })
       .catch(() => {})
       .finally(() => setAutoSyncing(false));
   }, [project?.drive_folder_id, projectId]);
@@ -222,11 +250,16 @@ export function DiaryJournal() {
         {autoSyncing
           ? <span className="dj-sync-status"><Loader2 size={11} className="animate-spin" />同步中</span>
           : project?.drive_folder_id && (
-            <button className="dj-sync-btn" onClick={() => setShowDriveSync(true)}>
+            <button className="dj-sync-btn" onClick={() => { setSyncFilled(0); setShowDriveSync(true); }}>
               <RefreshCcw size={11} />同步
             </button>
           )
         }
+        {syncFilled > 0 && (
+          <span className="dj-sync-filled" title={`補漏同步新增 ${syncFilled} 個日期`}>
+            +{syncFilled}
+          </span>
+        )}
         {/* 收合切換 */}
         <button className="dj-cal-toggle" onClick={() => setCalCollapsed(c => !c)} title={calCollapsed ? '展開日曆' : '收合日曆'}>
           {calCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}

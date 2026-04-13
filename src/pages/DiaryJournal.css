@@ -281,6 +281,14 @@
 }
 .dj-sync-btn:hover { background: rgba(59,130,246,0.15); }
 
+/* 補漏同步新增提示 */
+.dj-sync-filled {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: 10px;
+  background: rgba(16,185,129,0.15); color: #059669;
+  font-size: 0.68rem; font-weight: 700;
+}
+
 /* ── Desktop ── */
 @media (min-width: 769px) {
   .dj-header-date { display: block; }

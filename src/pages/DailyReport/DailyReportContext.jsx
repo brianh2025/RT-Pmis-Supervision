@@ -41,7 +41,7 @@ export function DailyReportProvider({ children, projectId }) {
             const [{ data: dbItems }, { data: progressData }, { data: logsData }] = await Promise.all([
                 supabase.from('daily_report_items').select('*').eq('project_id', projectId).order('log_date', { ascending: false }),
                 supabase.from('progress_records').select('report_date, planned_progress, actual_progress').eq('project_id', projectId),
-                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress').eq('project_id', projectId),
+                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, weather_am, weather_pm, notes').eq('project_id', projectId),
             ]);
 
             // 按日期分組
@@ -50,6 +50,9 @@ export function DailyReportProvider({ children, projectId }) {
                 if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
                 itemsByDate[it.log_date].push(it);
             });
+            // daily_logs 按日期建查詢表（含天氣/備註）
+            const logsByDate = {};
+            (logsData || []).forEach(l => { logsByDate[l.log_date] = l; });
             // progress_records 優先，daily_logs 為 fallback
             const progressByDate = {};
             (logsData || []).forEach(l => {
@@ -66,20 +69,29 @@ export function DailyReportProvider({ children, projectId }) {
                 ...(logsData || []).map(l => l.log_date),
             ]);
             const dbOnlyDates = [...allDbDates].filter(d => !localDates.has(d));
-            const dbOnlyReports = dbOnlyDates.map(date => ({
-                id: `db-${date}`,
-                project_id: projectId,
-                date,
-                reportNo: `Drive-${date}`,
-                weather: '晴',
-                tempHigh: 0, tempLow: 0,
-                supervisor: '', contractor: '',
-                plannedProgress: progressByDate[date]?.planned_progress || 0,
-                actualProgress:  progressByDate[date]?.actual_progress  || 0,
-                progressNote: '', quantities: [],
-                inspections: [], qualityTests: [], documents: [],
-                specialNote: '',
-            }));
+            const dbOnlyReports = dbOnlyDates.map(date => {
+                const log = logsByDate[date];
+                const weatherStr = log?.weather_am
+                    ? (log.weather_pm && log.weather_pm !== log.weather_am
+                        ? `${log.weather_am}/${log.weather_pm}`
+                        : log.weather_am)
+                    : '晴';
+                return {
+                    id: `db-${date}`,
+                    project_id: projectId,
+                    date,
+                    reportNo: `Drive-${date}`,
+                    weather: weatherStr,
+                    tempHigh: 0, tempLow: 0,
+                    supervisor: '', contractor: '',
+                    plannedProgress: progressByDate[date]?.planned_progress || 0,
+                    actualProgress:  progressByDate[date]?.actual_progress  || 0,
+                    progressNote: log?.notes || '',
+                    quantities: [],
+                    inspections: [], qualityTests: [], documents: [],
+                    specialNote: '',
+                };
+            });
 
             // 4. 對 local 報表：若本身沒有進度，也從 progress_records 回填
             const localWithProgress = localReports.map(r => {
