@@ -111,16 +111,15 @@ export function DiaryJournal() {
     const start = toKey(year, month, 1);
     const end   = toKey(year, month, getDaysInMonth(year, month));
     let cancelled = false;
-    Promise.all([
-      supabase.from('daily_report_items').select('log_date')
-        .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
-      supabase.from('daily_logs').select('log_date')
-        .eq('project_id', projectId).gte('log_date', start).lte('log_date', end),
-    ]).then(([dri, dl]) => {
-      if (cancelled) return;
-      setDiaryDates(new Set((dri.data || []).map(r => r.log_date)));
-      setSupervisionDates(new Set((dl.data || []).map(r => r.log_date)));
-    });
+    // 兩種點都以 daily_logs 為依據，確保 Drive 同步後兩點同步出現
+    supabase.from('daily_logs').select('log_date')
+      .eq('project_id', projectId).gte('log_date', start).lte('log_date', end)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const dates = new Set((data || []).map(r => r.log_date));
+        setDiaryDates(dates);
+        setSupervisionDates(dates);
+      });
     return () => { cancelled = true; };
   }, [projectId, year, month, refreshKey]);
 
