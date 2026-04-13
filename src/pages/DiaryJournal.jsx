@@ -1,8 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryJournal.css';
+
+const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+async function runBackgroundSync(projectId, startDate) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+  const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
+  const listRes = await fetch(EDGE_FN_URL, {
+    method: 'POST', headers,
+    body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
+  });
+  if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+  const { files = [] } = await listRes.json();
+  for (const f of files) {
+    await fetch(EDGE_FN_URL, {
+      method: 'POST', headers,
+      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+    }).catch(() => {});
+  }
+  return files.length;
+}
 
 const DOW = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -46,10 +68,35 @@ export function DiaryJournal() {
 
   const [calCollapsed, setCalCollapsed] = useState(false);
 
+  const [project,        setProject]        = useState(null);
+  const [showDriveSync,  setShowDriveSync]  = useState(false);
+  const [autoSyncing,    setAutoSyncing]    = useState(false);
+  const autoSyncedRef = useRef(false);
+  const [refreshKey,     setRefreshKey]     = useState(0);
+
   const [diaryDates,       setDiaryDates]       = useState(new Set());
   const [supervisionDates, setSupervisionDates] = useState(new Set());
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
+
+  // ── 取工程資訊（drive_folder_id）─────────────────────────────
+  useEffect(() => {
+    supabase.from('projects')
+      .select('drive_folder_id, start_date')
+      .eq('id', projectId).single()
+      .then(({ data }) => { if (data) setProject(data); });
+  }, [projectId]);
+
+  // ── 進頁自動背景同步 ──────────────────────────────────────────
+  useEffect(() => {
+    if (!project?.drive_folder_id || autoSyncedRef.current) return;
+    autoSyncedRef.current = true;
+    setAutoSyncing(true);
+    runBackgroundSync(projectId, project.start_date)
+      .then(count => { if (count > 0) setRefreshKey(k => k + 1); })
+      .catch(() => {})
+      .finally(() => setAutoSyncing(false));
+  }, [project?.drive_folder_id, projectId]);
 
   // ── 取當月有資料的日期 ──────────────────────────────────────
   useEffect(() => {
@@ -69,7 +116,7 @@ export function DiaryJournal() {
       setSupervisionDates(new Set((dl.data || []).map(r => r.log_date)));
     });
     return () => { cancelled = true; };
-  }, [projectId, year, month]);
+  }, [projectId, year, month, refreshKey]);
 
   // ── 取選定日期摘要 ─────────────────────────────────────────
   useEffect(() => {
@@ -302,10 +349,25 @@ export function DiaryJournal() {
   return (
     <div className="dj-root">
 
-      {/* Header：標題 + PC端選定日期 */}
+      {/* Header：標題 + Drive同步按鈕 + PC端選定日期 */}
       <div className="dj-header">
         <h1 className="dj-title">日誌報表</h1>
-        {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {project?.drive_folder_id && (
+            <button
+              onClick={() => setShowDriveSync(true)}
+              className="btn-dash-action"
+              disabled={autoSyncing}
+              style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)', opacity: autoSyncing ? 0.7 : 1 }}
+            >
+              {autoSyncing
+                ? <><Loader2 size={13} className="animate-spin" /><span>同步中…</span></>
+                : <><RefreshCcw size={13} /><span>Drive 回朔同步</span></>
+              }
+            </button>
+          )}
+          {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
+        </div>
       </div>
 
       {/* 主體 */}
@@ -321,6 +383,14 @@ export function DiaryJournal() {
         }
       </div>
 
+      {showDriveSync && (
+        <DriveSyncModal
+          projectId={projectId}
+          startDate={project?.start_date || ''}
+          onClose={() => setShowDriveSync(false)}
+          onSuccess={() => { setShowDriveSync(false); setRefreshKey(k => k + 1); }}
+        />
+      )}
     </div>
   );
 }

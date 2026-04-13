@@ -132,16 +132,6 @@ function DiaryLogInner() {
     return () => { cancelled = true; };
   }, [projectId, year, month, refreshTrigger]);
 
-  // 進頁自動背景同步（每次進入頁面執行一次）
-  useEffect(() => {
-    if (!project?.drive_folder_id || autoSyncedRef.current) return;
-    autoSyncedRef.current = true;
-    setAutoSyncing(true);
-    runBackgroundSync(projectId, project.start_date)
-      .then(count => { if (count > 0) { setRefreshTrigger(t => t + 1); refresh?.(); } })
-      .catch(() => {})
-      .finally(() => setAutoSyncing(false));
-  }, [project?.drive_folder_id, projectId, refresh]);
 
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const firstDow = useMemo(() => getFirstDow(year, month), [year, month]);
