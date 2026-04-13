@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { RefreshCcw, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
@@ -32,7 +31,6 @@ import { DailyReportList } from './DailyReportList';
 import { DailyReportView } from './DailyReportView';
 import { DailyReportForm } from './DailyReportForm';
 import { DiaryExcelImportModal } from '../../components/DiaryExcelImportModal';
-import { DriveSyncModal } from '../../components/DriveSyncModal';
 
 function DailyReportContainer() {
     const { id: projectId } = useParams();
@@ -46,9 +44,7 @@ function DailyReportContainer() {
     const [selectedReport, setSelectedReport] = useState(null);
     const [editReport, setEditReport] = useState(null);
     const [showImport, setShowImport] = useState(false);
-    const [showDriveSync, setShowDriveSync] = useState(false);
     const [project, setProject] = useState(null);
-    const [autoSyncing, setAutoSyncing] = useState(false);
     const autoSyncedRef = useRef(false);
 
     useEffect(() => {
@@ -62,11 +58,9 @@ function DailyReportContainer() {
     useEffect(() => {
         if (!project?.drive_folder_id || autoSyncedRef.current) return;
         autoSyncedRef.current = true;
-        setAutoSyncing(true);
         runBackgroundSync(projectId, project.start_date)
             .then(count => { if (count > 0) refresh(); })
-            .catch(() => {})
-            .finally(() => setAutoSyncing(false));
+            .catch(() => {});
     }, [project?.drive_folder_id, projectId, refresh]);
 
     // 若帶入指定日期，報表載入後自動跳至該日
@@ -123,19 +117,6 @@ function DailyReportContainer() {
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="dash-page-header">
                 <h1 className="dash-title">施工日誌</h1>
-                {project?.drive_folder_id && (viewMode === 'list' || (initDate && viewMode !== 'loading')) && (
-                    <button
-                        onClick={() => setShowDriveSync(true)}
-                        className="btn-dash-action"
-                        disabled={autoSyncing}
-                        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)', opacity: autoSyncing ? 0.7 : 1 }}
-                    >
-                        {autoSyncing
-                            ? <><Loader2 size={13} className="animate-spin" /><span>同步中…</span></>
-                            : <><RefreshCcw size={13} /><span>Drive 回朔同步</span></>
-                        }
-                    </button>
-                )}
             </div>
 
             {viewMode === "list" && (
@@ -174,14 +155,7 @@ function DailyReportContainer() {
                     onSuccess={() => { setShowImport(false); window.location.reload(); }}
                 />
             )}
-            {showDriveSync && (
-                <DriveSyncModal
-                    projectId={projectId}
-                    startDate={project?.start_date || ''}
-                    onClose={() => setShowDriveSync(false)}
-                    onSuccess={() => setShowDriveSync(false)}
-                />
-            )}
+
         </div>
     );
 }
