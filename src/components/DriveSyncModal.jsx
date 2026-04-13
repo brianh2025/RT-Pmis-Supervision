@@ -60,20 +60,23 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
 
       setProgress({ current: 0, total: files.length, results: [] });
 
-      // 第二步：逐一同步每個檔案（每次呼叫只處理一個 Excel）
-      const results = [];
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
+      // 第二步：並行同步所有檔案
+      let done = 0;
+      const allResults = [];
+      await Promise.allSettled(files.map(async f => {
+        let entry;
         try {
           const r = await callEdgeFn(token, {
             mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
           });
-          results.push({ file: f.name, date: r.date, itemCount: r.itemCount, success: true });
+          entry = { file: f.name, date: r.date, itemCount: r.itemCount, success: true };
         } catch (err) {
-          results.push({ file: f.name, success: false, error: String(err) });
+          entry = { file: f.name, success: false, error: String(err) };
         }
-        setProgress({ current: i + 1, total: files.length, results: [...results] });
-      }
+        allResults.push(entry);
+        done += 1;
+        setProgress(p => ({ ...p, current: done, results: [...allResults] }));
+      }));
 
       onSuccess?.();
     } catch (err) {

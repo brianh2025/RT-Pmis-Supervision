@@ -17,12 +17,12 @@ async function runBackgroundSync(projectId, startDate) {
   });
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
-  for (const f of files) {
-    await fetch(EDGE_FN_URL, {
+  await Promise.allSettled(files.map(f =>
+    fetch(EDGE_FN_URL, {
       method: 'POST', headers,
       body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
-    }).catch(() => {});
-  }
+    })
+  ));
   return files.length;
 }
 
