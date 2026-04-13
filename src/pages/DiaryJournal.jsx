@@ -353,17 +353,18 @@ export function DiaryJournal() {
       <div className="dj-header">
         <h1 className="dj-title">日誌報表</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {project?.drive_folder_id && (
+          {autoSyncing && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#2563eb' }}>
+              <Loader2 size={13} className="animate-spin" />同步中…
+            </span>
+          )}
+          {project?.drive_folder_id && !autoSyncing && (
             <button
               onClick={() => setShowDriveSync(true)}
               className="btn-dash-action"
-              disabled={autoSyncing}
-              style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)', opacity: autoSyncing ? 0.7 : 1 }}
+              style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', borderColor: 'rgba(59,130,246,0.3)' }}
             >
-              {autoSyncing
-                ? <><Loader2 size={13} className="animate-spin" /><span>同步中…</span></>
-                : <><RefreshCcw size={13} /><span>Drive 回朔同步</span></>
-              }
+              <RefreshCcw size={13} /><span>Drive 回朔同步</span>
             </button>
           )}
           {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
