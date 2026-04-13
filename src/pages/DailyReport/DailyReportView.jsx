@@ -18,7 +18,7 @@ function fmtPct(v) {
     return isNaN(n) ? '—' : parseFloat(n.toFixed(2)) + '%';
 }
 
-export function DailyReportView({ report, onBack, onEdit, supervision = false }) {
+export function DailyReportView({ report, onBack, onEdit, onDelete, supervision = false }) {
     const [tab, setTab] = useState("progress");
     const diff = parseFloat((report.actualProgress - report.plannedProgress).toFixed(2));
     const ahead = diff >= 0;
@@ -42,10 +42,19 @@ export function DailyReportView({ report, onBack, onEdit, supervision = false })
                 <button onClick={onBack} style={{ padding: '4px 6px', background: 'none', border: 'none', cursor: 'pointer', color: C.textMid }}>
                     {I.back(C.textMid)}
                 </button>
-                <div>
+                <div style={{ flex: 1 }}>
                     <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: C.text }}>{docTitle}　{report.date}</h2>
                     <div style={{ fontSize: '0.68rem', color: C.textMuted }}>編號：{report.reportNo}</div>
                 </div>
+                {onDelete && (
+                    <button onClick={onDelete} style={{
+                        padding: '4px 8px', background: 'none', border: `1px solid ${C.danger}`,
+                        borderRadius: 6, cursor: 'pointer', color: C.danger, fontSize: '0.72rem',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                    }} title="刪除此日誌">
+                        {I.trash ? I.trash(C.danger) : '🗑'} 刪除
+                    </button>
+                )}
             </div>
 
             {/* 基本資訊 */}

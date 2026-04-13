@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryJournal.css';
@@ -181,6 +181,24 @@ export function DiaryJournal() {
   const hasDiary = selectedKey ? diaryDates.has(selectedKey) : false;
   const hasSup   = selectedKey ? supervisionDates.has(selectedKey) : false;
 
+  // 刪除選定日期的所有日誌資料
+  const handleDeleteDate = async () => {
+    if (!selectedKey) return;
+    if (!window.confirm(`確定刪除 ${selectedKey} 的所有日誌及監造資料？此操作無法復原。`)) return;
+    await Promise.all([
+      supabase.from('daily_logs').delete().eq('project_id', projectId).eq('log_date', selectedKey),
+      supabase.from('daily_report_items').delete().eq('project_id', projectId).eq('log_date', selectedKey),
+      supabase.from('progress_records').delete().eq('project_id', projectId).eq('report_date', selectedKey),
+    ]);
+    // 清 localStorage
+    try {
+      const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
+      localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(stored.filter(r => r.date !== selectedKey)));
+    } catch {}
+    setSelectedKey(null);
+    setRefreshKey(k => k + 1);
+  };
+
   const selActual  = summary?.progress?.actual_progress  ?? summary?.log?.actual_progress  ?? null;
   const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
 
@@ -274,7 +292,17 @@ export function DiaryJournal() {
     ) : !summary ? null : (
       <div className="dj-summary">
 
-        {/* 天氣（最上方） */}
+        {/* 標題列：日期 + 刪除按鈕 */}
+        <div className="dj-summary-header">
+          <span className="dj-summary-date">{selectedKey}</span>
+          {(hasDiary || hasSup) && (
+            <button className="dj-delete-btn" onClick={handleDeleteDate} title="刪除此日所有資料">
+              <Trash2 size={13} /> 刪除
+            </button>
+          )}
+        </div>
+
+        {/* 天氣 */}
         {(summary.log?.weather_am || summary.log?.weather_pm) && (
           <div className="dj-weather-row">
             <Cloud size={12} />
@@ -284,35 +312,17 @@ export function DiaryJournal() {
           </div>
         )}
 
-        {/* 合併上傳狀態＋按鈕 */}
-        <div className="dj-action-row">
-          <button
-            className={`dj-action-btn${hasDiary ? '' : ' disabled'}`}
-            onClick={() => {
-              if (hasDiary) navigate(`/projects/${projectId}/diary?date=${selectedKey}`);
-              else alert('施工日誌尚未上傳，請先 Drive 回朔同步或手動填寫');
-            }}
-            title={hasDiary ? '查看施工日誌' : '施工日誌尚未上傳'}
-          >
-            {hasDiary ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+        {/* ── 施工日誌區塊 ── */}
+        <div className="dj-coexist-block diary-block">
+          <div className="dj-coexist-title">
+            {hasDiary ? <CheckCircle2 size={13} /> : <Circle size={13} />}
             施工日誌
-          </button>
-          <button
-            className={`dj-action-btn supervision${hasSup ? '' : ' disabled'}`}
-            onClick={() => {
-              if (hasSup) navigate(`/projects/${projectId}/supervision?date=${selectedKey}`);
-              else alert('監造報表尚未上傳，請先 Drive 回朔同步或手動填寫');
-            }}
-            title={hasSup ? '查看監造報表' : '監造報表尚未上傳'}
-          >
-            {hasSup ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-            監造報表
-          </button>
-        </div>
-
-        {/* 施工項目摘要 */}
-        <div className="dj-section">
-          <div className="dj-section-title">施工項目摘要</div>
+            {hasDiary && (
+              <button className="dj-goto-btn" onClick={() => navigate(`/projects/${projectId}/diary?date=${selectedKey}`)} title="前往施工日誌">
+                <ExternalLink size={11} />
+              </button>
+            )}
+          </div>
           {meaningfulItems.length > 0 ? (
             <div className="dj-item-list">
               {meaningfulItems.map((wi, i) => (
@@ -322,16 +332,31 @@ export function DiaryJournal() {
                 </div>
               ))}
             </div>
-          ) : <div className="dj-empty">尚無施工項目記錄</div>}
+          ) : (
+            <div className="dj-empty">
+              {hasDiary ? '尚無施工工項記錄' : '施工日誌尚未上傳'}
+            </div>
+          )}
         </div>
 
-        {/* 特別註記 */}
-        <div className="dj-section">
-          <div className="dj-section-title">特別註記</div>
-          {noteText
-            ? <div className="dj-note-text">{noteText}</div>
-            : <div className="dj-empty">尚無備註</div>
-          }
+        {/* ── 監造報表區塊 ── */}
+        <div className="dj-coexist-block sup-block">
+          <div className="dj-coexist-title">
+            {hasSup ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+            監造報表
+            {hasSup && (
+              <button className="dj-goto-btn" onClick={() => navigate(`/projects/${projectId}/supervision?date=${selectedKey}`)} title="前往監造報表">
+                <ExternalLink size={11} />
+              </button>
+            )}
+          </div>
+          {noteText ? (
+            <div className="dj-note-text">{noteText}</div>
+          ) : (
+            <div className="dj-empty">
+              {hasSup ? '尚無備註' : '監造報表尚未上傳'}
+            </div>
+          )}
         </div>
 
         {/* 進度 */}

@@ -164,27 +164,46 @@
 /* Summary */
 .dj-summary { display: flex; flex-direction: column; gap: 10px; }
 
-/* Action buttons (merged with upload status) */
-.dj-action-row { display: flex; gap: 8px; }
-.dj-action-btn {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  gap: 7px; padding: 10px 14px; border-radius: 9px;
-  border: 1.5px solid var(--color-primary);
-  background: rgba(37,99,235,0.07);
-  color: var(--color-primary);
-  font-size: 0.82rem; font-weight: 700;
-  cursor: pointer; transition: all 0.15s;
+/* 摘要標題列（日期 + 刪除） */
+.dj-summary-header {
+  display: flex; align-items: center; justify-content: space-between;
 }
-.dj-action-btn.supervision {
-  border-color: #10b981;
-  background: rgba(16,185,129,0.07);
-  color: #10b981;
+.dj-summary-date {
+  font-size: 0.85rem; font-weight: 700; color: var(--color-text1);
 }
-.dj-action-btn.disabled {
-  opacity: 0.38; cursor: not-allowed;
-  border-style: dashed; filter: grayscale(0.2);
+.dj-delete-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 6px;
+  border: 1px solid var(--color-danger, #dc2626);
+  background: none; color: var(--color-danger, #dc2626);
+  font-size: 0.72rem; cursor: pointer; transition: background 0.15s;
 }
-.dj-action-btn:not(.disabled):hover { filter: brightness(1.12); }
+.dj-delete-btn:hover { background: rgba(220,38,38,0.08); }
+
+/* 共存區塊 */
+.dj-coexist-block {
+  background: var(--color-bg2, var(--color-surface-hover));
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.dj-coexist-block.diary-block { border-left: 3px solid var(--color-primary); }
+.dj-coexist-block.sup-block   { border-left: 3px solid #10b981; }
+
+.dj-coexist-title {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px;
+}
+.dj-coexist-block.diary-block .dj-coexist-title { color: var(--color-primary); }
+.dj-coexist-block.sup-block   .dj-coexist-title { color: #10b981; }
+
+.dj-goto-btn {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  opacity: 0.6; padding: 0 2px; display: flex; align-items: center;
+  color: inherit;
+}
+.dj-goto-btn:hover { opacity: 1; }
 
 /* Section cards */
 .dj-section {

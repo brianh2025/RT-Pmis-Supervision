@@ -470,8 +470,10 @@
   letter-spacing: 0.03em;
 }
 
+.status-pending   { background: rgba(100,116,139, 0.12); color: #94a3b8;                    }
 .status-active    { background: rgba(15,  82, 186, 0.12); color: var(--color-primary-light); }
 .status-completed { background: rgba(16, 185, 129, 0.12); color: var(--color-success);       }
+.status-accepted  { background: rgba(5,  150, 105, 0.12); color: #059669;                    }
 .status-suspended { background: rgba(234,179,   8, 0.12); color: var(--color-warning);       }
 
 /* ─── Progress Bar ────────────────────────────────────── */
@@ -1346,6 +1348,8 @@
 .dash-project-card-compact.status-behind    { background: linear-gradient(135deg, rgba(239,68,68,0.06) 0%, var(--color-surface) 60%); border-color: rgba(239,68,68,0.2); }
 .dash-project-card-compact.status-suspended { background: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, var(--color-surface) 60%); border-color: rgba(245,158,11,0.2); }
 .dash-project-card-compact.status-completed { background: var(--color-bg2); filter: saturate(0.7); }
+.dash-project-card-compact.status-accepted  { background: linear-gradient(135deg, rgba(5,150,105,0.06) 0%, var(--color-surface) 60%); border-color: rgba(5,150,105,0.2); }
+.dash-project-card-compact.status-pending   { background: var(--color-bg2); filter: saturate(0.5); opacity: 0.85; }
 
 .dash-project-card-compact:hover {
   transform: translateY(-3px);
@@ -1409,10 +1413,12 @@
   border-radius: 4px;
   letter-spacing: 0.03em;
 }
+.chip-pending  { background: rgba(100,116,139,0.12); color: #94a3b8; }
 .chip-active   { background: rgba(21,101,192,0.1);  color: var(--color-primary); }
 .chip-behind   { background: rgba(239,68,68,0.12);  color: var(--color-danger); }
 .chip-paused   { background: rgba(245,158,11,0.12); color: var(--color-warning); }
 .chip-done     { background: var(--color-bg2);      color: var(--color-text-muted); }
+.chip-accepted { background: rgba(5,150,105,0.12);  color: #059669; }
 
 .card-bottom-row .card-contractor-compact {
   flex: 1;

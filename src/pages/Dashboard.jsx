@@ -168,8 +168,10 @@ function DeleteProjectModal({ project, onClose, onDeleted }) {
 }
 
 const STATUS_CONFIG = {
+  pending:   { label: '未發包', colorClass: 'status-pending' },
   active:    { label: '執行中', colorClass: 'status-active' },
   completed: { label: '已完工', colorClass: 'status-completed' },
+  accepted:  { label: '已竣工', colorClass: 'status-accepted' },
   suspended: { label: '暫停中', colorClass: 'status-suspended' },
 };
 
@@ -298,17 +300,21 @@ export function Dashboard() {
   };
 
   const starredCount   = projects.filter(p => p.is_starred).length;
+  const pendingCount   = projects.filter(p => p.status === 'pending').length;
   const activeCount    = projects.filter(p => p.status === 'active').length;
   const behindCount    = projects.filter(isBehind).length;
   const completedCount = projects.filter(p => p.status === 'completed').length;
+  const acceptedCount  = projects.filter(p => p.status === 'accepted').length;
   const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
     ...(starredCount > 0 ? [{ key: 'starred', label: '我的最愛', count: starredCount, color: '#f59e0b' }] : []),
+    ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
     { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
     { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
     { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
+    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
@@ -442,7 +448,7 @@ export function Dashboard() {
                 return (
                   <div
                     key={p.id}
-                    className={`dash-project-card dash-project-card-compact${isBehind(p) ? ' status-behind' : p.status === 'suspended' ? ' status-suspended' : p.status === 'completed' ? ' status-completed' : ''}`}
+                    className={`dash-project-card dash-project-card-compact${isBehind(p) ? ' status-behind' : p.status === 'suspended' ? ' status-suspended' : p.status === 'completed' ? ' status-completed' : p.status === 'accepted' ? ' status-accepted' : p.status === 'pending' ? ' status-pending' : ''}`}
                     onClick={() => navigate(`/projects/${p.id}/dashboard`)}
                     style={{ animationDelay: `${0.3 + index * 0.04}s` }}
                   >
@@ -454,6 +460,10 @@ export function Dashboard() {
                         ? 'linear-gradient(to bottom, #1565C0, #42a5f5)'
                         : p.status === 'suspended'
                         ? 'linear-gradient(to bottom, #d97706, #fbbf24)'
+                        : p.status === 'accepted'
+                        ? 'linear-gradient(to bottom, #059669, #34d399)'
+                        : p.status === 'pending'
+                        ? 'linear-gradient(to bottom, #64748b, #94a3b8)'
                         : 'linear-gradient(to bottom, #94a3b8, #cbd5e1)'
                     }} />
 
@@ -465,7 +475,7 @@ export function Dashboard() {
                         <div className="card-pct-block">
                           <span className="card-pct-num" style={{
                             color: isBehind(p) ? 'var(--color-danger)' :
-                                   p.status === 'completed' ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
+                                   (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
                           }}>{prog}%</span>
                           <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
                             {diff >= 0 ? '+' : ''}{diff}%
@@ -479,14 +489,14 @@ export function Dashboard() {
                         <div className="bar-actual" style={{
                           width: `${prog}%`,
                           background: isBehind(p) ? 'var(--color-danger)' :
-                                      p.status === 'completed' ? 'var(--color-text-muted)' : undefined
+                                      (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
                         }} />
                       </div>
 
                       {/* 下排：狀態徽章（左）＋ 承包廠商靠右＋ 刪除鈕 */}
                       <div className="card-bottom-row">
-                        <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
-                          {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'suspended' ? '暫停' : '執行中'}
+                        <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'accepted' ? 'chip-accepted' : p.status === 'pending' ? 'chip-pending' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
+                          {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'accepted' ? '竣工' : p.status === 'pending' ? '未發包' : p.status === 'suspended' ? '暫停' : '執行中'}
                         </span>
                         <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
                         <button

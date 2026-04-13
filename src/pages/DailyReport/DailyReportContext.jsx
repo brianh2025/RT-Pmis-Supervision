@@ -60,7 +60,12 @@ export function DailyReportProvider({ children, projectId }) {
 
             // 3. 合併：local 報表 + DB 工項；DB 有但 local 沒有的日期，建立骨架
             const localDates = new Set(localReports.map(r => r.date));
-            const dbOnlyDates = Object.keys(itemsByDate).filter(d => !localDates.has(d));
+            // 同時收錄 daily_report_items 與 daily_logs 的日期
+            const allDbDates = new Set([
+                ...Object.keys(itemsByDate),
+                ...(logsData || []).map(l => l.log_date),
+            ]);
+            const dbOnlyDates = [...allDbDates].filter(d => !localDates.has(d));
             const dbOnlyReports = dbOnlyDates.map(date => ({
                 id: `db-${date}`,
                 project_id: projectId,
@@ -146,8 +151,23 @@ export function DailyReportProvider({ children, projectId }) {
         if (writes.length) await Promise.all(writes);
     };
 
+    const deleteReport = async (date) => {
+        // 1. 從 Supabase 刪除
+        await Promise.all([
+            supabase.from('daily_report_items').delete().eq('project_id', projectId).eq('log_date', date),
+            supabase.from('daily_logs').delete().eq('project_id', projectId).eq('log_date', date),
+            supabase.from('progress_records').delete().eq('project_id', projectId).eq('report_date', date),
+        ]);
+        // 2. 從 localStorage 刪除
+        const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
+        const filtered = stored.filter(r => r.date !== date);
+        localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(filtered));
+        // 3. 更新狀態
+        setReports(prev => prev.filter(r => r.date !== date));
+    };
+
     return (
-        <DailyReportContext.Provider value={{ reports, saveReport, loading, refresh, projectId }}>
+        <DailyReportContext.Provider value={{ reports, saveReport, deleteReport, loading, refresh, projectId }}>
             {children}
         </DailyReportContext.Provider>
     );

@@ -118,9 +118,11 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
             <div className="form-group">
               <label className="form-label"><span>狀態</span><span className="en">STATUS</span></label>
               <select name="status" className="form-input" value={form.status} onChange={handleChange}>
-                <option value="active">執行中 Active</option>
-                <option value="completed">已完工 Completed</option>
-                <option value="suspended">暫停 Suspended</option>
+                <option value="pending">未發包</option>
+                <option value="active">執行中</option>
+                <option value="completed">已完工</option>
+                <option value="accepted">已竣工</option>
+                <option value="suspended">暫停</option>
               </select>
             </div>
           </div>
