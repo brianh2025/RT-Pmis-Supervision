@@ -36,9 +36,13 @@ export function useProjects() {
       } else {
         const withLatestProgress = data.map((project) => {
           const records = project.progress_records ?? [];
-          const latest = records.sort(
-            (a, b) => new Date(b.report_date) - new Date(a.report_date)
-          )[0] ?? null;
+          const latest = records
+            .filter(r => r.actual_progress > 0)
+            .sort((a, b) => new Date(b.report_date) - new Date(a.report_date))[0] ?? null;
+          if (latest) {
+            latest.actual_progress  = parseFloat(latest.actual_progress.toFixed(2));
+            latest.planned_progress = parseFloat(latest.planned_progress.toFixed(2));
+          }
           return { ...project, latest_progress: latest };
         });
         setProjects(withLatestProgress);

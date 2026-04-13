@@ -436,9 +436,9 @@ export function Dashboard() {
               )}
               {filteredProjects.map((p, index) => {
                 const lp = p.latest_progress;
-                const prog = lp ? lp.actual_progress : 0;
+                const prog    = lp ? lp.actual_progress  : 0;
                 const planned = lp ? lp.planned_progress : 0;
-                const diff = prog - planned;
+                const diff = parseFloat((prog - planned).toFixed(2));
                 return (
                   <div
                     key={p.id}
