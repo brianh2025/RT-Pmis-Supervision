@@ -60,7 +60,7 @@ export function ProjectDashboard() {
       const [logsRes, monthLogsRes, progressRes, subRes, tstRes, plnRes] = await Promise.all([
         supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId).gte('log_date', thisMonthStart),
-        supabase.from('progress_records').select('planned_progress, actual_progress').eq('project_id', projectId).order('report_date', { ascending: false }).limit(1),
+        supabase.from('progress_records').select('planned_progress, actual_progress').eq('project_id', projectId).gt('actual_progress', 0).order('report_date', { ascending: false }).limit(1),
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_test').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_plan').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
