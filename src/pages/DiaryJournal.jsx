@@ -26,7 +26,7 @@ async function runBackgroundSync(projectId, startDate) {
     .gte('log_date', startDate || '2020-01-01');
   const beforeSet = new Set((before || []).map(r => r.log_date));
 
-  // 2. 取最新累積檔並同步
+  // 2. 取所有檔案並逐一同步（各份可能累積不同時段）
   const listRes = await fetch(EDGE_FN_URL, {
     method: 'POST', headers,
     body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
@@ -34,11 +34,12 @@ async function runBackgroundSync(projectId, startDate) {
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
   if (files.length === 0) return 0;
-  const latest = files[files.length - 1];
-  await fetch(EDGE_FN_URL, {
-    method: 'POST', headers,
-    body: JSON.stringify({ mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name, secret: syncSecret }),
-  }).catch(() => {});
+  for (const f of files) {
+    await fetch(EDGE_FN_URL, {
+      method: 'POST', headers,
+      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+    }).catch(() => {});
+  }
 
   // 3. 同步後：計算新增日期數
   const { data: after } = await supabase

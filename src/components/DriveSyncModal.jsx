@@ -58,19 +58,23 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
         return;
       }
 
-      // 第二步：只同步最新檔案（累積型日誌，最新檔包含所有日期）
-      const latest = files[files.length - 1];
-      setProgress({ current: 0, total: 1, results: [] });
-      let entry;
-      try {
-        const r = await callEdgeFn(token, {
-          mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name,
-        });
-        entry = { file: latest.name, date: r.date, dates: r.dates, itemCount: r.itemCount, success: true };
-      } catch (err) {
-        entry = { file: latest.name, success: false, error: String(err) };
+      // 第二步：逐一同步所有檔案（各份可能累積不同時段，需全部匯入）
+      setProgress({ current: 0, total: files.length, results: [] });
+      const results = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        let entry;
+        try {
+          const r = await callEdgeFn(token, {
+            mode: 'sync_one', projectId, fileId: f.id, fileName: f.name,
+          });
+          entry = { file: f.name, date: r.date, dates: r.dates, itemCount: r.itemCount, success: true };
+        } catch (err) {
+          entry = { file: f.name, success: false, error: String(err) };
+        }
+        results.push(entry);
+        setProgress({ current: i + 1, total: files.length, results: [...results] });
       }
-      setProgress({ current: 1, total: 1, results: [entry] });
 
       onSuccess?.();
     } catch (err) {

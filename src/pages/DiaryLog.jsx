@@ -22,13 +22,13 @@ async function runBackgroundSync(projectId, startDate) {
   if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
   const { files = [] } = await listRes.json();
   if (files.length === 0) return 0;
-  // 累積型日誌：最新檔案已包含所有歷史日期，只同步它即可
-  const latest = files[files.length - 1];
-  await fetch(EDGE_FN_URL, {
-    method: 'POST', headers,
-    body: JSON.stringify({ mode: 'sync_one', projectId, fileId: latest.id, fileName: latest.name, secret: syncSecret }),
-  }).catch(() => {});
-  return 1;
+  for (const f of files) {
+    await fetch(EDGE_FN_URL, {
+      method: 'POST', headers,
+      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
+    }).catch(() => {});
+  }
+  return files.length;
 }
 import './DiaryLog.css';
 
