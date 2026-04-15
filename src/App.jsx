@@ -15,7 +15,6 @@ const Submission = React.lazy(() => import('./pages/Submission').then(m => ({ de
 const Quality = React.lazy(() => import('./pages/Quality').then(m => ({ default: m.Quality })));
 const Archive = React.lazy(() => import('./pages/Archive').then(m => ({ default: m.Archive })));
 const Analytics = React.lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
-const DailyReportController = React.lazy(() => import('./pages/DailyReport/DailyReportController').then(m => ({ default: m.DailyReportController })));
 const DiaryLog = React.lazy(() => import('./pages/DiaryLog').then(m => ({ default: m.DiaryLog })));
 const DiaryPrintView = React.lazy(() => import('./pages/DiaryPrintView').then(m => ({ default: m.DiaryPrintView })));
 const ProgressManagement = React.lazy(() => import('./pages/ProgressManagement').then(m => ({ default: m.ProgressManagement })));
@@ -73,7 +72,6 @@ function App() {
                   {/* Redirect /projects/:id to /projects/:id/dashboard */}
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<ProjectDashboard />} />
-                  <Route path="diary" element={<DailyReportController />} />
                   <Route path="supervision" element={<DiaryLog />} />
                   <Route path="supervision/print/:logDate" element={<DiaryPrintView />} />
                   <Route path="progress" element={<ProgressManagement />} />

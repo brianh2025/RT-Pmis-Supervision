@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
+import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
+import { DailyReportView } from './DailyReport/DailyReportView';
+import { DailyReportForm } from './DailyReport/DailyReportForm';
+import { DiaryImportModal } from '../components/DiaryImportModal';
 import './DiaryJournal.css';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
@@ -19,14 +23,12 @@ async function runBackgroundSync(projectId, startDate) {
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
   const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
 
-  // 1. 同步前：紀錄現有日期數
   const { data: before } = await supabase
     .from('daily_logs').select('log_date')
     .eq('project_id', projectId)
     .gte('log_date', startDate || '2020-01-01');
   const beforeSet = new Set((before || []).map(r => r.log_date));
 
-  // 2. 取所有檔案並逐一同步（各份可能累積不同時段）
   const listRes = await fetch(EDGE_FN_URL, {
     method: 'POST', headers,
     body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
@@ -41,7 +43,6 @@ async function runBackgroundSync(projectId, startDate) {
     }).catch(() => {});
   }
 
-  // 3. 同步後：計算新增日期數
   const { data: after } = await supabase
     .from('daily_logs').select('log_date')
     .eq('project_id', projectId)
@@ -58,7 +59,6 @@ function toKey(y, m, d) {
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDow(y, m)    { return new Date(y, m, 1).getDay(); }
 
-/** 過濾施工日誌模板樣板文字，保留真正的備註 */
 function cleanNotes(raw) {
   if (!raw) return '';
   const lines = raw.split('\n');
@@ -66,7 +66,6 @@ function cleanNotes(raw) {
   return (cutIdx === -1 ? lines : lines.slice(0, cutIdx)).join('\n').trim();
 }
 
-/** 格式化百分比，最多 2 位小數 */
 function fmtPct(v) {
   if (v == null) return '—';
   const n = parseFloat(v);
@@ -81,9 +80,11 @@ function progressColor(actual, planned) {
   return '#ef4444';
 }
 
-export function DiaryJournal() {
+// ── 內部元件（使用 DailyReportContext）──────────────────────────
+function DiaryJournalInner() {
   const { id: projectId } = useParams();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // 監造報表仍需跳轉
+  const { reports, loading: reportsLoading, refresh: refreshReports } = useContext(DailyReportContext);
 
   const today = new Date();
   const [year,  setYear]  = useState(today.getFullYear());
@@ -95,7 +96,7 @@ export function DiaryJournal() {
   const [project,        setProject]        = useState(null);
   const [showDriveSync,  setShowDriveSync]  = useState(false);
   const [autoSyncing,    setAutoSyncing]    = useState(false);
-  const [syncFilled,     setSyncFilled]     = useState(0); // 補漏新增的日期數
+  const [syncFilled,     setSyncFilled]     = useState(0);
   const autoSyncedRef = useRef(false);
   const [refreshKey,     setRefreshKey]     = useState(0);
 
@@ -104,10 +105,28 @@ export function DiaryJournal() {
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
 
-  // ── 取工程資訊（drive_folder_id）─────────────────────────────
+  // ── 施工日誌內嵌模式 ─────────────────────────────────────────
+  const [viewMode, setViewMode] = useState('summary'); // 'summary' | 'view' | 'form'
+  const [diaryFormExisting, setDiaryFormExisting] = useState(null);
+  const [showImport, setShowImport] = useState(false);
+
+  // 日期切換時回到摘要
+  useEffect(() => { setViewMode('summary'); }, [selectedKey]);
+
+  const diaryReport = (!reportsLoading && selectedKey)
+    ? reports.find(r => r.date === selectedKey) ?? null
+    : null;
+
+  const mockProject = {
+    name: project?.name || '',
+    contractor: project?.contractor || '',
+    supervisorName: '',
+  };
+
+  // ── 取工程資訊 ────────────────────────────────────────────────
   useEffect(() => {
     supabase.from('projects')
-      .select('drive_folder_id, start_date')
+      .select('drive_folder_id, start_date, name, contractor')
       .eq('id', projectId).single()
       .then(({ data }) => { if (data) setProject(data); });
   }, [projectId]);
@@ -122,11 +141,12 @@ export function DiaryJournal() {
         if (count > 0) {
           setSyncFilled(count);
           setRefreshKey(k => k + 1);
+          refreshReports();
         }
       })
       .catch(() => {})
       .finally(() => setAutoSyncing(false));
-  }, [project?.drive_folder_id, projectId]);
+  }, [project?.drive_folder_id, projectId, refreshReports]);
 
   // ── 取當月有資料的日期 ──────────────────────────────────────
   useEffect(() => {
@@ -143,13 +163,11 @@ export function DiaryJournal() {
     ]).then(([dri, dl]) => {
       if (cancelled) return;
       const dlDates = new Set((dl.data || []).map(r => r.log_date));
-      // 藍點：daily_report_items 或 daily_logs 有資料（手動填寫 or Drive 同步皆涵蓋）
       const combined = new Set([
         ...(dri.data || []).map(r => r.log_date),
         ...dlDates,
       ]);
       setDiaryDates(combined);
-      // 綠點：daily_logs 有資料（Drive 同步寫入）
       setSupervisionDates(dlDates);
     });
     return () => { cancelled = true; };
@@ -194,7 +212,6 @@ export function DiaryJournal() {
     setSelectedKey(null);
   };
 
-  // 行動版：前後一天
   function changeDay(delta) {
     if (!selectedKey) return;
     const d = new Date(selectedKey + 'T00:00:00');
@@ -210,7 +227,6 @@ export function DiaryJournal() {
   const hasDiary = selectedKey ? diaryDates.has(selectedKey) : false;
   const hasSup   = selectedKey ? supervisionDates.has(selectedKey) : false;
 
-  // 刪除選定日期的所有日誌資料
   const handleDeleteDate = async () => {
     if (!selectedKey) return;
     if (!window.confirm(`確定刪除 ${selectedKey} 的所有日誌及監造資料？此操作無法復原。`)) return;
@@ -219,27 +235,73 @@ export function DiaryJournal() {
       supabase.from('daily_report_items').delete().eq('project_id', projectId).eq('log_date', selectedKey),
       supabase.from('progress_records').delete().eq('project_id', projectId).eq('report_date', selectedKey),
     ]);
-    // 清 localStorage
     try {
       const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
       localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(stored.filter(r => r.date !== selectedKey)));
     } catch {}
     setSelectedKey(null);
     setRefreshKey(k => k + 1);
+    refreshReports();
   };
 
-  const selActual  = summary?.progress?.actual_progress  ?? summary?.log?.actual_progress  ?? null;
-  const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
-
-  // 過濾有意義的施工項（排除合約比例型小數）
-  const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
-  const noteText = cleanNotes(summary?.log?.notes);
-
-  // 選日期：行動版自動收合日曆
   function handleSelectDate(key, isSelected) {
     setSelectedKey(isSelected ? null : key);
     if (!isSelected && window.innerWidth <= 768) setCalCollapsed(true);
   }
+
+  // ── 施工日誌操作 ──────────────────────────────────────────────
+  const handleOpenDiary = () => {
+    if (diaryReport) {
+      setViewMode('view');
+    } else {
+      setDiaryFormExisting({ date: selectedKey });
+      setViewMode('form');
+    }
+  };
+
+  const handleEditDiary = () => {
+    setDiaryFormExisting(diaryReport);
+    setViewMode('form');
+  };
+
+  const handleSaveDiary = () => {
+    setViewMode('view');
+    setRefreshKey(k => k + 1);
+  };
+
+  // ── 施工日誌：檢視模式 ─────────────────────────────────────
+  if (viewMode === 'view' && diaryReport) {
+    return (
+      <div className="dj-root">
+        <DailyReportView
+          report={diaryReport}
+          onBack={() => setViewMode('summary')}
+          onEdit={handleEditDiary}
+        />
+      </div>
+    );
+  }
+
+  // ── 施工日誌：表單模式 ─────────────────────────────────────
+  if (viewMode === 'form') {
+    return (
+      <div className="dj-root">
+        <DailyReportForm
+          existing={diaryFormExisting}
+          projectId={projectId}
+          project={mockProject}
+          onBack={() => diaryFormExisting?.id ? setViewMode('view') : setViewMode('summary')}
+          onSave={handleSaveDiary}
+        />
+      </div>
+    );
+  }
+
+  // ── 摘要相關運算 ──────────────────────────────────────────────
+  const selActual  = summary?.progress?.actual_progress  ?? summary?.log?.actual_progress  ?? null;
+  const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
+  const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
+  const noteText = cleanNotes(summary?.log?.notes);
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -261,13 +323,11 @@ export function DiaryJournal() {
             +{syncFilled}
           </span>
         )}
-        {/* 收合切換 */}
         <button className="dj-cal-toggle" onClick={() => setCalCollapsed(c => !c)} title={calCollapsed ? '展開日曆' : '收合日曆'}>
           {calCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
       </div>
 
-      {/* 收合時：若有選定日期則顯示日期 + 前後一天導覽 */}
       {calCollapsed && selectedKey && (
         <div className="dj-cal-collapsed-date">
           <button className="dj-nav-btn" onClick={() => changeDay(-1)}><ChevronLeft size={15} /></button>
@@ -276,7 +336,6 @@ export function DiaryJournal() {
         </div>
       )}
 
-      {/* 展開時：完整日曆 */}
       {!calCollapsed && (
         <>
           <div className="dj-dow-row">
@@ -351,8 +410,9 @@ export function DiaryJournal() {
           <div className="dj-coexist-title">
             {hasDiary ? <CheckCircle2 size={13} /> : <Circle size={13} />}
             施工日誌
+            {/* 已有日誌：查看按鈕 */}
             {hasDiary && (
-              <button className="dj-goto-btn" onClick={() => navigate(`/projects/${projectId}/diary?date=${selectedKey}`)} title="前往施工日誌">
+              <button className="dj-goto-btn" onClick={handleOpenDiary} title="查看施工日誌">
                 <ExternalLink size={11} />
               </button>
             )}
@@ -368,8 +428,17 @@ export function DiaryJournal() {
             </div>
           ) : (
             <div className="dj-empty">
-              {hasDiary ? '尚無施工工項記錄' : '施工日誌尚未上傳'}
+              {hasDiary ? '尚無施工工項記錄' : '施工日誌尚未填寫'}
             </div>
+          )}
+          {/* 尚無日誌：新增按鈕 */}
+          {!hasDiary && (
+            <button
+              className="dj-new-diary-btn"
+              onClick={handleOpenDiary}
+            >
+              <Plus size={12} /> 新增施工日誌
+            </button>
           )}
         </div>
 
@@ -421,13 +490,33 @@ export function DiaryJournal() {
     )
   ) : null;
 
+  // ── 摘要模式主體 ─────────────────────────────────────────────
   return (
     <div className="dj-root">
 
-      {/* Header：標題 + Drive同步按鈕 + PC端選定日期 */}
+      {/* Header */}
       <div className="dj-header">
         <h1 className="dj-title">日誌報表</h1>
-        {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {selectedKey && <div className="dj-header-date">{selectedKey}</div>}
+          <button
+            className="btn-dash-action"
+            onClick={() => setShowImport(true)}
+            title="PDF 匯入施工日誌"
+          >
+            <FileText size={14} /><span>PDF 匯入</span>
+          </button>
+          <button
+            className="btn-dash-action"
+            onClick={() => {
+              setDiaryFormExisting(selectedKey ? { date: selectedKey } : null);
+              setViewMode('form');
+            }}
+            title="新增施工日誌"
+          >
+            <Plus size={14} /><span>新增日誌</span>
+          </button>
+        </div>
       </div>
 
       {/* 主體 */}
@@ -436,7 +525,6 @@ export function DiaryJournal() {
           {calendarEl}
         </div>
 
-        {/* 摘要欄 */}
         {summaryEl
           ? <div className="dj-summary-col">{summaryEl}</div>
           : <div className="dj-placeholder">點選日期查看摘要</div>
@@ -448,9 +536,27 @@ export function DiaryJournal() {
           projectId={projectId}
           startDate={project?.start_date || ''}
           onClose={() => setShowDriveSync(false)}
-          onSuccess={() => { setShowDriveSync(false); setRefreshKey(k => k + 1); }}
+          onSuccess={() => { setShowDriveSync(false); setRefreshKey(k => k + 1); refreshReports(); }}
+        />
+      )}
+
+      {showImport && (
+        <DiaryImportModal
+          projectId={projectId}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => { setShowImport(false); setRefreshKey(k => k + 1); refreshReports(); }}
         />
       )}
     </div>
+  );
+}
+
+// ── 外層元件：提供 DailyReportContext ──────────────────────────
+export function DiaryJournal() {
+  const { id: projectId } = useParams();
+  return (
+    <DailyReportProvider projectId={projectId}>
+      <DiaryJournalInner />
+    </DailyReportProvider>
   );
 }
