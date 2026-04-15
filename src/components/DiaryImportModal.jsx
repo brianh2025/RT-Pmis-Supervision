@@ -4,7 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import '../components/Modal.css';
+import './Modal.css';
 
 // Use local bundled worker - avoids CDN/network dependency
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -303,7 +303,6 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
     
     setImporting(true);
     setErrors([]);
-    // alert('開始匯入 ' + mappedRows.length + ' 筆資料至工程 ' + projectId);
 
     try {
       const payload = mappedRows.map(r => ({

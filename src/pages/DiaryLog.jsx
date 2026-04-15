@@ -9,7 +9,7 @@ import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 
-const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 async function runBackgroundSync(projectId, startDate) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';

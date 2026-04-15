@@ -41,7 +41,7 @@ export function DailyReportProvider({ children, projectId }) {
             const [{ data: dbItems }, { data: progressData }, { data: logsData }] = await Promise.all([
                 supabase.from('daily_report_items').select('*').eq('project_id', projectId).order('log_date', { ascending: false }),
                 supabase.from('progress_records').select('report_date, planned_progress, actual_progress').eq('project_id', projectId),
-                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, weather_am, weather_pm, notes').eq('project_id', projectId),
+                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, weather_am, weather_pm, notes, work_items').eq('project_id', projectId),
             ]);
 
             // 按日期分組
@@ -76,6 +76,14 @@ export function DailyReportProvider({ children, projectId }) {
                         ? `${log.weather_am}/${log.weather_pm}`
                         : log.weather_am)
                     : '晴';
+                // 將 work_items 文字（格式："工項名稱：qty unit"，每行一筆）轉換為 quantities
+                const quantities = (log?.work_items || '').split('\n')
+                    .map(line => line.trim()).filter(Boolean)
+                    .map((line, i) => {
+                        const m = line.match(/^(.+?)：([\d.]+)\s*(.*)$/);
+                        if (m) return { id: i + 1, item: m[1].trim(), unit: m[3].trim(), contractQty: 0, todayQty: parseFloat(m[2]) || 0, cumQty: 0, note: '' };
+                        return { id: i + 1, item: line, unit: '', contractQty: 0, todayQty: 0, cumQty: 0, note: '' };
+                    });
                 return {
                     id: `db-${date}`,
                     project_id: projectId,
@@ -87,7 +95,7 @@ export function DailyReportProvider({ children, projectId }) {
                     plannedProgress: progressByDate[date]?.planned_progress || 0,
                     actualProgress:  progressByDate[date]?.actual_progress  || 0,
                     progressNote: log?.notes || '',
-                    quantities: [],
+                    quantities,
                     inspections: [], qualityTests: [], documents: [],
                     specialNote: '',
                 };

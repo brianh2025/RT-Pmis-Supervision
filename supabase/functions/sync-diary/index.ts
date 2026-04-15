@@ -160,7 +160,7 @@ function colLetterToIdx(col: string): number {
 interface RawCell { row: number; col: number; val: string; }
 
 // 日誌關鍵字（用來識別哪些工作表含施工日誌資料）
-const DIARY_MARKERS = /填表日期|填報日期|本日完成|本日天氣|施工日誌|監造報表|本日工作項目/;
+const DIARY_MARKERS = /填表日期|填報日期|本日完成|本日天氣|施工日誌|監造報表|本日工作項目|本日無施工/;
 
 // ── 讀取所有含日誌關鍵字的工作表 ─────────────────────────────
 // 傳回每個 sheet 的 cells 陣列（支援多工作表、大量列）
@@ -250,7 +250,7 @@ function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
 // ── 在一個 sheet 的 cells 中找出各 block 的起始列（0-based）──
 // block 起始 = 含「本日天氣」、「填表日期」或「填報日期」的列
 function findBlockStartRows(cells: RawCell[]): number[] {
-  const BLOCK_HEADER = /本日天氣|填表日期|填報日期/;
+  const BLOCK_HEADER = /本日天氣|填表日期|填報日期|本日無施工/;
   const headerRows = new Set<number>();
   for (const c of cells) {
     if (BLOCK_HEADER.test(c.val)) headerRows.add(c.row);
@@ -331,6 +331,23 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
   if (!logDate) {
     const serialCell = cells.find((c) => /^\d{5}$/.test(c.val) && parseInt(c.val) > 40000);
     if (serialCell) logDate = parseDate(serialCell.val);
+  }
+  // Fallback：本日無施工格 — 日期可能在同格文字或鄰近儲存格
+  if (!logDate) {
+    const noWorkCell = cells.find((c) => /本日無施工/.test(c.val));
+    if (noWorkCell) {
+      // 先嘗試從同格文字內解析日期
+      const inline = noWorkCell.val.match(/(\d{2,3}[-/年]\d{1,2}[-/月]\d{1,2})/)?.[1];
+      if (inline) logDate = parseDate(inline.replace(/[年月]/g, '-').replace(/日$/, ''));
+      if (!logDate) {
+        // 再看同列其他儲存格
+        const rowCells = cells.filter((c) => c.row === noWorkCell.row).sort((a, b) => a.col - b.col);
+        for (const c of rowCells) {
+          const d = parseDate(c.val);
+          if (d) { logDate = d; break; }
+        }
+      }
+    }
   }
 
   // ── 2. 天氣 ────────────────────────────────────────────────

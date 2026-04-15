@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { DailyReportProvider, DailyReportContext } from './DailyReportContext';
+import { DailyReportList } from './DailyReportList';
+import { DailyReportView } from './DailyReportView';
+import { DailyReportForm } from './DailyReportForm';
+import { DiaryImportModal } from '../../components/DiaryImportModal';
 
-const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 
 async function runBackgroundSync(projectId, startDate) {
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -26,11 +31,6 @@ async function runBackgroundSync(projectId, startDate) {
     }
     return files.length;
 }
-import { DailyReportProvider, DailyReportContext } from './DailyReportContext';
-import { DailyReportList } from './DailyReportList';
-import { DailyReportView } from './DailyReportView';
-import { DailyReportForm } from './DailyReportForm';
-import { DiaryExcelImportModal } from '../../components/DiaryExcelImportModal';
 
 function DailyReportContainer() {
     const { id: projectId } = useParams();
@@ -150,10 +150,10 @@ function DailyReportContainer() {
                 />
             )}
             {showImport && (
-                <DiaryExcelImportModal
+                <DiaryImportModal
                     projectId={projectId}
                     onClose={() => setShowImport(false)}
-                    onSuccess={() => { setShowImport(false); window.location.reload(); }}
+                    onSuccess={() => { setShowImport(false); refresh(); }}
                 />
             )}
 

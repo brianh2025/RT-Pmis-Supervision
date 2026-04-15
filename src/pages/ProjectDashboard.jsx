@@ -30,7 +30,7 @@ const SHORTCUT_ROW2 = [
 export function ProjectDashboard() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
-  const { project, loading: projectLoading } = useProject(projectId);
+  const { project, loading: projectLoading, refetch } = useProject(projectId);
 
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -443,7 +443,7 @@ export function ProjectDashboard() {
                       setSaving(false);
                       setEditMode(false);
                       setShowProjectInfo(false);
-                      window.location.reload();
+                      refetch();
                     }}
                   >
                     {saving ? '儲存中…' : '儲存'}

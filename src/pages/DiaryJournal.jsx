@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 import './DiaryJournal.css';
 
-const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 
 /**
  * 補漏同步：

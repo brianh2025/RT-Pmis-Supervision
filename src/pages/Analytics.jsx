@@ -33,7 +33,6 @@ export function Analytics() {
   const [submissionStats, setSubmissionStats] = useState([]);
   const [qualityStats, setQualityStats] = useState([]);
   const [diaryStats, setDiaryStats] = useState({});
-  const [_materialStats, setMaterialStats] = useState({});
   const [qualityRateStats, setQualityRateStats] = useState({});
   const [inspectionStats, setInspectionStats] = useState({});
   const [activeTab, setActiveTab] = useState('progress');
@@ -48,14 +47,12 @@ export function Analytics() {
       { data: subRows },
       { data: qualRows },
       { data: diaryRows },
-      { data: matSubRows },
       { data: inspRows },
     ] = await Promise.all([
       supabase.from('progress_items').select('*').eq('project_id', projectId).order('created_at'),
       supabase.from('submissions').select('status, category, created_at').eq('project_id', projectId),
       supabase.from('quality_issues').select('status, severity, inspection_date').eq('project_id', projectId).order('inspection_date'),
       supabase.from('daily_logs').select('log_date, planned_progress, actual_progress').eq('project_id', projectId).order('log_date'),
-      supabase.from('mcs_submission').select('result').eq('project_id', projectId),
       supabase.from('construction_inspections').select('result, work_item, inspect_date').eq('project_id', projectId).order('inspect_date'),
     ]);
 
@@ -94,12 +91,6 @@ export function Analytics() {
         cumulative: r.actual_progress || 0,
       }));
       setDiaryStats({ timeline, total: diaryRows.length });
-    }
-
-    // Material submission stats
-    if (matSubRows) {
-      const approved = matSubRows.filter(r => r.result === '同意備查').length;
-      setMaterialStats({ total: matSubRows.length, approved, pending: matSubRows.length - approved });
     }
 
     // 缺失合格率（resolved+verified / total）

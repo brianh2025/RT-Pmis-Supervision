@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { DailyReportContext } from './DailyReportContext';
 import { Badge, Card, I, weatherIcon, thisMonth, C } from './utils';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
     const { reports, loading } = useContext(DailyReportContext);
@@ -55,7 +55,7 @@ export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
                         background: "var(--color-surface)", color: C.textMid, fontSize: 13, fontWeight: 600, cursor: "pointer",
                         display: "flex", alignItems: "center", gap: 6, whiteSpace: 'nowrap',
                     }}>
-                        <FileSpreadsheet size={15} color={C.textMid} /> Excel 匯入
+                        <FileText size={15} color={C.textMid} /> PDF 匯入
                     </button>
                 </div>
 

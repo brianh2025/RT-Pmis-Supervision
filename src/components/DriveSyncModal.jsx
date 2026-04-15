@@ -3,7 +3,7 @@ import { X, RefreshCw, CheckCircle2, AlertTriangle, Loader2, CloudDownload } fro
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
 
-const EDGE_FN_URL = 'https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary';
+const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 
 // 民國年轉西元（0114-12-25 → 2025-12-25）
 function toIsoDate(dateStr) {

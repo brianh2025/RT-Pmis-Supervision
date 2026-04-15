@@ -9,6 +9,7 @@ export function useProject(projectId) {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function fetchProject() {
@@ -47,7 +48,7 @@ export function useProject(projectId) {
     }
 
     fetchProject();
-  }, [projectId]);
+  }, [projectId, refreshKey]);
 
-  return { project, loading, error };
+  return { project, loading, error, refetch: () => setRefreshKey(k => k + 1) };
 }
