@@ -205,7 +205,7 @@ function CircularProgress({ value = 0, size = 48, strokeWidth = 5, color = 'var(
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { projects, loading, refresh } = useProjects();
   
