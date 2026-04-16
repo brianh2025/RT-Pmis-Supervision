@@ -376,6 +376,27 @@
   color: var(--color-primary-light);
 }
 
+/* 行動版總覽 Topbar 按鈕 */
+.pl-topbar-excel-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: none; color: var(--color-text2);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+}
+.pl-topbar-excel-btn:hover { background: var(--color-surface-hover); }
+
+.pl-topbar-logout-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid rgba(220,38,38,0.3);
+  background: none; color: var(--color-danger, #dc2626);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+}
+.pl-topbar-logout-btn:hover { background: rgba(220,38,38,0.08); }
+
 /* 行動版：has-back 時顯示（與漢堡鍵並排） */
 @media (max-width: 1024px) {
   .pl-topbar.has-back {

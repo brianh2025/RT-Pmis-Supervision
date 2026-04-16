@@ -1,0 +1,51 @@
+.card-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  padding: 4px;
+  min-width: 150px;
+  animation: ctxFadeIn 0.1s ease;
+}
+
+@keyframes ctxFadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.card-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text1);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.card-ctx-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.card-ctx-item.danger {
+  color: var(--color-danger, #dc2626);
+}
+
+.card-ctx-item.danger:hover {
+  background: rgba(220,38,38,0.08);
+}
+
+.card-ctx-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 3px 4px;
+}

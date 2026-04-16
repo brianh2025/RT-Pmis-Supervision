@@ -14,6 +14,7 @@ const COLUMN_MAP = {
   '開工日期': 'start_date',
   '預計完工': 'end_date',
   '預算萬元': 'budget',
+  '預算元':   'budget',
 };
 
 const STATUS_MAP = {
@@ -112,7 +113,7 @@ export function ExcelImportModal({ onClose, onSuccess }) {
         狀態:     '執行中',
         開工日期: '2025-10-15',
         預計完工: '2026-08-31',
-        預算萬元: 5200,
+        預算元: 52000000,
       },
     ];
     const ws = XLSX.utils.json_to_sheet(template);

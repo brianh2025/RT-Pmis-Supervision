@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,11 +10,12 @@ import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { ReportReminderBanner } from '../components/ReportReminderBanner';
+import { CardContextMenu } from '../components/CardContextMenu';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  Trash2, TriangleAlert, Loader2, Search, ChevronRight, Star, Pencil,
+  TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -211,8 +213,8 @@ export function Dashboard() {
   useAutoHideScrollbar(contentRef);
   const [showAddModal,    setShowAddModal]    = useState(false);
   const [showExcelModal,  setShowExcelModal]  = useState(false);
-  const [deleteTarget,    setDeleteTarget]    = useState(null); // project to delete
-  const [editTarget,      setEditTarget]      = useState(null); // project to edit
+  const [deleteTarget,    setDeleteTarget]    = useState(null);
+  const [editTarget,      setEditTarget]      = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -220,6 +222,12 @@ export function Dashboard() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [searchQuery,  setSearchQuery]  = useState('');
   const [alerts,       setAlerts]       = useState([]);
+  const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
+  const [cardOrder,    setCardOrder]    = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`pmis_card_order_${user?.id}`) || 'null') || null; } catch { return null; }
+  });
+  const [dragOverId, setDragOverId] = useState(null);
+  const dragSrcId = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -286,6 +294,65 @@ export function Dashboard() {
 
   const handleDataAdded = () => refresh?.();
 
+  /* ── 匯出案件清單 ── */
+  const handleExport = () => {
+    const rows = projects.map(p => ({
+      工程名稱: p.name || '',
+      施工地點: p.location || '',
+      承包商:   p.contractor || '',
+      狀態:     ({ active:'執行中', completed:'已完工', accepted:'已竣工', suspended:'暫停', pending:'未發包' }[p.status] || p.status),
+      開工日期: p.start_date || '',
+      預計完工: p.end_date || '',
+      預算元:   p.budget ?? '',
+      計畫進度: p.latest_progress?.planned_progress ?? '',
+      實際進度: p.latest_progress?.actual_progress  ?? '',
+      備註:     p.notes || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '工程清單');
+    XLSX.writeFile(wb, `PMIS工程清單_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  /* ── 拖曳排序 ── */
+  const handleDragStart = useCallback((e, id) => {
+    dragSrcId.current = id;
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDragOver = useCallback((e, id) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverId(id);
+  }, []);
+
+  const handleDrop = useCallback((e, targetId) => {
+    e.preventDefault();
+    const srcId = dragSrcId.current;
+    if (!srcId || srcId === targetId) { setDragOverId(null); return; }
+    setCardOrder(prev => {
+      const base = prev || projects.map(p => p.id);
+      const from = base.indexOf(srcId);
+      const to   = base.indexOf(targetId);
+      if (from === -1 || to === -1) return prev;
+      const next = [...base];
+      next.splice(from, 1);
+      next.splice(to, 0, srcId);
+      localStorage.setItem(`pmis_card_order_${user?.id}`, JSON.stringify(next));
+      return next;
+    });
+    setDragOverId(null);
+    dragSrcId.current = null;
+  }, [projects, user]);
+
+  const handleDragEnd = useCallback(() => { setDragOverId(null); dragSrcId.current = null; }, []);
+
+  /* ── 右鍵選單 ── */
+  const openContextMenu = useCallback((e, project) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, project });
+  }, []);
+
   const isBehind = (p) => {
     const lp = p.latest_progress;
     return p.status === 'active' && lp && (lp.actual_progress - lp.planned_progress) < -5;
@@ -318,7 +385,21 @@ export function Dashboard() {
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
-  const filteredProjects = projects
+  // 套用自訂順序或預設依開工日期排序
+  const orderedProjects = React.useMemo(() => {
+    const base = cardOrder
+      ? [...projects].sort((a, b) => {
+          const ia = cardOrder.indexOf(a.id), ib = cardOrder.indexOf(b.id);
+          if (ia === -1 && ib === -1) return (a.start_date || '').localeCompare(b.start_date || '');
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
+        })
+      : [...projects].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
+    return base;
+  }, [projects, cardOrder]);
+
+  const filteredProjects = orderedProjects
     .filter(p => {
       if (statusFilter === 'starred')  return p.is_starred;
       if (statusFilter === 'behind' && !isBehind(p)) return false;
@@ -328,9 +409,81 @@ export function Dashboard() {
         return (p.name || '').toLowerCase().includes(q) || (p.contractor || '').toLowerCase().includes(q);
       }
       return true;
-    })
-    // 已收藏的排最前
-    .sort((a, b) => (b.is_starred ? 1 : 0) - (a.is_starred ? 1 : 0));
+    });
+
+  const starredProjects  = filteredProjects.filter(p => p.is_starred);
+  const regularProjects  = filteredProjects.filter(p => !p.is_starred);
+
+  /* ── 卡片渲染函式 ── */
+  const renderCard = (p, index) => {
+    const lp = p.latest_progress;
+    const prog    = lp ? lp.actual_progress  : 0;
+    const planned = lp ? lp.planned_progress : 0;
+    const diff = parseFloat((prog - planned).toFixed(2));
+    return (
+      <div
+        key={p.id}
+        draggable
+        className={`dash-project-card dash-project-card-compact${isBehind(p) ? ' status-behind' : p.status === 'suspended' ? ' status-suspended' : p.status === 'completed' ? ' status-completed' : p.status === 'accepted' ? ' status-accepted' : p.status === 'pending' ? ' status-pending' : ''}${dragOverId === p.id ? ' drag-over' : ''}`}
+        onClick={() => navigate(`/projects/${p.id}/dashboard`)}
+        onContextMenu={e => openContextMenu(e, p)}
+        onDragStart={e => handleDragStart(e, p.id)}
+        onDragOver={e => handleDragOver(e, p.id)}
+        onDrop={e => handleDrop(e, p.id)}
+        onDragEnd={handleDragEnd}
+        style={{ animationDelay: `${0.3 + index * 0.04}s` }}
+      >
+        <div className="card-accent-side" style={{
+          background: isBehind(p)
+            ? 'linear-gradient(to bottom, #dc2626, #f87171)'
+            : p.status === 'active'
+            ? 'linear-gradient(to bottom, #1565C0, #42a5f5)'
+            : p.status === 'suspended'
+            ? 'linear-gradient(to bottom, #d97706, #fbbf24)'
+            : p.status === 'accepted'
+            ? 'linear-gradient(to bottom, #059669, #34d399)'
+            : p.status === 'pending'
+            ? 'linear-gradient(to bottom, #64748b, #94a3b8)'
+            : 'linear-gradient(to bottom, #94a3b8, #cbd5e1)'
+        }} />
+        <div className="card-compact-body">
+          <div className="card-compact-top">
+            <div className="card-title-compact">{p.name}</div>
+            <div className="card-pct-block">
+              <span className="card-pct-num" style={{
+                color: isBehind(p) ? 'var(--color-danger)' :
+                       (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
+              }}>{prog}%</span>
+              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                {diff >= 0 ? '+' : ''}{diff}%
+              </span>
+            </div>
+          </div>
+          <div className="layered-progress-bar" style={{ height: '4px' }}>
+            <div className="bar-planned" style={{ width: `${planned}%` }} />
+            <div className="bar-actual" style={{
+              width: `${prog}%`,
+              background: isBehind(p) ? 'var(--color-danger)' :
+                          (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
+            }} />
+          </div>
+          <div className="card-bottom-row">
+            <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'accepted' ? 'chip-accepted' : p.status === 'pending' ? 'chip-pending' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
+              {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'accepted' ? '竣工' : p.status === 'pending' ? '未發包' : p.status === 'suspended' ? '暫停' : '執行中'}
+            </span>
+            <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
+            <button
+              className="card-edit-btn"
+              title="編輯工程資料"
+              onClick={e => { e.stopPropagation(); setEditTarget(p); }}
+            >
+              <Pencil size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="project-layout-container">
@@ -355,11 +508,11 @@ export function Dashboard() {
 
       <div className="pl-main-wrapper">
         {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} />
+        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
-              {/* 標題列：垂直色條 + 標題 + 按鈕同一列 */}
+              {/* 標題列：左（標題）/ 中（搜尋）/ 右（按鈕） */}
               <div className="dash-page-header">
                 <div className="dash-title-block">
                   <span className="dash-title-accent" />
@@ -372,6 +525,18 @@ export function Dashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* 搜尋列（header 中央） */}
+                <div className="dash-search-row">
+                  <Search size={12} className="dash-search-icon" />
+                  <input
+                    className="dash-search-input"
+                    placeholder="搜尋工程名稱或承包商…"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
                 <div className="dash-table-actions">
                   <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>
                     <PlusCircle size={13} />
@@ -380,6 +545,10 @@ export function Dashboard() {
                   <button className="btn-dash-action btn-dash-excel" onClick={() => setShowExcelModal(true)}>
                     <FileSpreadsheet size={13} />
                     <span>Excel 匯入</span>
+                  </button>
+                  <button className="btn-dash-action btn-dash-export" onClick={handleExport}>
+                    <Download size={13} />
+                    <span>匯出清單</span>
                   </button>
                 </div>
               </div>
@@ -393,17 +562,6 @@ export function Dashboard() {
                 <ReportReminderBanner projectId={projects[0]?.id} />
               </div>
             )}
-
-            {/* 搜尋欄（獨立一列，最上方） */}
-            <div className="dash-search-row">
-              <Search size={12} className="dash-search-icon" />
-              <input
-                className="dash-search-input"
-                placeholder="搜尋工程名稱或承包商…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
 
             {/* 工程列表標題 + 篩選標籤 + 計數（同一列） */}
             <div className="dash-list-header">
@@ -434,97 +592,31 @@ export function Dashboard() {
               </span>
             </div>
 
+            {/* 我的最愛置頂區（有收藏才顯示） */}
+            {starredProjects.length > 0 && statusFilter !== 'starred' && (
+              <div className="dash-section-starred">
+                <div className="dash-section-label starred-label">
+                  <span>⭐ 我的最愛</span>
+                </div>
+                <div className="dash-project-grid">
+                  {starredProjects.map((p, index) => renderCard(p, index))}
+                </div>
+              </div>
+            )}
+
+            {/* 主清單 */}
+            {starredProjects.length > 0 && statusFilter !== 'starred' && regularProjects.length > 0 && (
+              <div className="dash-section-label regular-label">
+                <span>全部工程</span>
+              </div>
+            )}
             <div className="dash-project-grid">
               {filteredProjects.length === 0 && (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.82rem', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-surface-border)' }}>
                   此分類目前無工程
                 </div>
               )}
-              {filteredProjects.map((p, index) => {
-                const lp = p.latest_progress;
-                const prog    = lp ? lp.actual_progress  : 0;
-                const planned = lp ? lp.planned_progress : 0;
-                const diff = parseFloat((prog - planned).toFixed(2));
-                return (
-                  <div
-                    key={p.id}
-                    className={`dash-project-card dash-project-card-compact${isBehind(p) ? ' status-behind' : p.status === 'suspended' ? ' status-suspended' : p.status === 'completed' ? ' status-completed' : p.status === 'accepted' ? ' status-accepted' : p.status === 'pending' ? ' status-pending' : ''}`}
-                    onClick={() => navigate(`/projects/${p.id}/dashboard`)}
-                    style={{ animationDelay: `${0.3 + index * 0.04}s` }}
-                  >
-                    {/* 左側色條：漸層 */}
-                    <div className="card-accent-side" style={{
-                      background: isBehind(p)
-                        ? 'linear-gradient(to bottom, #dc2626, #f87171)'
-                        : p.status === 'active'
-                        ? 'linear-gradient(to bottom, #1565C0, #42a5f5)'
-                        : p.status === 'suspended'
-                        ? 'linear-gradient(to bottom, #d97706, #fbbf24)'
-                        : p.status === 'accepted'
-                        ? 'linear-gradient(to bottom, #059669, #34d399)'
-                        : p.status === 'pending'
-                        ? 'linear-gradient(to bottom, #64748b, #94a3b8)'
-                        : 'linear-gradient(to bottom, #94a3b8, #cbd5e1)'
-                    }} />
-
-                    {/* 右側內容 */}
-                    <div className="card-compact-body">
-                      {/* 上排：工程名稱（左）＋ 實際進度大字（右） */}
-                      <div className="card-compact-top">
-                        <div className="card-title-compact">{p.name}</div>
-                        <div className="card-pct-block">
-                          <span className="card-pct-num" style={{
-                            color: isBehind(p) ? 'var(--color-danger)' :
-                                   (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
-                          }}>{prog}%</span>
-                          <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                            {diff >= 0 ? '+' : ''}{diff}%
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 進度條（落後用紅色實際條） */}
-                      <div className="layered-progress-bar" style={{ height: '4px' }}>
-                        <div className="bar-planned" style={{ width: `${planned}%` }} />
-                        <div className="bar-actual" style={{
-                          width: `${prog}%`,
-                          background: isBehind(p) ? 'var(--color-danger)' :
-                                      (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
-                        }} />
-                      </div>
-
-                      {/* 下排：狀態徽章（左）＋ 承包廠商靠右＋ 刪除鈕 */}
-                      <div className="card-bottom-row">
-                        <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'accepted' ? 'chip-accepted' : p.status === 'pending' ? 'chip-pending' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
-                          {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'accepted' ? '竣工' : p.status === 'pending' ? '未發包' : p.status === 'suspended' ? '暫停' : '執行中'}
-                        </span>
-                        <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
-                        <button
-                          className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
-                          title={p.is_starred ? '取消注目' : '加入注目'}
-                          onClick={e => toggleStar(e, p)}
-                        >
-                          <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} />
-                        </button>
-                        <button
-                          className="card-edit-btn"
-                          title="編輯工程資料"
-                          onClick={e => { e.stopPropagation(); setEditTarget(p); }}
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          className="card-delete-btn"
-                          title="刪除專案"
-                          onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {(starredProjects.length > 0 && statusFilter !== 'starred' ? regularProjects : filteredProjects).map((p, index) => renderCard(p, index))}
             </div>
           </div>
           {showAddModal && <AddProjectModal onClose={() => setShowAddModal(false)} onSuccess={handleDataAdded} />}
@@ -545,6 +637,18 @@ export function Dashboard() {
           )}
         </main>
       </div>
+
+      {/* 右鍵選單 */}
+      {contextMenu && (
+        <CardContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          project={contextMenu.project}
+          onClose={() => setContextMenu(null)}
+          onToggleStar={() => toggleStar({ stopPropagation: () => {} }, contextMenu.project)}
+          onDelete={() => setDeleteTarget(contextMenu.project)}
+        />
+      )}
     </div>
   );
 }

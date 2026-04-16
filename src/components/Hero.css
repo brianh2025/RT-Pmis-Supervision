@@ -226,6 +226,41 @@
   box-shadow: 0 0 8px var(--color-success);
 }
 
+/* 動態脈衝同步狀態 */
+.success-dot-pulse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.success-dot-core {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+  position: relative;
+  z-index: 1;
+}
+.success-dot-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-success);
+  opacity: 0;
+  animation: scanRipple 2s ease-out infinite;
+}
+.success-dot-ring.ring2 {
+  animation-delay: 1s;
+}
+@keyframes scanRipple {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 /* Enhanced Login Button */
 .portal-actions {
   width: 100%;

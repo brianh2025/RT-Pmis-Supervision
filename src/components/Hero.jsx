@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock, ShieldAlert } from 'lucide-react';
+import { ParticleCanvas } from './ParticleCanvas';
 import './Hero.css';
 
 export function Hero() {
   const navigate = useNavigate();
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 769px)').matches);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 769px)');
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   return (
     <section className="hero-section">
       <div className="hero-background">
         <div className="grid-overlay"></div>
+        {isDesktop && <ParticleCanvas />}
         <div className="glow-orb orb-1"></div>
         <div className="glow-orb orb-2"></div>
       </div>
@@ -45,10 +56,14 @@ export function Hero() {
             <div className="info-row">
               <div className="info-label-group">
                 <span className="info-label-en">NETWORK STATUS</span>
-                <span className="info-label-zh">連線狀態</span>
               </div>
               <span className="info-value success">
-                <span className="success-dot"></span>加密連線 (Secured)
+                <span className="success-dot-pulse">
+                  <span className="success-dot-core"></span>
+                  <span className="success-dot-ring"></span>
+                  <span className="success-dot-ring ring2"></span>
+                </span>
+                SECURE
               </span>
             </div>
           </div>

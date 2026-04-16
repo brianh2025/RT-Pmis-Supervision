@@ -45,7 +45,13 @@
 @media (max-width: 576px) {
   .copyright {
     flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     text-align: center;
+    gap: 0.15rem;
+  }
+  .desktop-only {
+    display: none;
   }
 }

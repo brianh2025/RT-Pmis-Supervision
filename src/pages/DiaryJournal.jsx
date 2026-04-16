@@ -306,6 +306,12 @@ function DiaryJournalInner() {
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
     <div className="dj-calendar">
+      {/* 選取日期置頂顯示（教學牌上方） */}
+      {selectedKey && (
+        <div className="dj-date-topbar">
+          <span className="dj-date-topbar-text">{selectedKey}</span>
+        </div>
+      )}
       <div className="dj-month-nav">
         <button onClick={prevMonth}><ChevronLeft size={16} /></button>
         <span className="dj-month-label">{year} 年 {month + 1} 月</span>

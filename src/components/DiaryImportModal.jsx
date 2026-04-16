@@ -385,7 +385,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         </div>
 
         {/* Body */}
-        <div className="modal-body" style={{ minHeight: '380px' }}>
+        <div className="modal-body">
           {done ? (
             <div className="import-success">
               <CheckCircle2 size={40} color="var(--color-success)" />
@@ -395,7 +395,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
             <>
               {/* ── Step 1: Upload ── */}
               {step === 1 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
                   <div
                     className="upload-zone"
                     onClick={() => !parsing && fileRef.current?.click()}
@@ -437,7 +437,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
 
               {/* ── Step 2: Parsed Summary ── */}
               {step === 2 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'rgba(16,185,129,0.08)', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
                     <CheckCircle2 size={20} color="var(--color-success)" />
                     <div>
@@ -488,7 +488,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
 
               {/* ── Step 3: Preview ── */}
               {step === 3 && mappedRows.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <p style={{ fontSize: '13px', color: 'var(--color-text2)' }}>
                     PDF 解析完成，將匯入 <strong>{mappedRows.length}</strong> 筆日誌記錄：
                   </p>

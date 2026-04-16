@@ -384,6 +384,13 @@
 .btn-dash-diary:hover:not(:disabled) { background: rgba(245, 158, 11, 0.28); }
 .btn-dash-diary:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.btn-dash-export {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.btn-dash-export:hover { background: rgba(99, 102, 241, 0.22); }
+
 .dash-section-title {
   font-size: 0.95rem;
   font-weight: 700;
@@ -1408,7 +1415,7 @@
 .card-status-chip {
   flex-shrink: 0;
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 500;
   padding: 1px 6px;
   border-radius: 4px;
   letter-spacing: 0.03em;
@@ -1503,24 +1510,58 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  flex-wrap: nowrap !important;        /* 桌機不換行 */
+  flex-wrap: nowrap !important;
   gap: 8px !important;
   margin-bottom: 4px !important;
 }
 
-/* 行動版：允許換行，按鈕顯示在標題下方 */
+/* 搜尋列置中（header 中段） */
+.dash-page-header .dash-search-row {
+  flex: 1;
+  max-width: 360px;
+  margin-bottom: 0;
+}
+
+/* 行動版：搜尋列換行獨佔一列 */
 @media (max-width: 768px) {
   .dash-page-header {
     flex-wrap: wrap !important;
     align-items: flex-start !important;
   }
+  .dash-page-header .dash-search-row {
+    order: 10;
+    max-width: 100%;
+    width: 100%;
+    flex: unset;
+  }
   .btn-back-to-list {
-    order: -1;          /* 移到標題上方 */
+    order: -1;
     width: 100%;
     justify-content: center;
     margin-bottom: 4px;
     padding: 8px 14px;
   }
+}
+
+/* 我的最愛分區標籤 */
+.dash-section-starred { margin-bottom: 8px; }
+.dash-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.dash-section-label.starred-label { color: #f59e0b; }
+.dash-section-label.regular-label { color: var(--color-text-muted); margin-top: 8px; }
+
+/* 拖曳中高亮 */
+.dash-project-card-compact.drag-over {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+  opacity: 0.85;
 }
 
 
@@ -1566,6 +1607,8 @@
   .dash-title {
     font-size: 1.15rem !important;
   }
+  /* 行動版：Excel 匯入按鈕已移至 Topbar，此處隱藏 */
+  .btn-dash-excel { display: none !important; }
 }
 
 /* 按鈕群組 */
@@ -1647,7 +1690,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px 4px;
+  padding: 3px 9px 5px;
   border: none;
   border-bottom: 2px solid transparent;
   background: none;
@@ -1655,23 +1698,58 @@
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.18s, border-color 0.18s, transform 0.15s, box-shadow 0.15s;
   white-space: nowrap;
-  border-radius: 0;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  overflow: hidden;
 }
-.dash-tab:hover { color: var(--color-text1); }
+.dash-tab:hover {
+  color: var(--color-text1);
+  transform: translateY(-2px);
+  background: var(--color-surface-hover);
+}
+.dash-tab:active { transform: translateY(0); }
 .dash-tab.active {
   color: var(--tab-color, var(--color-primary));
   font-weight: 700;
   border-bottom-color: var(--tab-color, var(--color-primary));
+  background: rgba(from var(--tab-color, #2563eb) r g b / 0.06);
 }
 .dash-tab.has-alert         { color: var(--color-danger); }
 .dash-tab.has-alert.active  { border-bottom-color: var(--color-danger); }
+.dash-tab.has-alert { animation: tabPulse 2s ease-in-out infinite; }
+@keyframes tabPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* 水波紋效果 */
+.dash-tab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), rgba(255,255,255,0.25) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.dash-tab:active::after { opacity: 1; }
+
 .tab-count {
   font-size: 0.62rem;
   font-weight: 700;
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
+  transition: transform 0.2s;
+}
+.dash-tab.active .tab-count {
+  opacity: 1;
+  animation: countPop 0.25s ease;
+}
+@keyframes countPop {
+  0%   { transform: scale(1.35); }
+  100% { transform: scale(1); }
 }
 
 .dash-section-header {
@@ -1784,13 +1862,13 @@
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s, transform 0.08s;
+  opacity: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.08s;
   flex-shrink: 0;
 }
 
 .dash-project-card-compact:hover .card-edit-btn {
-  opacity: 1;
+  transform: scale(1.1);
 }
 
 .card-edit-btn:hover {

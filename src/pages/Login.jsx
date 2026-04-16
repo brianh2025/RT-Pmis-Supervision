@@ -26,11 +26,12 @@ function mapAuthError(message) {
 export function Login() {
   const navigate = useNavigate();
   const { user, loading, signIn, signInWithGoogle } = useAuth();
-  const [email, setEmail] = useState('admin@xiaoxiong.page');
-  const [password, setPassword] = useState('1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // If already authenticated, skip the login page
   useEffect(() => {
@@ -113,69 +114,87 @@ export function Login() {
             </span>
           </button>
 
-          {/* Divider */}
-          <div className="login-divider">
-            <span className="divider-line"></span>
-            <span className="divider-text">或使用電子郵件 / OR EMAIL</span>
-            <span className="divider-line"></span>
-          </div>
+          {/* 展開電子郵件登入 */}
+          <button
+            type="button"
+            className="btn-email-toggle"
+            onClick={() => setShowEmailForm(v => !v)}
+          >
+            {showEmailForm ? '隱藏電子郵件登入' : '使用電子郵件登入'}
+          </button>
 
-          <form className="login-form" onSubmit={handleLogin}>
-            <div className="input-group">
-              <label htmlFor="email" className="dual-label">
-                <span className="label-zh">電子郵件</span>
-                <span className="label-en">EMAIL</span>
-              </label>
-              <div className="input-wrapper">
-                <Mail className="input-icon" size={18} />
-                <input 
-                  type="email" 
-                  id="email"
-                  className="glass-input" 
-                  placeholder="name@yunlin-pmis.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required 
-                />
+          {showEmailForm && (
+            <>
+              <div className="login-divider">
+                <span className="divider-line"></span>
+                <span className="divider-text">電子郵件 / EMAIL</span>
+                <span className="divider-line"></span>
               </div>
+
+              <form className="login-form" onSubmit={handleLogin}>
+                <div className="input-group">
+                  <label htmlFor="email" className="dual-label">
+                    <span className="label-zh">電子郵件</span>
+                    <span className="label-en">EMAIL</span>
+                  </label>
+                  <div className="input-wrapper">
+                    <Mail className="input-icon" size={18} />
+                    <input
+                      type="email"
+                      id="email"
+                      className="glass-input"
+                      placeholder="name@yunlin-pmis.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="password" className="dual-label">
+                    <span className="label-zh">密碼</span>
+                    <span className="label-en">PASSWORD</span>
+                  </label>
+                  <div className="input-wrapper">
+                    <Lock className="input-icon" size={18} />
+                    <input
+                      type="password"
+                      id="password"
+                      className="glass-input"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {errorMsg && (
+                  <div className="error-message animate-fade-in" role="alert">
+                    {errorMsg}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn btn-submit interactive-scale"
+                  disabled={isSubmitting}
+                >
+                  <span className="btn-text-zh">{isSubmitting ? '驗證中...' : '登入系統'}</span>
+                  <span className="btn-text-en">{isSubmitting ? 'AUTHORIZING...' : 'LOGIN'}</span>
+                </button>
+              </form>
+            </>
+          )}
+
+          {errorMsg && !showEmailForm && (
+            <div className="error-message animate-fade-in" role="alert">
+              {errorMsg}
             </div>
-
-            <div className="input-group">
-              <label htmlFor="password" className="dual-label">
-                <span className="label-zh">密碼</span>
-                <span className="label-en">PASSWORD</span>
-              </label>
-              <div className="input-wrapper">
-                <Lock className="input-icon" size={18} />
-                <input 
-                  type="password" 
-                  id="password"
-                  className="glass-input" 
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required 
-                />
-              </div>
-            </div>
-
-            {errorMsg && (
-              <div className="error-message animate-fade-in" role="alert">
-                {errorMsg}
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              className="btn btn-submit interactive-scale"
-              disabled={isSubmitting}
-            >
-              <span className="btn-text-zh">{isSubmitting ? '驗證中...' : '登入系統'}</span>
-              <span className="btn-text-en">{isSubmitting ? 'AUTHORIZING...' : 'LOGIN'}</span>
-            </button>
-          </form>
+          )}
           
           <footer className="login-footer">
             <Lock size={12} />

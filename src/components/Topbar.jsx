@@ -1,13 +1,13 @@
 import React from 'react';
-import { Menu, ChevronLeft, LogOut } from 'lucide-react';
+import { Menu, ChevronLeft, LogOut, FileSpreadsheet } from 'lucide-react';
 
 /**
  * backInfo: { label: string, onClick: () => void } | null
  * 有 backInfo 時，桌機版顯示返回列（32px），行動版顯示返回按鈕。
  * 漢堡鍵移至右側 (.pl-topbar-right)。
- * 若為 isGlobalDashboard，隱藏漢堡鍵並在左側顯示登出。
+ * 若為 isGlobalDashboard，隱藏漢堡鍵並在右側顯示 Excel匯入 + 登出。
  */
-export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut }) {
+export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel }) {
   return (
     <header className={`pl-topbar ${backInfo ? 'has-back' : 'pl-topbar-mobile-only'}`}>
       <div className="pl-topbar-left">
@@ -27,11 +27,16 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
       </div>
 
       <div className="pl-topbar-right">
-
-        {/* 總覽頁行動版專用：右側登出鍵 */}
+        {/* 總覽頁行動版專用：Excel匯入（次要）+ 登出（危險） */}
+        {isGlobalDashboard && onShowExcel && (
+          <button className="pl-topbar-excel-btn" onClick={onShowExcel}>
+            <FileSpreadsheet size={15} />
+            <span>匯入</span>
+          </button>
+        )}
         {isGlobalDashboard && onSignOut && (
-          <button className="pl-back-btn" onClick={onSignOut} style={{ color: 'var(--color-text-main)' }}>
-            <LogOut size={16} />
+          <button className="pl-topbar-logout-btn" onClick={onSignOut}>
+            <LogOut size={15} />
             <span>登出</span>
           </button>
         )}
