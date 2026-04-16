@@ -146,7 +146,7 @@ export function Login() {
                       placeholder="name@yunlin-pmis.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
+                      autoComplete="off"
                       required
                     />
                   </div>

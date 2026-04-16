@@ -39,9 +39,14 @@ export function ParticleCanvas() {
     section.addEventListener('mousemove', handleMouseMove);
     section.addEventListener('mouseleave', handleMouseLeave);
 
-    // 主色（從 CSS variable 讀取，fallback 到藍色系）
+    // 主色（從 CSS variable 讀取，解析為 RGB 使用 rgba()）
     const style = getComputedStyle(document.documentElement);
-    const primary = style.getPropertyValue('--color-primary').trim() || '#1565C0';
+    const raw = style.getPropertyValue('--color-primary').trim() || '#1565C0';
+    let r = 21, g = 101, b = 192;
+    const hexM = raw.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (hexM) { r = parseInt(hexM[1], 16); g = parseInt(hexM[2], 16); b = parseInt(hexM[3], 16); }
+    else { const rgbM = raw.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/); if (rgbM) { r = +rgbM[1]; g = +rgbM[2]; b = +rgbM[3]; } }
+    const color = (a) => `rgba(${r},${g},${b},${a})`;
     const isDark   = document.documentElement.classList.contains('dark');
     const baseAlpha = isDark ? 0.7 : 0.5;
 
@@ -83,7 +88,7 @@ export function ParticleCanvas() {
           const d  = Math.sqrt(dx * dx + dy * dy);
           if (d < MAX_DIST) {
             const alpha = (1 - d / MAX_DIST) * baseAlpha * 0.6;
-            ctx.strokeStyle = `${primary}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`;
+            ctx.strokeStyle = color(alpha.toFixed(3));
             ctx.lineWidth = 0.8;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
@@ -97,7 +102,7 @@ export function ParticleCanvas() {
       particles.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `${primary}${Math.round(baseAlpha * 255).toString(16).padStart(2, '0')}`;
+        ctx.fillStyle = color(baseAlpha.toFixed(3));
         ctx.fill();
       });
 

@@ -310,7 +310,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 .status-badge.active    { background: rgba(16,185,129,0.1);  color: var(--color-success); }
 .status-badge.completed { background: rgba(100,116,139,0.1); color: #64748b; }
@@ -321,7 +321,7 @@
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 500;
   font-family: 'JetBrains Mono', monospace;
 }
 .diff-positive { background: rgba(16,185,129,0.1); color: var(--color-success); }

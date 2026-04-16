@@ -309,7 +309,9 @@ function DiaryJournalInner() {
       {/* 選取日期置頂顯示（教學牌上方） */}
       {selectedKey && (
         <div className="dj-date-topbar">
-          <span className="dj-date-topbar-text">{selectedKey}</span>
+          <span className="dj-date-topbar-text">
+            {selectedKey?.replace(/^(\d+)-(\d+)-(\d+)$/, (_, y, m, d) => `${y} 年 ${+m} 月 ${+d} 日`)}
+          </span>
         </div>
       )}
       <div className="dj-month-nav">

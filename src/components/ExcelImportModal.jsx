@@ -65,7 +65,9 @@ export function ExcelImportModal({ onClose, onSuccess }) {
         Object.entries(rowRaw).forEach(([key, val]) => {
           const trimmedKey = key.trim();
           const dbField = COLUMN_MAP[trimmedKey];
-          if (dbField) row[dbField] = val;
+          if (dbField) {
+            row[dbField] = (trimmedKey === '預算萬元' && val) ? parseFloat(val) * 10000 : val;
+          }
         });
 
         if (!row.name || !String(row.name).trim()) {
