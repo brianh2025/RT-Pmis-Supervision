@@ -231,7 +231,7 @@ export function ProgressManagement() {
             </thead>
             <tbody>
               {records.length > 0 ? records.map((r) => {
-                const diff = (r.actual_progress - r.planned_progress).toFixed(2);
+                const diff = (Number(r.actual_progress) - Number(r.planned_progress)).toFixed(3);
                 const ahead = parseFloat(diff) >= 0;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--color-block-border)' }}
@@ -239,8 +239,8 @@ export function ProgressManagement() {
                     onMouseLeave={e => e.currentTarget.style.background = ''}
                   >
                     <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500 }}>{r.report_date}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{r.planned_progress}%</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{r.actual_progress}%</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.planned_progress).toFixed(3))}%</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.actual_progress).toFixed(3))}%</td>
                     <td style={{ padding: '10px 16px' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
