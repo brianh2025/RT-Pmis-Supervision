@@ -754,10 +754,10 @@
   color: var(--color-primary);
 }
 
-/* ─── Sidebar 時間列（登入按鈕正上方）─── */
+/* ─── Sidebar 時間列（翻頁鐘）─── */
 .pl-sidebar-time-row {
   border-top: 1px solid var(--color-surface-border);
-  padding: 6px 12px;   /* 統一左右 12px */
+  padding: 7px 12px;
   flex-shrink: 0;
 }
 
@@ -766,35 +766,79 @@
   text-align: center;
 }
 
-/* 日期文字 */
-.pl-sidebar-time-text {
-  display: block;
-  font-size: var(--fs-sm);
-  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
-  font-weight: var(--fw-semi);
-  letter-spacing: 0.03em;
-  color: var(--color-text-main);   /* 改深色 */
-  -webkit-text-fill-color: var(--color-text-main); /* 覆蓋之前漸層 */
-  background: transparent;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--color-surface-border);
-  text-align: center;
-  white-space: nowrap;
+.pl-flip-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.pl-flip-date {
+  font-size: 0.67rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.pl-flip-segments {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pl-flip-card {
+  position: relative;
+  width: 28px;
+  height: 30px;
+  border-radius: 5px;
+  background: #1a1f2e;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
   overflow: hidden;
-  text-overflow: ellipsis;
-  /* 保留邊框脈衝動畫 */
-  animation: timePulse 2.5s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes timeSweep {
-  0%   { background-position: 0% center; }
-  100% { background-position: 200% center; }
+.pl-flip-top,
+.pl-flip-bot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #e2e8f0;
+  line-height: 1;
+  user-select: none;
 }
 
-@keyframes timePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(96,165,250,0.0); border-color: rgba(96,165,250,0.2); }
-  50%       { box-shadow: 0 0 8px 2px rgba(96,165,250,0.25); border-color: rgba(96,165,250,0.5); }
+.pl-flip-top {
+  background: linear-gradient(180deg, #232b3e 0%, #1c2235 100%);
+  align-items: flex-end;
+  padding-bottom: 1px;
+}
+
+.pl-flip-bot {
+  background: linear-gradient(180deg, #16192a 0%, #1a1f2e 100%);
+  align-items: flex-start;
+  padding-top: 1px;
+}
+
+.pl-flip-fold {
+  height: 1px;
+  background: rgba(0,0,0,0.6);
+  flex-shrink: 0;
+}
+
+.pl-flip-colon {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  line-height: 30px;
+  padding-bottom: 1px;
+  user-select: none;
 }
 
 .pl-sidebar-time-icon {

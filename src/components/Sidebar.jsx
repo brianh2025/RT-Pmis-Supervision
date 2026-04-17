@@ -86,12 +86,35 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* ── 時間顯示 ── */}
+      {/* ── 時間顯示（翻頁鐘） ── */}
       <div className={`pl-sidebar-time-row ${isCollapsed ? 'collapsed' : ''}`}>
         {!isCollapsed ? (
-          <span className="pl-sidebar-time-text">
-            {time ? formatDate(time) : '--:--:--'}
-          </span>
+          <div className="pl-flip-clock">
+            <div className="pl-flip-date">
+              {time
+                ? `${time.getMonth() + 1}月${time.getDate()}日`
+                : '--月--日'}
+            </div>
+            <div className="pl-flip-segments">
+              {(time
+                ? [
+                    String(time.getHours()).padStart(2, '0'),
+                    String(time.getMinutes()).padStart(2, '0'),
+                    String(time.getSeconds()).padStart(2, '0'),
+                  ]
+                : ['--', '--', '--']
+              ).map((seg, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <span className="pl-flip-colon">:</span>}
+                  <div className="pl-flip-card">
+                    <span className="pl-flip-top">{seg}</span>
+                    <div className="pl-flip-fold" />
+                    <span className="pl-flip-bot">{seg}</span>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
         ) : (
           <span className="pl-sidebar-time-icon" title={time ? formatDate(time) : ''}>🕐</span>
         )}
