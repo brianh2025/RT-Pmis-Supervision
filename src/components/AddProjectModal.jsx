@@ -121,7 +121,12 @@ export function AddProjectModal({ onClose, onSuccess }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label"><span>預算（元）</span><span className="en">BUDGET (NTD)</span></label>
-              <input type="number" name="budget" className="form-input" value={form.budget} onChange={handleChange} placeholder="例：3500" min="0" />
+              <input type="number" name="budget" className="form-input" value={form.budget} onChange={handleChange} placeholder="例：52000000" min="0" />
+              {form.budget !== '' && !isNaN(form.budget) && (
+                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 3 }}>
+                  = {Number(form.budget).toLocaleString('zh-TW')} 元
+                </p>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label"><span>狀態</span><span className="en">STATUS</span></label>
