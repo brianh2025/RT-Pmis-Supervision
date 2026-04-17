@@ -328,9 +328,7 @@ function DiaryJournalInner() {
   const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
-  const detectedMaterials = hasDiary
-    ? detectKeyMaterials(summary?.log?.work_items, summary?.workItems)
-    : [];
+  const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -480,12 +478,15 @@ function DiaryJournalInner() {
         </div>
 
         {/* ── 材料進場管制區塊 ── */}
-        {detectedMaterials.length > 0 && (
-          <div className="dj-coexist-block material-block">
-            <div className="dj-coexist-title">
-              <Package size={13} />
-              材料進場管制
-            </div>
+        <div className="dj-coexist-block material-block">
+          <div className="dj-coexist-title">
+            <Package size={13} />
+            材料進場管制
+            <span className="dj-mat-summary-badge">
+              進場 {materialStatus.entries.length} 筆 · 試驗 {materialStatus.tests.length} 筆
+            </span>
+          </div>
+          {detectedMaterials.length > 0 ? (
             <div className="dj-mat-rows">
               {detectedMaterials.map(mat => {
                 const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
@@ -503,11 +504,15 @@ function DiaryJournalInner() {
                 );
               })}
             </div>
-            <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
-              前往材料管制 →
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="dj-empty" style={{ marginBottom: 6 }}>
+              {hasDiary ? '日誌未記載重點管制材料（混凝土／鋼筋／瀝青等）' : '尚無施工日誌'}
+            </div>
+          )}
+          <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
+            前往材料管制 →
+          </button>
+        </div>
 
         {/* ── 監造報表區塊 ── */}
         <div className="dj-coexist-block sup-block">
