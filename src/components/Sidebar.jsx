@@ -77,6 +77,17 @@ export function Sidebar({
         </button>
       </div>
 
+      {/* ── 時間顯示 ── */}
+      <div className={`pl-sidebar-time-row ${isCollapsed ? 'collapsed' : ''}`}>
+        {!isCollapsed ? (
+          <span className="pl-sidebar-time-text">
+            {time ? formatDate(time) : '--:--:--'}
+          </span>
+        ) : (
+          <span className="pl-sidebar-time-icon" title={time ? formatDate(time) : ''}>🕐</span>
+        )}
+      </div>
+
       {/* ── Nav Scroll ── */}
       <div className="pl-nav-scroll custom-scrollbar">
 
@@ -201,17 +212,6 @@ export function Sidebar({
               </p>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* ── 時間顯示（登入按鈕正上方） ── */}
-      <div className={`pl-sidebar-time-row ${isCollapsed ? 'collapsed' : ''}`}>
-        {!isCollapsed ? (
-          <span className="pl-sidebar-time-text">
-            {time ? formatDate(time) : '--:--:--'}
-          </span>
-        ) : (
-          <span className="pl-sidebar-time-icon" title={time ? formatDate(time) : ''}>🕐</span>
         )}
       </div>
 
