@@ -101,7 +101,7 @@ export function Sidebar({
                 {!isCollapsed && (
                   <div className="pl-nav-row-tools">
                     <span className="pl-tool-weather" title="今日天氣：晴">
-                      <Sun size={12} color="var(--color-secondary, #f59e0b)" />
+                      <Sun size={18} color="#FCD34D" />
                       <span>26°C</span>
                     </span>
                     <button
@@ -109,10 +109,10 @@ export function Sidebar({
                       onClick={toggleTheme}
                       title={isDarkMode ? '切換亮色' : '切換暗色'}
                     >
-                      {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
+                      {isDarkMode ? <Sun size={18} color="#FDE68A" /> : <Moon size={18} color="#A5B4FC" />}
                     </button>
                     <button className="pl-tool-btn" title="教學指引">
-                      <HelpCircle size={12} />
+                      <HelpCircle size={18} color="#86EFAC" />
                     </button>
                   </div>
                 )}
@@ -120,10 +120,10 @@ export function Sidebar({
                 {isCollapsed && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 2 }}>
                     <button className="pl-tool-btn-icon" onClick={toggleTheme} title={isDarkMode ? '亮色' : '暗色'}>
-                      {isDarkMode ? <Sun size={13} /> : <Moon size={13} />}
+                      {isDarkMode ? <Sun size={18} color="#FDE68A" /> : <Moon size={18} color="#A5B4FC" />}
                     </button>
                     <button className="pl-tool-btn-icon" title="教學指引">
-                      <HelpCircle size={13} />
+                      <HelpCircle size={18} color="#86EFAC" />
                     </button>
                   </div>
                 )}
