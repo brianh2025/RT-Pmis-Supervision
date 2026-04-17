@@ -29,7 +29,11 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    if (name === 'budget') {
+      setForm(prev => ({ ...prev, budget: value.replace(/[^0-9]/g, '') }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -114,12 +118,7 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label"><span>預算（元）</span><span className="en">BUDGET (NTD)</span></label>
-              <input type="number" name="budget" className="form-input" value={form.budget} onChange={handleChange} placeholder="例：52000000" min="0" />
-              {form.budget !== '' && !isNaN(form.budget) && (
-                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 3 }}>
-                  = {Number(form.budget).toLocaleString('zh-TW')} 元
-                </p>
-              )}
+              <input type="text" inputMode="numeric" name="budget" className="form-input" value={form.budget ? Number(form.budget).toLocaleString('zh-TW') : ''} onChange={handleChange} placeholder="例：52,000,000" />
             </div>
             <div className="form-group">
               <label className="form-label"><span>狀態</span><span className="en">STATUS</span></label>
