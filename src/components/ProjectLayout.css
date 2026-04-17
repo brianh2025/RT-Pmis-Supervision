@@ -770,76 +770,91 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
 }
 
-.pl-flip-date {
-  font-size: 0.67rem;
+.pl-flip-date-label {
+  font-size: 0.64rem;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
-.pl-flip-segments {
+.pl-flip-time-row {
   display: flex;
   align-items: center;
   gap: 3px;
 }
 
-.pl-flip-card {
-  position: relative;
-  width: 28px;
-  height: 30px;
-  border-radius: 5px;
-  background: #1a1f2e;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+.pl-flip-group {
+  display: flex;
+  gap: 1px;
+}
+
+/* 每個數字卡片 */
+.pl-flip-digit {
+  width: 20px;
+  height: 28px;
+  border-radius: 3px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.22);
 }
 
-.pl-flip-top,
-.pl-flip-bot {
+.pl-flip-half {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: #e2e8f0;
-  line-height: 1;
-  user-select: none;
+  overflow: hidden;
+  /* 明模式 灰底 */
+  background: #c8cdd6;
 }
 
-.pl-flip-top {
-  background: linear-gradient(180deg, #232b3e 0%, #1c2235 100%);
+.pl-flip-half.top {
+  background: #d4d8e0;
   align-items: flex-end;
   padding-bottom: 1px;
 }
 
-.pl-flip-bot {
-  background: linear-gradient(180deg, #16192a 0%, #1a1f2e 100%);
+.pl-flip-half.bot {
+  background: #bdc2cc;
   align-items: flex-start;
   padding-top: 1px;
 }
 
-.pl-flip-fold {
-  height: 1px;
-  background: rgba(0,0,0,0.6);
+.pl-flip-half span {
+  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1;
+  user-select: none;
+}
+
+.pl-flip-crease {
+  height: 1.5px;
+  background: rgba(0,0,0,0.25);
   flex-shrink: 0;
 }
 
-.pl-flip-colon {
+.pl-flip-sep {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 900;
   color: var(--color-text-muted);
-  line-height: 30px;
-  padding-bottom: 1px;
+  line-height: 28px;
+  padding-bottom: 2px;
   user-select: none;
 }
+
+/* 暗模式：白底黑字 */
+[data-theme="dark"] .pl-flip-half.top { background: #f1f5f9; }
+[data-theme="dark"] .pl-flip-half.bot { background: #dde3ec; }
+[data-theme="dark"] .pl-flip-crease   { background: rgba(0,0,0,0.2); }
+[data-theme="dark"] .pl-flip-half span { color: #111827; }
 
 .pl-sidebar-time-icon {
   font-size: 0.9rem;

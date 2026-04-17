@@ -88,34 +88,43 @@ export function Sidebar({
 
       {/* ── 時間顯示（翻頁鐘） ── */}
       <div className={`pl-sidebar-time-row ${isCollapsed ? 'collapsed' : ''}`}>
-        {!isCollapsed ? (
-          <div className="pl-flip-clock">
-            <div className="pl-flip-date">
-              {time
-                ? `${time.getMonth() + 1}月${time.getDate()}日`
-                : '--月--日'}
+        {!isCollapsed ? (() => {
+          const pad = (n) => String(n).padStart(2, '0');
+          const roc = time ? time.getFullYear() - 1911 : null;
+          const dateStr = time
+            ? `民國 ${roc} 年 ${pad(time.getMonth()+1)} 月 ${pad(time.getDate())} 日`
+            : '民國 --- 年 -- 月 -- 日';
+          const FlipDigit = ({ ch }) => (
+            <div className="pl-flip-digit">
+              <div className="pl-flip-half top"><span>{ch}</span></div>
+              <div className="pl-flip-crease" />
+              <div className="pl-flip-half bot"><span>{ch}</span></div>
             </div>
-            <div className="pl-flip-segments">
-              {(time
-                ? [
-                    String(time.getHours()).padStart(2, '0'),
-                    String(time.getMinutes()).padStart(2, '0'),
-                    String(time.getSeconds()).padStart(2, '0'),
-                  ]
-                : ['--', '--', '--']
-              ).map((seg, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <span className="pl-flip-colon">:</span>}
-                  <div className="pl-flip-card">
-                    <span className="pl-flip-top">{seg}</span>
-                    <div className="pl-flip-fold" />
-                    <span className="pl-flip-bot">{seg}</span>
-                  </div>
-                </React.Fragment>
-              ))}
+          );
+          const timeGroups = time
+            ? [
+                [String(time.getHours()).padStart(2,'0'), ''],
+                [String(time.getMinutes()).padStart(2,'0'), ''],
+                [String(time.getSeconds()).padStart(2,'0'), ''],
+              ]
+            : [['--',''],['--',''],['--','']];
+          return (
+            <div className="pl-flip-clock">
+              <div className="pl-flip-date-label">{dateStr}</div>
+              <div className="pl-flip-time-row">
+                {timeGroups.map(([seg], gi) => (
+                  <React.Fragment key={gi}>
+                    {gi > 0 && <span className="pl-flip-sep">:</span>}
+                    <div className="pl-flip-group">
+                      <FlipDigit ch={seg[0]} />
+                      <FlipDigit ch={seg[1]} />
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
+          );
+        })() : (
           <span className="pl-sidebar-time-icon" title={time ? formatDate(time) : ''}>🕐</span>
         )}
       </div>
