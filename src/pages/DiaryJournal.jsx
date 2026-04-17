@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText, Package } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
@@ -10,6 +10,21 @@ import { DiaryImportModal } from '../components/DiaryImportModal';
 import './DiaryJournal.css';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
+
+/* 重點施工項目 → 材料管制觸發清單 */
+const MATERIAL_TRIGGERS = [
+  { keyword: '混凝土', label: '混凝土' },
+  { keyword: '鋼筋',   label: '鋼筋' },
+  { keyword: '瀝青',   label: '瀝青混凝土' },
+  { keyword: '地工織布', label: '地工織布' },
+  { keyword: '基樁',   label: '基樁' },
+  { keyword: '植筋',   label: '化學植筋' },
+];
+
+function detectKeyMaterials(workItems, reportItems) {
+  const text = (workItems || '') + ' ' + (reportItems || []).map(i => i.item_name || '').join(' ');
+  return MATERIAL_TRIGGERS.filter(t => text.includes(t.keyword));
+}
 
 /**
  * 補漏同步：
@@ -104,6 +119,7 @@ function DiaryJournalInner() {
   const [supervisionDates, setSupervisionDates] = useState(new Set());
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
+  const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
 
   // ── 施工日誌內嵌模式 ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState('summary'); // 'summary' | 'view' | 'form'
@@ -175,23 +191,33 @@ function DiaryJournalInner() {
 
   // ── 取選定日期摘要 ─────────────────────────────────────────
   useEffect(() => {
-    if (!selectedKey) { setSummary(null); return; }
+    if (!selectedKey) { setSummary(null); setMaterialStatus({ entries: [], tests: [] }); return; }
     setLoadingSummary(true);
     Promise.all([
       supabase.from('daily_report_items')
         .select('item_name, unit, today_qty')
         .eq('project_id', projectId).eq('log_date', selectedKey),
       supabase.from('daily_logs')
-        .select('weather_am, weather_pm, notes, actual_progress, planned_progress')
+        .select('weather_am, weather_pm, notes, actual_progress, planned_progress, work_items')
         .eq('project_id', projectId).eq('log_date', selectedKey).maybeSingle(),
       supabase.from('progress_records')
         .select('planned_progress, actual_progress')
         .eq('project_id', projectId).eq('report_date', selectedKey).maybeSingle(),
-    ]).then(([items, log, prog]) => {
+      supabase.from('material_entries')
+        .select('id, name')
+        .eq('project_id', projectId).eq('entry_date', selectedKey),
+      supabase.from('mcs_test')
+        .select('id, name, s_date')
+        .eq('project_id', projectId).eq('s_date', selectedKey),
+    ]).then(([items, log, prog, matEntries, matTests]) => {
       setSummary({
         workItems: items.data || [],
         log:       log.data   || null,
         progress:  prog.data  || null,
+      });
+      setMaterialStatus({
+        entries: matEntries.data || [],
+        tests:   matTests.data   || [],
       });
       setLoadingSummary(false);
     });
@@ -302,6 +328,9 @@ function DiaryJournalInner() {
   const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
+  const detectedMaterials = hasDiary
+    ? detectKeyMaterials(summary?.log?.work_items, summary?.workItems)
+    : [];
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -449,6 +478,36 @@ function DiaryJournalInner() {
             </button>
           )}
         </div>
+
+        {/* ── 材料進場管制區塊 ── */}
+        {detectedMaterials.length > 0 && (
+          <div className="dj-coexist-block material-block">
+            <div className="dj-coexist-title">
+              <Package size={13} />
+              材料進場管制
+            </div>
+            <div className="dj-mat-rows">
+              {detectedMaterials.map(mat => {
+                const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
+                const tc = materialStatus.tests.filter(t => (t.name || '').includes(mat.keyword)).length;
+                return (
+                  <div key={mat.keyword} className="dj-mat-row">
+                    <span className="dj-mat-name">{mat.label}</span>
+                    <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
+                      進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
+                    </span>
+                    <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
+                      試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
+              前往材料管制 →
+            </button>
+          </div>
+        )}
 
         {/* ── 監造報表區塊 ── */}
         <div className="dj-coexist-block sup-block">
