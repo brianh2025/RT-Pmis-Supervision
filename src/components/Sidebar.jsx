@@ -104,9 +104,18 @@ export function Sidebar({
               <span className="pl-digi-time">{timeStr}</span>
             </div>
           );
-        })() : (
-          <span className="pl-sidebar-time-icon" title={time ? formatDate(time) : ''}>🕐</span>
-        )}
+        })() : (() => {
+          const pad = (n) => String(n).padStart(2, '0');
+          const roc = time ? time.getFullYear() - 1911 : '--';
+          const d = time ? `${roc}/${pad(time.getMonth()+1)}/${pad(time.getDate())}` : '--/--/--';
+          const t = time ? `${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}` : '--:--:--';
+          return (
+            <div className="pl-digi-clock-mini" title={time ? formatDate(time) : ''}>
+              <span>{d}</span>
+              <span>{t}</span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Nav Scroll ── */}
