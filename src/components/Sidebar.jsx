@@ -90,10 +90,7 @@ export function Sidebar({
       <div className={`pl-sidebar-time-row ${isCollapsed ? 'collapsed' : ''}`}>
         {!isCollapsed ? (() => {
           const pad = (n) => String(n).padStart(2, '0');
-          const roc = time ? time.getFullYear() - 1911 : null;
-          const dateStr = time
-            ? `民國 ${roc} 年 ${pad(time.getMonth()+1)} 月 ${pad(time.getDate())} 日`
-            : '民國 --- 年 -- 月 -- 日';
+          const roc = time ? String(time.getFullYear() - 1911) : '---';
           const FlipDigit = ({ ch }) => (
             <div className="pl-flip-digit">
               <div className="pl-flip-half top"><span>{ch}</span></div>
@@ -101,26 +98,23 @@ export function Sidebar({
               <div className="pl-flip-half bot"><span>{ch}</span></div>
             </div>
           );
-          const timeGroups = time
-            ? [
-                [String(time.getHours()).padStart(2,'0'), ''],
-                [String(time.getMinutes()).padStart(2,'0'), ''],
-                [String(time.getSeconds()).padStart(2,'0'), ''],
-              ]
-            : [['--',''],['--',''],['--','']];
+          const FlipGroup = ({ digits, unit }) => (
+            <>
+              <div className="pl-flip-group">
+                {digits.split('').map((ch, i) => <FlipDigit key={i} ch={ch} />)}
+              </div>
+              <span className="pl-flip-unit">{unit}</span>
+            </>
+          );
           return (
             <div className="pl-flip-clock">
-              <div className="pl-flip-date-label">{dateStr}</div>
               <div className="pl-flip-time-row">
-                {timeGroups.map(([seg], gi) => (
-                  <React.Fragment key={gi}>
-                    {gi > 0 && <span className="pl-flip-sep">:</span>}
-                    <div className="pl-flip-group">
-                      <FlipDigit ch={seg[0]} />
-                      <FlipDigit ch={seg[1]} />
-                    </div>
-                  </React.Fragment>
-                ))}
+                <FlipGroup digits={roc} unit="年" />
+                <FlipGroup digits={time ? pad(time.getMonth()+1) : '--'} unit="月" />
+                <FlipGroup digits={time ? pad(time.getDate()) : '--'} unit="日" />
+                <FlipGroup digits={time ? pad(time.getHours()) : '--'} unit="時" />
+                <FlipGroup digits={time ? pad(time.getMinutes()) : '--'} unit="分" />
+                <FlipGroup digits={time ? pad(time.getSeconds()) : '--'} unit="秒" />
               </div>
             </div>
           );

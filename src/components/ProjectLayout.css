@@ -773,18 +773,12 @@
   gap: 5px;
 }
 
-.pl-flip-date-label {
-  font-size: 0.64rem;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
 .pl-flip-time-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 3px;
+  justify-content: center;
 }
 
 .pl-flip-group {
@@ -840,14 +834,13 @@
   flex-shrink: 0;
 }
 
-.pl-flip-sep {
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 1rem;
-  font-weight: 900;
+.pl-flip-unit {
+  font-size: 0.6rem;
+  font-weight: 600;
   color: var(--color-text-muted);
   line-height: 28px;
-  padding-bottom: 2px;
   user-select: none;
+  margin-right: 1px;
 }
 
 /* 暗模式：白底黑字 */
