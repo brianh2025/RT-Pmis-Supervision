@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Building2,
@@ -56,6 +56,15 @@ export function Sidebar({
   formatDate
 }) {
   const location = useLocation();
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  const TUTORIAL_STEPS = [
+    { step: '01', title: '新增工程', desc: '點擊總覽頁右上角「＋ 新增工程」，填入名稱、日期、預算後儲存。' },
+    { step: '02', title: '進入工程', desc: '在工程卡片上點擊即可進入，右鍵可設為最愛或刪除。' },
+    { step: '03', title: '填寫日誌', desc: '進入「日誌報表」，選取日期後點擊「新增施工日誌」或「PDF 匯入」。' },
+    { step: '04', title: '管理進度', desc: '在「進度管理」新增進度紀錄，系統自動繪製 S 曲線圖。' },
+    { step: '05', title: '同步資料', desc: '設定 Google Drive 資料夾 ID 後，可一鍵同步廠商上傳的 Excel 日誌。' },
+  ];
 
   return (
     <aside className={`pl-sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
@@ -122,7 +131,7 @@ export function Sidebar({
                     >
                       {isDarkMode ? <Sun size={18} color="#FDE68A" /> : <Moon size={18} color="#A5B4FC" />}
                     </button>
-                    <button className="pl-tool-btn" title="教學指引">
+                    <button className="pl-tool-btn" title="教學指引" onClick={() => setShowTutorial(true)}>
                       <HelpCircle size={18} color="#86EFAC" />
                     </button>
                   </div>
@@ -133,7 +142,7 @@ export function Sidebar({
                     <button className="pl-tool-btn-icon" onClick={toggleTheme} title={isDarkMode ? '亮色' : '暗色'}>
                       {isDarkMode ? <Sun size={18} color="#FDE68A" /> : <Moon size={18} color="#A5B4FC" />}
                     </button>
-                    <button className="pl-tool-btn-icon" title="教學指引">
+                    <button className="pl-tool-btn-icon" title="教學指引" onClick={() => setShowTutorial(true)}>
                       <HelpCircle size={18} color="#86EFAC" />
                     </button>
                   </div>
@@ -226,6 +235,43 @@ export function Sidebar({
           {!isCollapsed && <span>登出</span>}
         </button>
       </div>
+      {/* ── 教學指引 Modal ── */}
+      {showTutorial && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowTutorial(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--color-surface)', borderRadius: 14, padding: '24px 28px', maxWidth: 440, width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--color-surface-border)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <HelpCircle size={20} color="#86EFAC" />
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>快速上手指引</span>
+              </div>
+              <button onClick={() => setShowTutorial(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {TUTORIAL_STEPS.map(s => (
+                <div key={s.step} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', background: 'rgba(134,239,172,0.18)', border: '1.5px solid #86EFAC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#059669' }}>{s.step}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--color-text-main)', marginBottom: 2 }}>{s.title}</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowTutorial(false)}
+              style={{ marginTop: 20, width: '100%', padding: '9px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #86EFAC, #34D399)', color: '#065F46', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
+            >
+              開始使用
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
