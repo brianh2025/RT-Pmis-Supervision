@@ -26,6 +26,7 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
   const [driveLocked, setDriveLocked] = useState(!!project.drive_folder_id);
+  const [driveOpen, setDriveOpen] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -134,43 +135,48 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
 
           <div className="form-row">
             <div className="form-group full-width">
-              <label className="form-label">
-                <span>Google Drive 工程資料夾 ID</span>
-                <span className="en">DRIVE FOLDER ID（選填）</span>
-              </label>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input
-                  name="drive_folder_id"
-                  className="form-input"
-                  value={form.drive_folder_id}
-                  onChange={handleChange}
-                  readOnly={driveLocked}
-                  placeholder="貼上 Google Drive 工程資料夾網址中的 ID（1ABC…）"
-                  style={driveLocked ? { background: 'var(--color-bg2)', cursor: 'default' } : {}}
-                />
-                <button
-                  type="button"
-                  title={driveLocked ? '解鎖 Drive ID' : '鎖定 Drive ID（防誤改）'}
-                  disabled={!form.drive_folder_id.trim()}
-                  onClick={() => setDriveLocked(v => !v)}
-                  style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', cursor: form.drive_folder_id.trim() ? 'pointer' : 'not-allowed', color: driveLocked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
-                >
-                  {driveLocked ? <Lock size={14} /> : <Unlock size={14} />}
-                </button>
-                <a
-                  href={form.drive_folder_id.trim() ? `https://drive.google.com/drive/folders/${form.drive_folder_id.trim()}` : undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="前往 Google Drive 資料夾"
-                  aria-disabled={!form.drive_folder_id.trim()}
-                  style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', display: 'flex', alignItems: 'center', color: form.drive_folder_id.trim() ? '#2563eb' : 'var(--color-text-muted)', pointerEvents: form.drive_folder_id.trim() ? 'auto' : 'none', opacity: form.drive_folder_id.trim() ? 1 : 0.4 }}
-                >
-                  <ExternalLink size={14} />
-                </a>
-              </div>
-              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                用於廠商施工日誌 Excel 自動同步。從 Drive 資料夾網址複製 ID：drive.google.com/drive/folders/<strong>此處</strong>
-              </p>
+              <button type="button" onClick={() => setDriveOpen(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+                <span style={{ transform: driveOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s', display: 'inline-block' }}>▶</span>
+                Google Drive 工程資料夾 ID
+                {form.drive_folder_id.trim() && <span style={{ color: 'var(--color-primary)', fontSize: '0.68rem' }}>（已設定）</span>}
+              </button>
+              {driveOpen && (
+                <>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
+                    <input
+                      name="drive_folder_id"
+                      className="form-input"
+                      value={form.drive_folder_id}
+                      onChange={handleChange}
+                      readOnly={driveLocked}
+                      placeholder="貼上 Google Drive 工程資料夾網址中的 ID（1ABC…）"
+                      style={driveLocked ? { background: 'var(--color-bg2)', cursor: 'default' } : {}}
+                    />
+                    <button
+                      type="button"
+                      title={driveLocked ? '解鎖 Drive ID' : '鎖定 Drive ID（防誤改）'}
+                      disabled={!form.drive_folder_id.trim()}
+                      onClick={() => setDriveLocked(v => !v)}
+                      style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', cursor: form.drive_folder_id.trim() ? 'pointer' : 'not-allowed', color: driveLocked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
+                    >
+                      {driveLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                    </button>
+                    <a
+                      href={form.drive_folder_id.trim() ? `https://drive.google.com/drive/folders/${form.drive_folder_id.trim()}` : undefined}
+                      target="_blank" rel="noopener noreferrer"
+                      title="前往 Google Drive 資料夾"
+                      aria-disabled={!form.drive_folder_id.trim()}
+                      style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', display: 'flex', alignItems: 'center', color: form.drive_folder_id.trim() ? '#2563eb' : 'var(--color-text-muted)', pointerEvents: form.drive_folder_id.trim() ? 'auto' : 'none', opacity: form.drive_folder_id.trim() ? 1 : 0.4 }}
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    用於廠商施工日誌 Excel 自動同步。從 Drive 資料夾網址複製 ID：drive.google.com/drive/folders/<strong>此處</strong>
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
