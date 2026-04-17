@@ -152,7 +152,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                                         {[["契約數量", "contractQty"], ["本日數量", "todayQty"], ["累計數量", "cumQty"]].map(([label, key]) => (
                                             <div key={key}>
                                                 <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 3 }}>{label}</div>
-                                                <input type="number" style={tisStyle} value={q[key]} onChange={e => updArr("quantities", i, key, parseFloat(e.target.value) || 0)} />
+                                                <input type="number" step="0.01" style={tisStyle} value={q[key]} onChange={e => { const v = parseFloat(e.target.value); updArr("quantities", i, key, isNaN(v) ? 0 : parseFloat(v.toFixed(2))); }} />
                                             </div>
                                         ))}
                                         <div>
