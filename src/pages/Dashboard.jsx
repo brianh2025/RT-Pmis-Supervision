@@ -15,7 +15,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download,
+  TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
