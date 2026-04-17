@@ -14,8 +14,8 @@ function mergeItems(reports, itemsByDate) {
             item: it.item_name,
             unit: it.unit || '',
             contractQty: 0,
-            todayQty: it.today_qty || 0,
-            cumQty: it.cumulative_qty || 0,
+            todayQty: it.today_qty != null ? parseFloat(it.today_qty.toFixed(3)) : 0,
+            cumQty: it.cumulative_qty != null ? parseFloat(it.cumulative_qty.toFixed(3)) : 0,
             note: it.note || '',
         }));
         return { ...r, quantities };
