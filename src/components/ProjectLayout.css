@@ -776,9 +776,9 @@
 .pl-flip-time-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .pl-flip-group {
@@ -788,13 +788,13 @@
 
 /* 每個數字卡片 */
 .pl-flip-digit {
-  width: 20px;
-  height: 28px;
-  border-radius: 3px;
+  width: 14px;
+  height: 20px;
+  border-radius: 2px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.22);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
 }
 
 .pl-flip-half {
@@ -821,7 +821,7 @@
 
 .pl-flip-half span {
   font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
-  font-size: 0.85rem;
+  font-size: 0.62rem;
   font-weight: 800;
   color: #1f2937;
   line-height: 1;
@@ -835,10 +835,10 @@
 }
 
 .pl-flip-unit {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 600;
   color: var(--color-text-muted);
-  line-height: 28px;
+  line-height: 20px;
   user-select: none;
   margin-right: 1px;
 }
