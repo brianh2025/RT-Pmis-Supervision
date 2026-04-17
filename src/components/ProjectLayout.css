@@ -766,88 +766,48 @@
   text-align: center;
 }
 
-.pl-flip-clock {
+/* ─── 數位時鐘 ─── */
+.pl-digi-clock {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.pl-flip-time-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: baseline;
   justify-content: center;
+  gap: 0;
+  background: #1a2035;
+  border-radius: 7px;
+  padding: 5px 10px;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05);
   white-space: nowrap;
 }
 
-.pl-flip-group {
-  display: flex;
-  gap: 1px;
-}
-
-/* 每個數字卡片 */
-.pl-flip-digit {
-  width: 14px;
-  height: 20px;
-  border-radius: 2px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
-}
-
-.pl-flip-half {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  /* 明模式 灰底 */
-  background: #c8cdd6;
-}
-
-.pl-flip-half.top {
-  background: #d4d8e0;
-  align-items: flex-end;
-  padding-bottom: 1px;
-}
-
-.pl-flip-half.bot {
-  background: #bdc2cc;
-  align-items: flex-start;
-  padding-top: 1px;
-}
-
-.pl-flip-half span {
+.pl-digi-date {
   font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #1f2937;
-  line-height: 1;
-  user-select: none;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #4ade80;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(74,222,128,0.6);
 }
 
-.pl-flip-crease {
-  height: 1.5px;
-  background: rgba(0,0,0,0.25);
-  flex-shrink: 0;
+.pl-digi-sep {
+  display: inline-block;
+  width: 8px;
 }
 
-.pl-flip-unit {
-  font-size: 0.55rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  line-height: 20px;
-  user-select: none;
-  margin-right: 1px;
+.pl-digi-time {
+  font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 10px rgba(74,222,128,0.7);
 }
 
-/* 暗模式：白底黑字 */
-[data-theme="dark"] .pl-flip-half.top { background: #f1f5f9; }
-[data-theme="dark"] .pl-flip-half.bot { background: #dde3ec; }
-[data-theme="dark"] .pl-flip-crease   { background: rgba(0,0,0,0.2); }
-[data-theme="dark"] .pl-flip-half span { color: #111827; }
+/* 明模式調暗面板保持 LCD 感，不需調整（面板顏色固定） */
+[data-theme="light"] .pl-digi-date,
+[data-theme="light"] .pl-digi-time {
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34,197,94,0.5);
+}
 
 .pl-sidebar-time-icon {
   font-size: 0.9rem;
