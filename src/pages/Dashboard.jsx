@@ -242,40 +242,63 @@ export function Dashboard() {
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
-    const active = projects.filter(p => p.status === 'active');
+    // 施工中（active / suspended）皆需檢查材料進場與檢驗
+    const active = projects.filter(p => p.status === 'active' || p.status === 'suspended');
+    // 材料管制檢查範圍：所有未完工專案（含 pending/active/suspended）
+    const matTargets = projects.filter(p => !['completed', 'accepted'].includes(p.status));
 
     async function fetchAlerts() {
-      if (!active.length) { setAlerts([]); setMatWarnMap({}); return; }
-      const ids = active.map(p => p.id);
+      const alertIds = active.map(p => p.id);
+      const matIds   = matTargets.map(p => p.id);
+      if (!alertIds.length && !matIds.length) { setAlerts([]); setMatWarnMap({}); return; }
+
       const [qualRes, subRes, entryRes, testRes] = await Promise.all([
-        supabase.from('quality_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']),
-        supabase.from('submissions').select('project_id').in('project_id', ids).in('status', ['pending', 'submitted', 'reviewing']),
-        supabase.from('material_entries').select('project_id, name, entry_date').in('project_id', ids),
-        supabase.from('mcs_test').select('project_id, name, s_date').in('project_id', ids).not('s_date', 'is', null),
+        alertIds.length
+          ? supabase.from('quality_issues').select('project_id').in('project_id', alertIds).in('status', ['open', 'in_progress'])
+          : Promise.resolve({ data: [] }),
+        alertIds.length
+          ? supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing'])
+          : Promise.resolve({ data: [] }),
+        matIds.length
+          ? supabase.from('material_entries').select('project_id, name, entry_date').in('project_id', matIds)
+          : Promise.resolve({ data: [] }),
+        matIds.length
+          ? supabase.from('mcs_test').select('project_id, name, s_date, a_date').in('project_id', matIds)
+          : Promise.resolve({ data: [] }),
       ]);
       const qualMap = {}, subMap = {};
       (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
       (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
 
-      // 材料進場未登錄檢驗：material_entries 的材料名稱在 mcs_test（已抽樣 s_date 有值）中找不到對應
+      // 材料進場未登錄檢驗：
+      // material_entries 有資料，但 mcs_test 中無對應材料已填「實際進場(a_date) 或 抽樣日(s_date)」
       const matMap = {};
       const entriesByPrj = {};
-      const sampledByPrj = {};
+      const loggedByPrj  = {};
       (entryRes.data || []).forEach(e => { if (e.name) (entriesByPrj[e.project_id] ||= []).push(e); });
-      (testRes.data  || []).forEach(t => { if (t.name) (sampledByPrj[t.project_id]  ||= []).push(t); });
-      ids.forEach(pid => {
+      (testRes.data  || []).forEach(t => {
+        if (t.name && (t.a_date || t.s_date)) (loggedByPrj[t.project_id] ||= []).push(t);
+      });
+      matIds.forEach(pid => {
         const entries = entriesByPrj[pid] || [];
-        const sampled = sampledByPrj[pid] || [];
-        const cnt = entries.filter(e =>
-          !sampled.some(t => t.name.includes(e.name) || e.name.includes(t.name))
-        ).length;
+        const logged  = loggedByPrj[pid] || [];
+        const cnt = entries.filter(e => {
+          const en = (e.name || '').trim();
+          if (!en) return false;
+          return !logged.some(t => {
+            const tn = (t.name || '').trim();
+            if (!tn) return false;
+            return tn.includes(en) || en.includes(tn);
+          });
+        }).length;
         if (cnt > 0) matMap[pid] = cnt;
       });
       setMatWarnMap(matMap);
 
       const today = Date.now();
       const list = [];
-      active.forEach(p => {
+      // 所有檢查範圍內的專案都列入警示（material 警示適用於非完工專案）
+      [...new Set([...active, ...matTargets])].forEach(p => {
         const lp       = p.latest_progress;
         const diff     = lp ? (lp.actual_progress - lp.planned_progress) : null;
         const daysLeft = p.end_date ? Math.ceil((new Date(p.end_date).getTime() - today) / 86400000) : null;
