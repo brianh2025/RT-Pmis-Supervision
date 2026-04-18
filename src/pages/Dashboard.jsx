@@ -242,50 +242,41 @@ export function Dashboard() {
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
-    // 施工中（active / suspended）皆需檢查材料進場與檢驗
-    const active = projects.filter(p => p.status === 'active' || p.status === 'suspended');
-    // 材料管制檢查範圍：所有未完工專案（含 pending/active/suspended）
-    const matTargets = projects.filter(p => !['completed', 'accepted'].includes(p.status));
+    // 僅 active 專案（暫停中不警示）
+    const active = projects.filter(p => p.status === 'active');
 
     async function fetchAlerts() {
       const alertIds = active.map(p => p.id);
-      const matIds   = matTargets.map(p => p.id);
-      if (!alertIds.length && !matIds.length) { setAlerts([]); setMatWarnMap({}); return; }
+      if (!alertIds.length) { setAlerts([]); setMatWarnMap({}); return; }
 
-      const [qualRes, subRes, entryRes, testRes] = await Promise.all([
-        alertIds.length
-          ? supabase.from('quality_issues').select('project_id').in('project_id', alertIds).in('status', ['open', 'in_progress'])
-          : Promise.resolve({ data: [] }),
-        alertIds.length
-          ? supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing'])
-          : Promise.resolve({ data: [] }),
-        matIds.length
-          ? supabase.from('daily_logs').select('project_id').in('project_id', matIds)
-          : Promise.resolve({ data: [] }),
-        matIds.length
-          ? supabase.from('material_entries').select('project_id').in('project_id', matIds)
-          : Promise.resolve({ data: [] }),
+      // 材料關鍵字 ilike 篩選（日誌工項含重點材料 → 需回填管制）
+      const MAT_KW = ['混凝土', '鋼筋', '瀝青', '模板', '地工織布', '基樁', '植筋'];
+      const matFilter = MAT_KW.map(k => `item_name.ilike.%${k}%`).join(',');
+
+      const [qualRes, subRes, matDiaryRes, matEntryRes] = await Promise.all([
+        supabase.from('quality_issues').select('project_id').in('project_id', alertIds).in('status', ['open', 'in_progress']),
+        supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing']),
+        // 日誌工項中含材料關鍵字的專案
+        supabase.from('daily_report_items').select('project_id').in('project_id', alertIds).or(matFilter),
+        // 已回填 material_entries 的專案
+        supabase.from('material_entries').select('project_id').in('project_id', alertIds),
       ]);
       const qualMap = {}, subMap = {};
       (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
       (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
 
-      // 廠商日誌有記錄（施工中）但監造尚未回填材料進場管制 → 警示
-      const logCountMap = {}, entryCountMap = {};
-      (entryRes.data || []).forEach(r => { logCountMap[r.project_id]   = (logCountMap[r.project_id]   || 0) + 1; });
-      (testRes.data  || []).forEach(r => { entryCountMap[r.project_id] = (entryCountMap[r.project_id] || 0) + 1; });
+      // 日誌有材料工項 but 監造尚未回填 material_entries → 警示
+      const diaryMatSet = new Set((matDiaryRes.data || []).map(r => r.project_id));
+      const entrySet    = new Set((matEntryRes.data || []).map(r => r.project_id));
       const matMap = {};
-      matIds.forEach(pid => {
-        const hasLogs    = (logCountMap[pid]   || 0) > 0;
-        const hasEntries = (entryCountMap[pid] || 0) > 0;
-        if (hasLogs && !hasEntries) matMap[pid] = 1;
+      alertIds.forEach(pid => {
+        if (diaryMatSet.has(pid) && !entrySet.has(pid)) matMap[pid] = 1;
       });
       setMatWarnMap(matMap);
 
       const today = Date.now();
       const list = [];
-      // 所有檢查範圍內的專案都列入警示（material 警示適用於非完工專案）
-      [...new Set([...active, ...matTargets])].forEach(p => {
+      active.forEach(p => {
         const lp       = p.latest_progress;
         const diff     = lp ? (lp.actual_progress - lp.planned_progress) : null;
         const daysLeft = p.end_date ? Math.ceil((new Date(p.end_date).getTime() - today) / 86400000) : null;

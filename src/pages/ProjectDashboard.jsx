@@ -84,7 +84,9 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
-        supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        // 日誌工項中含材料關鍵字 → 需回填管制
+        supabase.from('daily_report_items').select('id', { count: 'exact', head: true }).eq('project_id', projectId)
+          .or('item_name.ilike.%混凝土%,item_name.ilike.%鋼筋%,item_name.ilike.%瀝青%,item_name.ilike.%模板%,item_name.ilike.%地工織布%,item_name.ilike.%基樁%,item_name.ilike.%植筋%'),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
       ]);
 
@@ -92,8 +94,11 @@ export function ProjectDashboard() {
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 廠商日誌有記錄但監造尚未回填材料進場管制
-      const matUnregistered = ((matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0) ? 1 : 0;
+      // 日誌有材料工項 but 尚未回填 material_entries（僅 active 專案顯示）
+      const matUnregistered =
+        project?.status === 'active' &&
+        (matEntryRes.count || 0) > 0 &&
+        (matTestRes.count || 0) === 0 ? 1 : 0;
 
       setStats({
         totalLogs: logsRes.count || 0,
