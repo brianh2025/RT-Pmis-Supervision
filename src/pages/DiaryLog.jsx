@@ -83,7 +83,7 @@ function DiaryLogInner() {
   const [month, setMonth] = useState(() => initDate ? parseInt(initDate.slice(5, 7)) - 1 : today.getMonth());
   const [selectedDay, setSelectedDay] = useState(() => initDate ? parseInt(initDate.slice(8, 10)) : null);
 
-  const [project, setProject] = useState(null);
+  const [_project, setProject] = useState(null);
   const [logs, setLogs] = useState([]);
   const [_loading, setLoading] = useState(true);
   const [_error, setError] = useState(null);
