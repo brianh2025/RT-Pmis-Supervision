@@ -38,7 +38,7 @@ export function ProjectDashboard() {
   const [saving, setSaving] = useState(false);
 
   const [stats, setStats] = useState({
-    totalLogs: 0, thisMonthLogs: 0, pendingLogs: 0,
+    totalLogs: 0, thisMonthLogs: 0, pendingLogs: 0, missingDates: [],
     latestPlanned: 0, latestActual: 0,
     mcsSubmissionCount: 0, mcsTestCount: 0, mcsPlanCount: 0,
     submissionCount: 0, submissionPending: 0,
@@ -58,23 +58,34 @@ export function ProjectDashboard() {
       const now = new Date();
       const thisMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const yesterdayStr = (() => {
+        const y = new Date(now); y.setDate(y.getDate() - 1);
+        return `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+      })();
+
       const [logsRes, monthLogsRes, progressRes, subRes, tstRes, plnRes] = await Promise.all([
         supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId).gte('log_date', thisMonthStart),
+        // 取本月至昨日的已填日期清單
+        supabase.from('daily_logs').select('log_date').eq('project_id', projectId)
+          .gte('log_date', thisMonthStart).lte('log_date', yesterdayStr),
         supabase.from('progress_records').select('planned_progress, actual_progress').eq('project_id', projectId).gt('actual_progress', 0).order('report_date', { ascending: false }).limit(1),
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_test').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_plan').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
       ]);
 
-      // Estimate pending working days this month
-      const daysInMonth = now.getDate();
-      let workingDays = 0;
-      for (let d = 1; d <= daysInMonth; d++) {
+      // 計算本月（至昨日）應填工作日，找出缺漏日期（排除週日）
+      const filledSet = new Set((monthLogsRes.data || []).map(r => r.log_date));
+      const missingDates = [];
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      for (let d = 1; d <= yesterday.getDate() && yesterday.getMonth() === now.getMonth(); d++) {
         const dow = new Date(now.getFullYear(), now.getMonth(), d).getDay();
-        if (dow !== 0 && dow !== 6) workingDays++;
+        if (dow === 0) continue; // 排除週日
+        const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (!filledSet.has(key)) missingDates.push(key);
       }
-      const pendingLogs = Math.max(0, workingDays - (monthLogsRes.count || 0));
+      const pendingLogs = missingDates.length;
       const latestProgress = progressRes.data?.[0];
 
       const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes] = await Promise.all([
@@ -100,8 +111,9 @@ export function ProjectDashboard() {
 
       setStats({
         totalLogs: logsRes.count || 0,
-        thisMonthLogs: monthLogsRes.count || 0,
+        thisMonthLogs: (monthLogsRes.data || []).length,
         pendingLogs,
+        missingDates,
         latestPlanned: parseFloat((latestProgress?.planned_progress || 0).toFixed(2)),
         latestActual:  parseFloat((latestProgress?.actual_progress  || 0).toFixed(2)),
         mcsSubmissionCount: subRes.count || 0,
@@ -155,10 +167,11 @@ export function ProjectDashboard() {
       level: stats.pendingLogs >= 3 ? 'urgent' : 'warning',
       icon: BookOpen,
       title: `施工日誌未補 ${stats.pendingLogs} 天`,
-      desc: `本月已匯入 ${stats.thisMonthLogs} 筆，請補齊工作日記錄`,
+      desc: `本月已匯入 ${stats.thisMonthLogs} 筆，以下日期缺少日誌`,
       due: `補至 ${monthEnd}`,
       path: 'diary',
       action: '前往補填',
+      dates: stats.missingDates,
     },
     stats.qualityOpen > 0 && {
       id: 'quality',
@@ -303,6 +316,18 @@ export function ProjectDashboard() {
               <div className="task-item-body">
                 <div className="task-item-title">{task.title}</div>
                 <div className="task-item-desc">{task.desc}</div>
+                {task.dates?.length > 0 && (
+                  <div className="task-missing-dates">
+                    {task.dates.map(d => {
+                      const [, m, day] = d.split('-');
+                      return (
+                        <span key={d} className="task-missing-date-chip">
+                          {+m}/{+day}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {task.due && (
                 <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>
