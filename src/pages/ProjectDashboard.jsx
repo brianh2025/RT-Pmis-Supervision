@@ -80,8 +80,6 @@ export function ProjectDashboard() {
       const missingDates = [];
       const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
       for (let d = 1; d <= yesterday.getDate() && yesterday.getMonth() === now.getMonth(); d++) {
-        const dow = new Date(now.getFullYear(), now.getMonth(), d).getDay();
-        if (dow === 0) continue; // 排除週日
         const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         if (!filledSet.has(key)) missingDates.push(key);
       }
