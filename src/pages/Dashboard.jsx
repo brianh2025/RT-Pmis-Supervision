@@ -223,6 +223,7 @@ export function Dashboard() {
   const [searchQuery,  setSearchQuery]  = useState('');
   const [alerts,       setAlerts]       = useState([]);
   const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
+  const [matWarnMap,   setMatWarnMap]   = useState({});    // projectId -> 未登錄檢驗筆數
   const [cardOrder,    setCardOrder]    = useState(() => {
     try { return JSON.parse(localStorage.getItem(`pmis_card_order_${user?.id}`) || 'null') || null; } catch { return null; }
   });
@@ -244,15 +245,33 @@ export function Dashboard() {
     const active = projects.filter(p => p.status === 'active');
 
     async function fetchAlerts() {
-      if (!active.length) { setAlerts([]); return; }
+      if (!active.length) { setAlerts([]); setMatWarnMap({}); return; }
       const ids = active.map(p => p.id);
-      const [qualRes, subRes] = await Promise.all([
+      const [qualRes, subRes, entryRes, testRes] = await Promise.all([
         supabase.from('quality_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']),
         supabase.from('submissions').select('project_id').in('project_id', ids).in('status', ['pending', 'submitted', 'reviewing']),
+        supabase.from('material_entries').select('project_id, name, entry_date').in('project_id', ids),
+        supabase.from('mcs_test').select('project_id, name, s_date').in('project_id', ids).not('s_date', 'is', null),
       ]);
       const qualMap = {}, subMap = {};
       (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
       (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
+
+      // 材料進場未登錄檢驗：material_entries 的材料名稱在 mcs_test（已抽樣 s_date 有值）中找不到對應
+      const matMap = {};
+      const entriesByPrj = {};
+      const sampledByPrj = {};
+      (entryRes.data || []).forEach(e => { if (e.name) (entriesByPrj[e.project_id] ||= []).push(e); });
+      (testRes.data  || []).forEach(t => { if (t.name) (sampledByPrj[t.project_id]  ||= []).push(t); });
+      ids.forEach(pid => {
+        const entries = entriesByPrj[pid] || [];
+        const sampled = sampledByPrj[pid] || [];
+        const cnt = entries.filter(e =>
+          !sampled.some(t => t.name.includes(e.name) || e.name.includes(t.name))
+        ).length;
+        if (cnt > 0) matMap[pid] = cnt;
+      });
+      setMatWarnMap(matMap);
 
       const today = Date.now();
       const list = [];
@@ -273,6 +292,9 @@ export function Dashboard() {
           list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `剩餘工期 ${daysLeft} 天`, path: 'progress' });
         if (sub > 0)
           list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `送審待處理 ${sub} 件`, path: 'submission' });
+        const matCnt = matMap[p.id] || 0;
+        if (matCnt > 0)
+          list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `材料進場未登錄檢驗 ${matCnt} 項`, path: 'material' });
       });
       setAlerts(list);
     }
@@ -420,6 +442,7 @@ export function Dashboard() {
     const prog    = lp ? lp.actual_progress  : 0;
     const planned = lp ? lp.planned_progress : 0;
     const diff = parseFloat((prog - planned).toFixed(2));
+    const matWarn = matWarnMap[p.id] || 0;
     return (
       <div
         key={p.id}
@@ -472,6 +495,16 @@ export function Dashboard() {
               {isBehind(p) ? '落後' : p.status === 'completed' ? '完工' : p.status === 'accepted' ? '竣工' : p.status === 'pending' ? '未發包' : p.status === 'suspended' ? '暫停' : '執行中'}
             </span>
             <span className="card-contractor-compact">{p.contractor || '未指定單位'}</span>
+            {matWarn > 0 && (
+              <span
+                className="card-mat-warn"
+                title={`材料進場未登錄檢驗 ${matWarn} 項`}
+                onClick={e => { e.stopPropagation(); navigate(`/projects/${p.id}/material`); }}
+              >
+                <TriangleAlert size={10} />
+                材料未驗 {matWarn}
+              </span>
+            )}
             <button
               className="card-edit-btn"
               title="編輯工程資料"
