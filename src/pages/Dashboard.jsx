@@ -260,25 +260,25 @@ export function Dashboard() {
           ? supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing'])
           : Promise.resolve({ data: [] }),
         matIds.length
-          ? supabase.from('material_entries').select('project_id').in('project_id', matIds)
+          ? supabase.from('daily_logs').select('project_id').in('project_id', matIds)
           : Promise.resolve({ data: [] }),
         matIds.length
-          ? supabase.from('mcs_test').select('project_id').in('project_id', matIds).not('a_date', 'is', null)
+          ? supabase.from('material_entries').select('project_id').in('project_id', matIds)
           : Promise.resolve({ data: [] }),
       ]);
       const qualMap = {}, subMap = {};
       (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
       (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
 
-      // 材料進場未登錄：材料進場筆數 > mcs_test 已填實際進場日(a_date)筆數，差值即未登錄數
-      const entryCountMap = {}, loggedCountMap = {};
-      (entryRes.data || []).forEach(r => { entryCountMap[r.project_id] = (entryCountMap[r.project_id] || 0) + 1; });
-      (testRes.data  || []).forEach(r => { loggedCountMap[r.project_id] = (loggedCountMap[r.project_id] || 0) + 1; });
+      // 廠商日誌有記錄（施工中）但監造尚未回填材料進場管制 → 警示
+      const logCountMap = {}, entryCountMap = {};
+      (entryRes.data || []).forEach(r => { logCountMap[r.project_id]   = (logCountMap[r.project_id]   || 0) + 1; });
+      (testRes.data  || []).forEach(r => { entryCountMap[r.project_id] = (entryCountMap[r.project_id] || 0) + 1; });
       const matMap = {};
       matIds.forEach(pid => {
-        const total  = entryCountMap[pid] || 0;
-        const logged = loggedCountMap[pid] || 0;
-        if (total > logged) matMap[pid] = total - logged;
+        const hasLogs    = (logCountMap[pid]   || 0) > 0;
+        const hasEntries = (entryCountMap[pid] || 0) > 0;
+        if (hasLogs && !hasEntries) matMap[pid] = 1;
       });
       setMatWarnMap(matMap);
 
@@ -302,9 +302,8 @@ export function Dashboard() {
           list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `剩餘工期 ${daysLeft} 天`, path: 'progress' });
         if (sub > 0)
           list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `送審待處理 ${sub} 件`, path: 'submission' });
-        const matCnt = matMap[p.id] || 0;
-        if (matCnt > 0)
-          list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: `材料進場未登錄檢驗 ${matCnt} 項`, path: 'material' });
+        if (matMap[p.id])
+          list.push({ level: 'warning', projectId: p.id, projectName: p.name, msg: '材料進場管制尚未回填', path: 'material' });
       });
       setAlerts(list);
     }
@@ -508,11 +507,11 @@ export function Dashboard() {
             {matWarn > 0 && (
               <span
                 className="card-mat-warn"
-                title={`材料進場未登錄檢驗 ${matWarn} 項`}
+                title="廠商日誌有記錄，材料進場管制尚未回填"
                 onClick={e => { e.stopPropagation(); navigate(`/projects/${p.id}/material`); }}
               >
                 <TriangleAlert size={10} />
-                材料未驗 {matWarn}
+                材料未回填
               </span>
             )}
             <button

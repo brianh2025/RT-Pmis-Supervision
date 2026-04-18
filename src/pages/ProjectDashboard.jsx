@@ -84,16 +84,16 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
+        supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('mcs_test').select('id', { count: 'exact', head: true }).eq('project_id', projectId).not('a_date', 'is', null),
       ]);
 
       const inspData = inspRes.data || [];
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 材料進場筆數 > mcs_test 已填實際進場日(a_date)筆數 → 差值為未登錄數
-      const matUnregistered = Math.max(0, (matEntryRes.count || 0) - (matTestRes.count || 0));
+      // 廠商日誌有記錄但監造尚未回填材料進場管制
+      const matUnregistered = ((matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0) ? 1 : 0;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -218,10 +218,10 @@ export function ProjectDashboard() {
       id: 'mat-unregistered',
       level: 'warning',
       icon: Package,
-      title: `材料進場未登錄檢驗 ${stats.matUnregistered} 項`,
-      desc: '有材料進場記錄但檢試驗管制表尚未登錄抽樣或實際進場日期',
+      title: '材料進場管制尚未回填',
+      desc: '廠商施工日誌已有記錄，請至材料管制頁回填材料進場資料',
       path: 'material',
-      action: '前往登錄',
+      action: '前往回填',
     },
   ].filter(Boolean);
 
