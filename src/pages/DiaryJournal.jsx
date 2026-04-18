@@ -14,6 +14,7 @@ const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diar
 
 /* 重點施工項目 → 材料管制觸發清單 */
 const MATERIAL_TRIGGERS = [
+  { keyword: '模板',   label: '模板' },
   { keyword: '混凝土', label: '混凝土' },
   { keyword: '鋼筋',   label: '鋼筋' },
   { keyword: '瀝青',   label: '瀝青混凝土' },
@@ -23,7 +24,9 @@ const MATERIAL_TRIGGERS = [
 ];
 
 function detectKeyMaterials(workItems, reportItems) {
-  const text = (workItems || '') + ' ' + (reportItems || []).map(i => i.item_name || '').join(' ');
+  const raw = (workItems || '') + ' ' + (reportItems || []).map(i => i.item_name || '').join(' ');
+  // 「混凝土用模板 / 混凝土模板」屬模板類，先移除「混凝土」前綴避免誤判
+  const text = raw.replace(/混凝土用?模板/g, '模板');
   return MATERIAL_TRIGGERS.filter(t => text.includes(t.keyword));
 }
 
