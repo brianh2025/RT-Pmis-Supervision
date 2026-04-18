@@ -387,6 +387,17 @@
   margin-top: 5px; padding-top: 6px;
   border-top: 1px dashed rgba(139,92,246,0.2);
 }
+.dj-selfinsp-prompt {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; margin-bottom: 6px;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 6px;
+  color: #d97706; font-size: 0.73rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+}
+.dj-selfinsp-prompt:hover { background: rgba(245,158,11,0.18); }
+
 .dj-insp-pending-title {
   font-size: 0.65rem; font-weight: 700;
   color: var(--color-text-muted); margin-bottom: 4px;

@@ -12,6 +12,14 @@ import './DiaryJournal.css';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 
+/* 自主檢查關鍵字 */
+const SELF_INSP_KEYWORDS = ['自主檢查', '自主品管', '品管作業', 'QC'];
+
+function detectSelfInspection(workItems, reportItems) {
+  const text = (workItems || '') + ' ' + (reportItems || []).map(i => i.item_name || '').join(' ');
+  return SELF_INSP_KEYWORDS.some(k => text.includes(k));
+}
+
 /* 重點施工項目 → 材料管制觸發清單 */
 const MATERIAL_TRIGGERS = [
   { keyword: '模板',   label: '模板' },
@@ -367,6 +375,7 @@ function DiaryJournalInner() {
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
+  const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems);
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -570,6 +579,14 @@ function DiaryJournalInner() {
               <Plus size={11} /> 新增
             </button>
           </div>
+
+          {/* 自主檢查提示 */}
+          {hasSelfInsp && inspections.filter(i => i.inspect_type === '施工抽查').length === 0 && (
+            <div className="dj-selfinsp-prompt" onClick={() => handleOpenInspModal('')}>
+              <AlertTriangle size={12} />
+              廠商本日有自主檢查記錄，尚未登錄施工抽查，點此新增
+            </div>
+          )}
 
           {/* 已登錄的抽查清單 */}
           {inspections.length > 0 && (
