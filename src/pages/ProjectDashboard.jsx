@@ -94,11 +94,9 @@ export function ProjectDashboard() {
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 日誌有材料工項 but 尚未回填 material_entries（僅 active 專案顯示）
+      // 日誌有材料工項 but 尚未回填 material_entries（status 判斷移至 tasks 陣列）
       const matUnregistered =
-        project?.status === 'active' &&
-        (matEntryRes.count || 0) > 0 &&
-        (matTestRes.count || 0) === 0 ? 1 : 0;
+        (matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -219,7 +217,7 @@ export function ProjectDashboard() {
       path: 'quality',
       action: '查看檢驗',
     },
-    stats.matUnregistered > 0 && {
+    stats.matUnregistered > 0 && project?.status === 'active' && {
       id: 'mat-unregistered',
       level: 'warning',
       icon: Package,
