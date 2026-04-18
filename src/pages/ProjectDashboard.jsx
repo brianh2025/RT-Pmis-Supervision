@@ -84,24 +84,16 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
-        supabase.from('material_entries').select('name').eq('project_id', projectId),
-        supabase.from('mcs_test').select('name, a_date, s_date').eq('project_id', projectId),
+        supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
       ]);
 
       const inspData = inspRes.data || [];
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 材料進場未登錄檢驗：有進場記錄但 mcs_test 中無已登錄 a_date/s_date 的對應材料
-      const entries = (matEntryRes.data || []).filter(e => e.name && e.name.trim());
-      const logged  = (matTestRes.data  || []).filter(t => t.name && t.name.trim() && (t.a_date || t.s_date));
-      const matUnregistered = entries.filter(e => {
-        const en = e.name.trim();
-        return !logged.some(t => {
-          const tn = t.name.trim();
-          return tn.includes(en) || en.includes(tn);
-        });
-      }).length;
+      // 廠商日誌有記錄但監造尚未回填材料進場管制
+      const matUnregistered = ((matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0) ? 1 : 0;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -226,10 +218,10 @@ export function ProjectDashboard() {
       id: 'mat-unregistered',
       level: 'warning',
       icon: Package,
-      title: `材料進場未登錄檢驗 ${stats.matUnregistered} 項`,
-      desc: '有材料進場記錄但檢試驗管制表尚未登錄抽樣或實際進場日期',
+      title: '材料進場管制尚未回填',
+      desc: '廠商施工日誌已有記錄，請至材料管制頁回填材料進場資料',
       path: 'material',
-      action: '前往登錄',
+      action: '前往回填',
     },
   ].filter(Boolean);
 
