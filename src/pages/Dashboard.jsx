@@ -260,38 +260,25 @@ export function Dashboard() {
           ? supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing'])
           : Promise.resolve({ data: [] }),
         matIds.length
-          ? supabase.from('material_entries').select('project_id, name, entry_date').in('project_id', matIds)
+          ? supabase.from('material_entries').select('project_id').in('project_id', matIds)
           : Promise.resolve({ data: [] }),
         matIds.length
-          ? supabase.from('mcs_test').select('project_id, name, s_date, a_date').in('project_id', matIds)
+          ? supabase.from('mcs_test').select('project_id').in('project_id', matIds).not('a_date', 'is', null)
           : Promise.resolve({ data: [] }),
       ]);
       const qualMap = {}, subMap = {};
       (qualRes.data || []).forEach(r => { qualMap[r.project_id] = (qualMap[r.project_id] || 0) + 1; });
       (subRes.data  || []).forEach(r => { subMap[r.project_id]  = (subMap[r.project_id]  || 0) + 1; });
 
-      // 材料進場未登錄檢驗：
-      // material_entries 有資料，但 mcs_test 中無對應材料已填「實際進場(a_date) 或 抽樣日(s_date)」
+      // 材料進場未登錄：材料進場筆數 > mcs_test 已填實際進場日(a_date)筆數，差值即未登錄數
+      const entryCountMap = {}, loggedCountMap = {};
+      (entryRes.data || []).forEach(r => { entryCountMap[r.project_id] = (entryCountMap[r.project_id] || 0) + 1; });
+      (testRes.data  || []).forEach(r => { loggedCountMap[r.project_id] = (loggedCountMap[r.project_id] || 0) + 1; });
       const matMap = {};
-      const entriesByPrj = {};
-      const loggedByPrj  = {};
-      (entryRes.data || []).forEach(e => { if (e.name) (entriesByPrj[e.project_id] ||= []).push(e); });
-      (testRes.data  || []).forEach(t => {
-        if (t.name && (t.a_date || t.s_date)) (loggedByPrj[t.project_id] ||= []).push(t);
-      });
       matIds.forEach(pid => {
-        const entries = entriesByPrj[pid] || [];
-        const logged  = loggedByPrj[pid] || [];
-        const cnt = entries.filter(e => {
-          const en = (e.name || '').trim();
-          if (!en) return false;
-          return !logged.some(t => {
-            const tn = (t.name || '').trim();
-            if (!tn) return false;
-            return tn.includes(en) || en.includes(tn);
-          });
-        }).length;
-        if (cnt > 0) matMap[pid] = cnt;
+        const total  = entryCountMap[pid] || 0;
+        const logged = loggedCountMap[pid] || 0;
+        if (total > logged) matMap[pid] = total - logged;
       });
       setMatWarnMap(matMap);
 

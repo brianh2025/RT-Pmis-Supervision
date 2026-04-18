@@ -84,24 +84,16 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
-        supabase.from('material_entries').select('name').eq('project_id', projectId),
-        supabase.from('mcs_test').select('name, a_date, s_date').eq('project_id', projectId),
+        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        supabase.from('mcs_test').select('id', { count: 'exact', head: true }).eq('project_id', projectId).not('a_date', 'is', null),
       ]);
 
       const inspData = inspRes.data || [];
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 材料進場未登錄檢驗：有進場記錄但 mcs_test 中無已登錄 a_date/s_date 的對應材料
-      const entries = (matEntryRes.data || []).filter(e => e.name && e.name.trim());
-      const logged  = (matTestRes.data  || []).filter(t => t.name && t.name.trim() && (t.a_date || t.s_date));
-      const matUnregistered = entries.filter(e => {
-        const en = e.name.trim();
-        return !logged.some(t => {
-          const tn = t.name.trim();
-          return tn.includes(en) || en.includes(tn);
-        });
-      }).length;
+      // 材料進場筆數 > mcs_test 已填實際進場日(a_date)筆數 → 差值為未登錄數
+      const matUnregistered = Math.max(0, (matEntryRes.count || 0) - (matTestRes.count || 0));
 
       setStats({
         totalLogs: logsRes.count || 0,
