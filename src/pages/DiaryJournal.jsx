@@ -1,15 +1,31 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText, Package, ClipboardCheck, AlertTriangle, Edit3 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DailyReportForm } from './DailyReport/DailyReportForm';
 import { DiaryImportModal } from '../components/DiaryImportModal';
+import { InspectionQuickModal } from '../components/InspectionQuickModal';
 import './DiaryJournal.css';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
+
+/* 重點施工項目 → 材料管制觸發清單 */
+const MATERIAL_TRIGGERS = [
+  { keyword: '混凝土', label: '混凝土' },
+  { keyword: '鋼筋',   label: '鋼筋' },
+  { keyword: '瀝青',   label: '瀝青混凝土' },
+  { keyword: '地工織布', label: '地工織布' },
+  { keyword: '基樁',   label: '基樁' },
+  { keyword: '植筋',   label: '化學植筋' },
+];
+
+function detectKeyMaterials(workItems, reportItems) {
+  const text = (workItems || '') + ' ' + (reportItems || []).map(i => i.item_name || '').join(' ');
+  return MATERIAL_TRIGGERS.filter(t => text.includes(t.keyword));
+}
 
 /**
  * 補漏同步：
@@ -104,6 +120,11 @@ function DiaryJournalInner() {
   const [supervisionDates, setSupervisionDates] = useState(new Set());
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
+  const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
+  const [inspections,      setInspections]      = useState([]);
+  const [showInspModal,    setShowInspModal]    = useState(false);
+  const [inspEditing,      setInspEditing]      = useState(null);
+  const [inspPrefill,      setInspPrefill]      = useState('');
 
   // ── 施工日誌內嵌模式 ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState('summary'); // 'summary' | 'view' | 'form'
@@ -175,27 +196,47 @@ function DiaryJournalInner() {
 
   // ── 取選定日期摘要 ─────────────────────────────────────────
   useEffect(() => {
-    if (!selectedKey) { setSummary(null); return; }
+    if (!selectedKey) {
+      setSummary(null);
+      setMaterialStatus({ entries: [], tests: [] });
+      setInspections([]);
+      return;
+    }
     setLoadingSummary(true);
     Promise.all([
       supabase.from('daily_report_items')
         .select('item_name, unit, today_qty')
         .eq('project_id', projectId).eq('log_date', selectedKey),
       supabase.from('daily_logs')
-        .select('weather_am, weather_pm, notes, actual_progress, planned_progress')
+        .select('weather_am, weather_pm, notes, actual_progress, planned_progress, work_items')
         .eq('project_id', projectId).eq('log_date', selectedKey).maybeSingle(),
       supabase.from('progress_records')
         .select('planned_progress, actual_progress')
         .eq('project_id', projectId).eq('report_date', selectedKey).maybeSingle(),
-    ]).then(([items, log, prog]) => {
+      supabase.from('material_entries')
+        .select('id, name')
+        .eq('project_id', projectId).eq('entry_date', selectedKey),
+      supabase.from('mcs_test')
+        .select('id, name, s_date')
+        .eq('project_id', projectId).eq('s_date', selectedKey),
+      supabase.from('construction_inspections')
+        .select('*')
+        .eq('project_id', projectId).eq('inspect_date', selectedKey)
+        .order('created_at', { ascending: true }),
+    ]).then(([items, log, prog, matEntries, matTests, insp]) => {
       setSummary({
         workItems: items.data || [],
         log:       log.data   || null,
         progress:  prog.data  || null,
       });
+      setMaterialStatus({
+        entries: matEntries.data || [],
+        tests:   matTests.data   || [],
+      });
+      setInspections(insp.data || []);
       setLoadingSummary(false);
     });
-  }, [projectId, selectedKey]);
+  }, [projectId, selectedKey, refreshKey]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDow    = getFirstDow(year, month);
@@ -269,6 +310,26 @@ function DiaryJournalInner() {
     setRefreshKey(k => k + 1);
   };
 
+  // ── 抽查操作 ───────────────────────────────────────────────
+  const handleOpenInspModal = (prefillItem = '', editing = null) => {
+    setInspPrefill(prefillItem);
+    setInspEditing(editing);
+    setShowInspModal(true);
+  };
+  const handleCloseInspModal = () => {
+    setShowInspModal(false);
+    setInspEditing(null);
+    setInspPrefill('');
+  };
+  const handleInspSaved = () => {
+    setRefreshKey(k => k + 1);
+  };
+  const handleDeleteInspection = async (id) => {
+    if (!window.confirm('確定刪除此抽查記錄？')) return;
+    await supabase.from('construction_inspections').delete().eq('id', id);
+    setRefreshKey(k => k + 1);
+  };
+
   // ── 施工日誌：檢視模式 ─────────────────────────────────────
   if (viewMode === 'view' && diaryReport) {
     return (
@@ -302,6 +363,7 @@ function DiaryJournalInner() {
   const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
+  const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -450,6 +512,128 @@ function DiaryJournalInner() {
           )}
         </div>
 
+        {/* ── 材料進場管制區塊 ── */}
+        <div className="dj-coexist-block material-block">
+          <div className="dj-coexist-title">
+            <Package size={13} />
+            材料進場管制
+            <span className="dj-mat-summary-badge">
+              進場 {materialStatus.entries.length} 筆 · 試驗 {materialStatus.tests.length} 筆
+            </span>
+          </div>
+          {detectedMaterials.length > 0 ? (
+            <div className="dj-mat-rows">
+              {detectedMaterials.map(mat => {
+                const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
+                const tc = materialStatus.tests.filter(t => (t.name || '').includes(mat.keyword)).length;
+                return (
+                  <div key={mat.keyword} className="dj-mat-row">
+                    <span className="dj-mat-name">{mat.label}</span>
+                    <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
+                      進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
+                    </span>
+                    <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
+                      試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="dj-empty" style={{ marginBottom: 6 }}>
+              {hasDiary ? '日誌未記載重點管制材料（混凝土／鋼筋／瀝青等）' : '尚無施工日誌'}
+            </div>
+          )}
+          <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
+            前往材料管制 →
+          </button>
+        </div>
+
+        {/* ── 當日抽查區塊 ── */}
+        <div className="dj-coexist-block insp-block">
+          <div className="dj-coexist-title">
+            <ClipboardCheck size={13} />
+            當日抽查
+            <span className="dj-insp-count-badge">
+              已登錄 {inspections.length} 筆
+              {inspections.filter(i => i.result === '不合格').length > 0 &&
+                ` · 不合格 ${inspections.filter(i => i.result === '不合格').length}`}
+            </span>
+            <button
+              className="dj-insp-add-btn"
+              onClick={() => handleOpenInspModal('')}
+              title="新增抽查記錄"
+            >
+              <Plus size={11} /> 新增
+            </button>
+          </div>
+
+          {/* 已登錄的抽查清單 */}
+          {inspections.length > 0 && (
+            <div className="dj-insp-list">
+              {inspections.map(ins => (
+                <div key={ins.id} className="dj-insp-row">
+                  <span className={`dj-insp-result-dot ${
+                    ins.result === '合格' ? 'ok'
+                    : ins.result === '不合格' ? 'bad'
+                    : 'warn'
+                  }`}>
+                    {ins.result === '合格' ? '✓' : ins.result === '不合格' ? '✗' : '○'}
+                  </span>
+                  <span className="dj-insp-item" title={ins.work_item}>{ins.work_item}</span>
+                  <span className="dj-insp-meta">
+                    {ins.location && <span className="dj-insp-loc">{ins.location}</span>}
+                    {ins.inspector && <span className="dj-insp-person">· {ins.inspector}</span>}
+                  </span>
+                  <span className={`dj-insp-result-tag ${
+                    ins.result === '合格' ? 'ok'
+                    : ins.result === '不合格' ? 'bad'
+                    : 'warn'
+                  }`}>{ins.result}</span>
+                  {ins.result === '不合格' && (
+                    <AlertTriangle size={11} className="dj-insp-alert" />
+                  )}
+                  <button className="dj-insp-icon-btn" onClick={() => handleOpenInspModal('', ins)} title="編輯">
+                    <Edit3 size={11} />
+                  </button>
+                  <button className="dj-insp-icon-btn danger" onClick={() => handleDeleteInspection(ins.id)} title="刪除">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 未抽查的工項（從廠商同步的工項中過濾已抽查過的） */}
+          {meaningfulItems.filter(wi =>
+            !inspections.some(ins => ins.work_item === wi.item_name)
+          ).length > 0 && (
+            <div className="dj-insp-pending">
+              <div className="dj-insp-pending-title">待抽查工項</div>
+              <div className="dj-insp-pending-list">
+                {meaningfulItems
+                  .filter(wi => !inspections.some(ins => ins.work_item === wi.item_name))
+                  .map((wi, i) => (
+                    <button
+                      key={i}
+                      className="dj-insp-pending-chip"
+                      onClick={() => handleOpenInspModal(wi.item_name)}
+                      title={`對「${wi.item_name}」新增抽查`}
+                    >
+                      <Plus size={10} /> {wi.item_name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {inspections.length === 0 && meaningfulItems.length === 0 && (
+            <div className="dj-empty" style={{ marginTop: 4 }}>
+              尚無抽查記錄，點擊「新增」開始登錄
+            </div>
+          )}
+        </div>
+
         {/* ── 監造報表區塊 ── */}
         <div className="dj-coexist-block sup-block">
           <div className="dj-coexist-title">
@@ -553,6 +737,16 @@ function DiaryJournalInner() {
           projectId={projectId}
           onClose={() => setShowImport(false)}
           onSuccess={() => { setShowImport(false); setRefreshKey(k => k + 1); refreshReports(); }}
+        />
+      )}
+
+      {showInspModal && (
+        <InspectionQuickModal
+          projectId={projectId}
+          inspectDate={selectedKey}
+          existing={inspEditing || (inspPrefill ? { work_item: inspPrefill } : null)}
+          onClose={handleCloseInspModal}
+          onSuccess={handleInspSaved}
         />
       )}
     </div>
