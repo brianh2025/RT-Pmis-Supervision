@@ -45,6 +45,7 @@ export function ProjectDashboard() {
     qualityCount: 0, qualityOpen: 0,
     archiveCount: 0,
     inspTotal: 0, inspPending: 0, inspFail: 0,
+    matUnregistered: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [showEmergency, setShowEmergency] = useState(false);
@@ -76,18 +77,31 @@ export function ProjectDashboard() {
       const pendingLogs = Math.max(0, workingDays - (monthLogsRes.count || 0));
       const latestProgress = progressRes.data?.[0];
 
-      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes] = await Promise.all([
+      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes] = await Promise.all([
         supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['pending', 'submitted', 'reviewing']),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
+        supabase.from('material_entries').select('name').eq('project_id', projectId),
+        supabase.from('mcs_test').select('name, a_date, s_date').eq('project_id', projectId),
       ]);
 
       const inspData = inspRes.data || [];
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
+
+      // 材料進場未登錄檢驗：有進場記錄但 mcs_test 中無已登錄 a_date/s_date 的對應材料
+      const entries = (matEntryRes.data || []).filter(e => e.name && e.name.trim());
+      const logged  = (matTestRes.data  || []).filter(t => t.name && t.name.trim() && (t.a_date || t.s_date));
+      const matUnregistered = entries.filter(e => {
+        const en = e.name.trim();
+        return !logged.some(t => {
+          const tn = t.name.trim();
+          return tn.includes(en) || en.includes(tn);
+        });
+      }).length;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -106,6 +120,7 @@ export function ProjectDashboard() {
         inspTotal: inspData.length,
         inspPending,
         inspFail,
+        matUnregistered,
       });
       setStatsLoading(false);
     }
@@ -206,6 +221,15 @@ export function ProjectDashboard() {
       desc: `共 ${stats.inspTotal} 項檢驗，請安排複驗作業`,
       path: 'quality',
       action: '查看檢驗',
+    },
+    stats.matUnregistered > 0 && {
+      id: 'mat-unregistered',
+      level: 'warning',
+      icon: Package,
+      title: `材料進場未登錄檢驗 ${stats.matUnregistered} 項`,
+      desc: '有材料進場記錄但檢試驗管制表尚未登錄抽樣或實際進場日期',
+      path: 'material',
+      action: '前往登錄',
     },
   ].filter(Boolean);
 
