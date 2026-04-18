@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText, Package } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText, Package, ClipboardCheck, AlertTriangle, Edit3 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DailyReportForm } from './DailyReport/DailyReportForm';
 import { DiaryImportModal } from '../components/DiaryImportModal';
+import { InspectionQuickModal } from '../components/InspectionQuickModal';
 import './DiaryJournal.css';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
@@ -120,6 +121,10 @@ function DiaryJournalInner() {
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
   const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
+  const [inspections,      setInspections]      = useState([]);
+  const [showInspModal,    setShowInspModal]    = useState(false);
+  const [inspEditing,      setInspEditing]      = useState(null);
+  const [inspPrefill,      setInspPrefill]      = useState('');
 
   // ── 施工日誌內嵌模式 ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState('summary'); // 'summary' | 'view' | 'form'
@@ -191,7 +196,12 @@ function DiaryJournalInner() {
 
   // ── 取選定日期摘要 ─────────────────────────────────────────
   useEffect(() => {
-    if (!selectedKey) { setSummary(null); setMaterialStatus({ entries: [], tests: [] }); return; }
+    if (!selectedKey) {
+      setSummary(null);
+      setMaterialStatus({ entries: [], tests: [] });
+      setInspections([]);
+      return;
+    }
     setLoadingSummary(true);
     Promise.all([
       supabase.from('daily_report_items')
@@ -209,7 +219,11 @@ function DiaryJournalInner() {
       supabase.from('mcs_test')
         .select('id, name, s_date')
         .eq('project_id', projectId).eq('s_date', selectedKey),
-    ]).then(([items, log, prog, matEntries, matTests]) => {
+      supabase.from('construction_inspections')
+        .select('*')
+        .eq('project_id', projectId).eq('inspect_date', selectedKey)
+        .order('created_at', { ascending: true }),
+    ]).then(([items, log, prog, matEntries, matTests, insp]) => {
       setSummary({
         workItems: items.data || [],
         log:       log.data   || null,
@@ -219,9 +233,10 @@ function DiaryJournalInner() {
         entries: matEntries.data || [],
         tests:   matTests.data   || [],
       });
+      setInspections(insp.data || []);
       setLoadingSummary(false);
     });
-  }, [projectId, selectedKey]);
+  }, [projectId, selectedKey, refreshKey]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDow    = getFirstDow(year, month);
@@ -292,6 +307,26 @@ function DiaryJournalInner() {
 
   const handleSaveDiary = () => {
     setViewMode('view');
+    setRefreshKey(k => k + 1);
+  };
+
+  // ── 抽查操作 ───────────────────────────────────────────────
+  const handleOpenInspModal = (prefillItem = '', editing = null) => {
+    setInspPrefill(prefillItem);
+    setInspEditing(editing);
+    setShowInspModal(true);
+  };
+  const handleCloseInspModal = () => {
+    setShowInspModal(false);
+    setInspEditing(null);
+    setInspPrefill('');
+  };
+  const handleInspSaved = () => {
+    setRefreshKey(k => k + 1);
+  };
+  const handleDeleteInspection = async (id) => {
+    if (!window.confirm('確定刪除此抽查記錄？')) return;
+    await supabase.from('construction_inspections').delete().eq('id', id);
     setRefreshKey(k => k + 1);
   };
 
@@ -514,6 +549,91 @@ function DiaryJournalInner() {
           </button>
         </div>
 
+        {/* ── 當日抽查區塊 ── */}
+        <div className="dj-coexist-block insp-block">
+          <div className="dj-coexist-title">
+            <ClipboardCheck size={13} />
+            當日抽查
+            <span className="dj-insp-count-badge">
+              已登錄 {inspections.length} 筆
+              {inspections.filter(i => i.result === '不合格').length > 0 &&
+                ` · 不合格 ${inspections.filter(i => i.result === '不合格').length}`}
+            </span>
+            <button
+              className="dj-insp-add-btn"
+              onClick={() => handleOpenInspModal('')}
+              title="新增抽查記錄"
+            >
+              <Plus size={11} /> 新增
+            </button>
+          </div>
+
+          {/* 已登錄的抽查清單 */}
+          {inspections.length > 0 && (
+            <div className="dj-insp-list">
+              {inspections.map(ins => (
+                <div key={ins.id} className="dj-insp-row">
+                  <span className={`dj-insp-result-dot ${
+                    ins.result === '合格' ? 'ok'
+                    : ins.result === '不合格' ? 'bad'
+                    : 'warn'
+                  }`}>
+                    {ins.result === '合格' ? '✓' : ins.result === '不合格' ? '✗' : '○'}
+                  </span>
+                  <span className="dj-insp-item" title={ins.work_item}>{ins.work_item}</span>
+                  <span className="dj-insp-meta">
+                    {ins.location && <span className="dj-insp-loc">{ins.location}</span>}
+                    {ins.inspector && <span className="dj-insp-person">· {ins.inspector}</span>}
+                  </span>
+                  <span className={`dj-insp-result-tag ${
+                    ins.result === '合格' ? 'ok'
+                    : ins.result === '不合格' ? 'bad'
+                    : 'warn'
+                  }`}>{ins.result}</span>
+                  {ins.result === '不合格' && (
+                    <AlertTriangle size={11} className="dj-insp-alert" />
+                  )}
+                  <button className="dj-insp-icon-btn" onClick={() => handleOpenInspModal('', ins)} title="編輯">
+                    <Edit3 size={11} />
+                  </button>
+                  <button className="dj-insp-icon-btn danger" onClick={() => handleDeleteInspection(ins.id)} title="刪除">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 未抽查的工項（從廠商同步的工項中過濾已抽查過的） */}
+          {meaningfulItems.filter(wi =>
+            !inspections.some(ins => ins.work_item === wi.item_name)
+          ).length > 0 && (
+            <div className="dj-insp-pending">
+              <div className="dj-insp-pending-title">待抽查工項</div>
+              <div className="dj-insp-pending-list">
+                {meaningfulItems
+                  .filter(wi => !inspections.some(ins => ins.work_item === wi.item_name))
+                  .map((wi, i) => (
+                    <button
+                      key={i}
+                      className="dj-insp-pending-chip"
+                      onClick={() => handleOpenInspModal(wi.item_name)}
+                      title={`對「${wi.item_name}」新增抽查`}
+                    >
+                      <Plus size={10} /> {wi.item_name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {inspections.length === 0 && meaningfulItems.length === 0 && (
+            <div className="dj-empty" style={{ marginTop: 4 }}>
+              尚無抽查記錄，點擊「新增」開始登錄
+            </div>
+          )}
+        </div>
+
         {/* ── 監造報表區塊 ── */}
         <div className="dj-coexist-block sup-block">
           <div className="dj-coexist-title">
@@ -617,6 +737,16 @@ function DiaryJournalInner() {
           projectId={projectId}
           onClose={() => setShowImport(false)}
           onSuccess={() => { setShowImport(false); setRefreshKey(k => k + 1); refreshReports(); }}
+        />
+      )}
+
+      {showInspModal && (
+        <InspectionQuickModal
+          projectId={projectId}
+          inspectDate={selectedKey}
+          existing={inspEditing || (inspPrefill ? { work_item: inspPrefill } : null)}
+          onClose={handleCloseInspModal}
+          onSuccess={handleInspSaved}
         />
       )}
     </div>

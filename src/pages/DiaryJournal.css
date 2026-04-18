@@ -326,6 +326,83 @@
   .dj-header-date { display: block; }
 }
 
+/* ── 當日抽查 ── */
+.dj-coexist-block.insp-block { border-left: 3px solid #8b5cf6; }
+.dj-coexist-block.insp-block .dj-coexist-title { color: #7c3aed; }
+.dj-insp-count-badge {
+  margin-left: auto; font-size: 0.65rem; font-weight: 600;
+  color: #7c3aed; background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.3); border-radius: 8px;
+  padding: 1px 7px;
+}
+.dj-insp-add-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 6px;
+  border: 1px solid rgba(139,92,246,0.5);
+  background: rgba(139,92,246,0.06); color: #7c3aed;
+  font-size: 0.7rem; font-weight: 700; cursor: pointer;
+  margin-left: 4px; transition: background 0.15s;
+}
+.dj-insp-add-btn:hover { background: rgba(139,92,246,0.15); }
+.dj-insp-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 7px; }
+.dj-insp-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 0.76rem;
+}
+.dj-insp-result-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
+}
+.dj-insp-result-dot.ok   { background: rgba(16,185,129,0.15); color: #059669; }
+.dj-insp-result-dot.bad  { background: rgba(239,68,68,0.15);  color: #dc2626; }
+.dj-insp-result-dot.warn { background: rgba(245,158,11,0.15); color: #d97706; }
+.dj-insp-item { color: var(--color-text1); font-weight: 600; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+.dj-insp-meta { color: var(--color-text-muted); font-size: 0.7rem;
+  flex-shrink: 0; display: flex; gap: 3px; }
+.dj-insp-loc    { color: var(--color-text-muted); }
+.dj-insp-person { color: var(--color-text-muted); }
+.dj-insp-result-tag {
+  padding: 1px 6px; border-radius: 8px;
+  font-size: 0.66rem; font-weight: 700; flex-shrink: 0;
+}
+.dj-insp-result-tag.ok   { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+.dj-insp-result-tag.bad  { background: rgba(239,68,68,0.12);  color: #dc2626; border: 1px solid rgba(239,68,68,0.3); }
+.dj-insp-result-tag.warn { background: rgba(245,158,11,0.12); color: #d97706; border: 1px solid rgba(245,158,11,0.35); }
+.dj-insp-alert { color: #dc2626; flex-shrink: 0; }
+.dj-insp-icon-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-text-muted); padding: 2px;
+  display: inline-flex; align-items: center; border-radius: 4px;
+  transition: all 0.12s; flex-shrink: 0;
+}
+.dj-insp-icon-btn:hover { background: var(--color-surface-hover); color: var(--color-text1); }
+.dj-insp-icon-btn.danger:hover { background: rgba(239,68,68,0.1); color: #dc2626; }
+
+.dj-insp-pending {
+  margin-top: 5px; padding-top: 6px;
+  border-top: 1px dashed rgba(139,92,246,0.2);
+}
+.dj-insp-pending-title {
+  font-size: 0.65rem; font-weight: 700;
+  color: var(--color-text-muted); margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.dj-insp-pending-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.dj-insp-pending-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 10px;
+  border: 1px dashed #8b5cf6;
+  background: rgba(139,92,246,0.05); color: #7c3aed;
+  font-size: 0.7rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+}
+.dj-insp-pending-chip:hover { background: rgba(139,92,246,0.15); }
+
 /* ── 材料進場管制 ── */
 .dj-coexist-block.material-block { border-left: 3px solid #f59e0b; }
 .dj-coexist-block.material-block .dj-coexist-title { color: #d97706; }
