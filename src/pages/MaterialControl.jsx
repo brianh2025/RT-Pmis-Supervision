@@ -212,18 +212,18 @@ export function MaterialControl() {
     const patch = { [field]: editVal };
     if (tab === 0) setEntries(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
     else setTstRows(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
-    scheduleDbUpdate(rowId, patch);
+    scheduleDbUpdate(rowId, patch, dbTable);
     setEditCell(null); setEditVal('');
   }
 
   function cancelEdit() { setEditCell(null); setEditVal(''); }
 
-  function scheduleDbUpdate(rowId, patch) {
+  function scheduleDbUpdate(rowId, patch, targetTable = dbTable) {
     if (!supabase) return;
     if (saveQueueRef.current[rowId]) clearTimeout(saveQueueRef.current[rowId]);
     saveQueueRef.current[rowId] = setTimeout(async () => {
       setSaving(true);
-      const { error } = await supabase.from(dbTable).update(patch).eq('id', rowId);
+      const { error } = await supabase.from(targetTable).update(patch).eq('id', rowId);
       if (error) console.error('update error:', error);
       setSaving(false);
       setLastSaved(new Date());

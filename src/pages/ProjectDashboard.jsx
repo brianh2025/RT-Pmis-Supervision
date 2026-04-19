@@ -87,8 +87,8 @@ export function ProjectDashboard() {
       const latestProgress = progressRes.data?.[0];
 
       const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes] = await Promise.all([
-        supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['pending', 'submitted', 'reviewing']),
+        supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId).neq('result', '同意備查'),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),

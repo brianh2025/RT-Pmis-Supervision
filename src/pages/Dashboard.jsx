@@ -255,7 +255,7 @@ export function Dashboard() {
 
       const [qualRes, subRes, matDiaryRes, matEntryRes] = await Promise.all([
         supabase.from('quality_issues').select('project_id').in('project_id', alertIds).in('status', ['open', 'in_progress']),
-        supabase.from('submissions').select('project_id').in('project_id', alertIds).in('status', ['pending', 'submitted', 'reviewing']),
+        supabase.from('mcs_submission').select('project_id').in('project_id', alertIds).neq('result', '同意備查'),
         // 日誌工項中含材料關鍵字的專案
         supabase.from('daily_report_items').select('project_id').in('project_id', alertIds).or(matFilter),
         // 已回填 material_entries 的專案

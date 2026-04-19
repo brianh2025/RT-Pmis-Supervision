@@ -221,8 +221,10 @@ export function Quality() {
     await supabase.from(table).update(patch).eq('id', id);
     if (table === 'construction_inspections') {
       setInspections(prev => prev.map(r => r.id === id ? { ...r, [field]: editVal } : r));
-    } else {
+    } else if (table === 'quality_issues') {
       setIssues(prev => prev.map(r => r.id === id ? { ...r, [field]: editVal } : r));
+    } else if (table === 'mcs_test') {
+      setTests(prev => prev.map(r => r.id === id ? { ...r, [field]: editVal } : r));
     }
     setEditCell(null); setEditVal('');
   }
@@ -236,9 +238,12 @@ export function Quality() {
     if (tab === 0) {
       await supabase.from('construction_inspections').delete().in('id', ids);
       setInspections(prev => prev.filter(r => !selected.has(r.id)));
-    } else {
+    } else if (tab === 1) {
       await supabase.from('quality_issues').delete().in('id', ids);
       setIssues(prev => prev.filter(r => !selected.has(r.id)));
+    } else if (tab === 2) {
+      await supabase.from('mcs_test').delete().in('id', ids);
+      setTests(prev => prev.filter(r => !selected.has(r.id)));
     }
     setSelected(new Set());
   }

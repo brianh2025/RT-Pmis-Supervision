@@ -455,7 +455,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
     setLoading(true);
     supabase.from('archive_docs')
       .select('id, title, doc_date, doc_no, remark, tags, created_at')
-      .eq('project_id', projectId).eq('category', '施工照片')
+      .eq('project_id', projectId).eq('category', 'photo')
       .order('doc_date', { ascending: false })
       .then(({ data }) => { setRecords(data || []); setLoading(false); });
   }
@@ -831,7 +831,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
 
       const title = batchTitle || `${data[0]?.date || todayISO()} 施工照片（${photos.length}張）`;
       const { error } = await supabase.from('archive_docs').insert({
-        project_id: projectId, category: '施工照片', title,
+        project_id: projectId, category: 'photo', title,
         doc_no: reportNo || null, doc_date: data[0]?.date || todayISO(),
         remark: JSON.stringify({ count: photos.length, photos: photoDetails }),
         file_url: photoDetails[0]?.url || null,
@@ -935,7 +935,7 @@ export function PhotoTable() {
     supabase.from('archive_docs')
       .select('doc_no')
       .eq('project_id', projectId)
-      .eq('category', '施工照片')
+      .eq('category', 'photo')
       .like('doc_no', `${prefix}%`)
       .then(({ data }) => {
         let max = 0;

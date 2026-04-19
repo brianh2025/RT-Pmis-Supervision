@@ -136,7 +136,7 @@ async function parseMonitoringPage(page) {
   if (pmIdx >= 0) {
     const pmItem = weatherItems.find(i => i.str === '下午');
     const afterPm = weatherItems.filter(i => i.x > (pmItem?.x ?? 0) + 10).sort((a,b) => a.x - b.x);
-    weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str) && i.str !== weatherAm)?.str ?? null;
+    weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
   }
 
   // --- 3. Progress (y≈745, "預定" → next float; "實際" → next float) ---

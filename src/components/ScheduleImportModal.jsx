@@ -238,7 +238,7 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
                 }}>
                   {label}
                 </span>
-                {idx < 2 && <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>›</span>}
+                {idx < stepLabels.length - 1 && <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>›</span>}
               </React.Fragment>
             ))}
           </div>

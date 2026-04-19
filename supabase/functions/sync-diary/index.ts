@@ -567,15 +567,28 @@ async function syncFile(
     if (e1) throw new Error(`daily_logs 寫入失敗 (${logDate}): ` + e1.message);
 
     // 無論有無進度欄位，均回填 progress_records（確保日期出現在進度管理）
-    // onConflict 採 merge-duplicates：若已存在且有值則不覆蓋為 null
     if (parsed.actualProgress !== null || parsed.plannedProgress !== null) {
-      const { error: e2 } = await supabase.from("progress_records").upsert({
-        project_id: projectId, report_date: logDate,
-        planned_progress: parsed.plannedProgress ?? 0,
-        actual_progress: parsed.actualProgress ?? 0,
-        notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
-      }, { onConflict: "project_id,report_date" });
-      if (e2) console.warn("progress_records:", e2.message);
+      // 保護手動修改：若已存在非零 actual_progress，略過不覆蓋
+      const { data: existProg } = await supabase.from("progress_records")
+        .select("id, actual_progress").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
+      if (existProg && Number(existProg.actual_progress) > 0) {
+        // 有手動進度資料，跳過同步覆蓋
+      } else if (existProg) {
+        const { error: e2 } = await supabase.from("progress_records").update({
+          planned_progress: parsed.plannedProgress ?? 0,
+          actual_progress: parsed.actualProgress ?? 0,
+          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+        }).eq("id", existProg.id);
+        if (e2) console.warn("progress_records:", e2.message);
+      } else {
+        const { error: e2 } = await supabase.from("progress_records").insert({
+          project_id: projectId, report_date: logDate,
+          planned_progress: parsed.plannedProgress ?? 0,
+          actual_progress: parsed.actualProgress ?? 0,
+          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+        });
+        if (e2) console.warn("progress_records:", e2.message);
+      }
     } else {
       // 進度欄位為空：寫入 0/0，但不覆蓋已有的實際進度資料
       const { data: existing } = await supabase.from("progress_records")

@@ -7,6 +7,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Footer } from './components/Footer';
 import { ProjectLayout } from './components/ProjectLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -46,6 +47,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <div className="app-container">
               <Routes>
@@ -89,6 +91,7 @@ function App() {
               </Routes>
             </div>
           </Suspense>
+          </ErrorBoundary>
         </Router>
       </AuthProvider>
     </ThemeProvider>

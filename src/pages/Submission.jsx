@@ -190,18 +190,18 @@ export function Submission() {
       const updated = prev[tab].map(r => r.id === rowId ? { ...r, [field]: editVal } : r);
       return prev.map((t, i) => i === tab ? updated : t);
     });
-    scheduleDbUpdate(rowId, { [field]: editVal });
+    scheduleDbUpdate(rowId, { [field]: editVal }, dbTable);
     setEditCell(null); setEditVal('');
   }
 
   function cancelEdit() { setEditCell(null); setEditVal(''); }
 
-  function scheduleDbUpdate(rowId, patch) {
+  function scheduleDbUpdate(rowId, patch, targetTable = dbTable) {
     if (!supabase) return;
     if (saveQueueRef.current[rowId]) clearTimeout(saveQueueRef.current[rowId]);
     saveQueueRef.current[rowId] = setTimeout(async () => {
       setSaving(true);
-      const { error } = await supabase.from(dbTable).update(patch).eq('id', rowId);
+      const { error } = await supabase.from(targetTable).update(patch).eq('id', rowId);
       if (error) console.error('update error:', error);
       setSaving(false);
       setLastSaved(new Date());

@@ -231,17 +231,21 @@ export function ProgressManagement() {
             </thead>
             <tbody>
               {records.length > 0 ? records.map((r) => {
-                const diff = (Number(r.actual_progress) - Number(r.planned_progress)).toFixed(3);
-                const ahead = parseFloat(diff) >= 0;
+                const planned = calcPlanned(r.report_date);
+                const diff = planned !== null
+                  ? (Number(r.actual_progress) - planned).toFixed(3)
+                  : '—';
+                const ahead = diff !== '—' && parseFloat(diff) >= 0;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--color-block-border)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg2)'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}
                   >
                     <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500 }}>{r.report_date}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.planned_progress).toFixed(3))}%</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{planned !== null ? parseFloat(planned.toFixed(3)) + '%' : '—'}</td>
                     <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.actual_progress).toFixed(3))}%</td>
                     <td style={{ padding: '10px 16px' }}>
+                      {diff === '—' ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
                         padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
@@ -251,6 +255,7 @@ export function ProgressManagement() {
                         {ahead ? <TrendingUp size={11} /> : parseFloat(diff) === 0 ? <Minus size={11} /> : <TrendingDown size={11} />}
                         {parseFloat(diff) > 0 ? '+' : ''}{diff}%
                       </span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.notes || '—'}

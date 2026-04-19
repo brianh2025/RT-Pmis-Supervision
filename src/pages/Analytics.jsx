@@ -49,8 +49,8 @@ export function Analytics() {
       { data: diaryRows },
       { data: inspRows },
     ] = await Promise.all([
-      supabase.from('progress_items').select('*').eq('project_id', projectId).order('created_at'),
-      supabase.from('submissions').select('status, category, created_at').eq('project_id', projectId),
+      supabase.from('progress_records').select('*').eq('project_id', projectId).order('report_date'),
+      supabase.from('mcs_submission').select('result, created_at').eq('project_id', projectId),
       supabase.from('quality_issues').select('status, severity, inspection_date').eq('project_id', projectId).order('inspection_date'),
       supabase.from('daily_logs').select('log_date, planned_progress, actual_progress').eq('project_id', projectId).order('log_date'),
       supabase.from('construction_inspections').select('result, work_item, inspect_date').eq('project_id', projectId).order('inspect_date'),
@@ -58,20 +58,21 @@ export function Analytics() {
 
     // Progress bar chart
     if (progRows && progRows.length > 0) {
-      const sorted = [...progRows].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setProgressData(sorted.map((r, i) => ({
-        name: r.name?.substring(0, 10) || `項目${i + 1}`,
-        planned: r.planned_qty || 0,
-        actual: r.actual_qty || 0,
+      setProgressData(progRows.map(r => ({
+        name: r.report_date?.substring(5) || '—',
+        planned: r.planned_progress || 0,
+        actual: r.actual_progress || 0,
       })));
     }
 
-    // Submission stats by status
+    // Submission stats by result
     if (subRows) {
-      const statusMap = {};
-      subRows.forEach(r => { statusMap[r.status] = (statusMap[r.status] || 0) + 1; });
-      const statusLabels = { pending: '待送審', submitted: '已送出', reviewing: '審查中', approved: '同意備查', rejected: '退件', revision: '補件中' };
-      setSubmissionStats(Object.entries(statusMap).map(([k, v]) => ({ name: statusLabels[k] || k, value: v })));
+      const resultMap = {};
+      subRows.forEach(r => {
+        const k = r.result || '待審查';
+        resultMap[k] = (resultMap[k] || 0) + 1;
+      });
+      setSubmissionStats(Object.entries(resultMap).map(([k, v]) => ({ name: k, value: v })));
     }
 
     // Quality stats by severity

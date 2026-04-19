@@ -290,7 +290,7 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
             </div>
 
             {/* Bottom nav */}
-            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--color-background-base)", borderTop: `1px solid ${C.border}`, padding: "8px 16px", display: "flex", gap: 8, zIndex: 50, boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" }}>
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--color-bg1)", borderTop: `1px solid ${C.border}`, padding: "8px 16px", display: "flex", gap: 8, zIndex: 50, boxShadow: "0 -2px 8px rgba(0,0,0,0.05)" }}>
                 <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     {tabIdx > 0 && (
                         <button onClick={() => setActiveTab(tabKeys[tabIdx - 1])} style={{ flex: 1, padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: "var(--color-surface)", color: C.textMid, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>

@@ -163,12 +163,15 @@ function DiaryJournalInner() {
       .then(({ data }) => { if (data) setProject(data); });
   }, [projectId]);
 
-  // ── 進頁自動背景同步 ──────────────────────────────────────────
+  // ── 進頁自動背景同步（僅近 3 天，避免重載所有歷史檔案）──────
   useEffect(() => {
     if (!project?.drive_folder_id || autoSyncedRef.current) return;
     autoSyncedRef.current = true;
     setAutoSyncing(true);
-    runBackgroundSync(projectId, project.start_date)
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 3);
+    const recentStart = recentDate.toISOString().split('T')[0];
+    runBackgroundSync(projectId, recentStart)
       .then(count => {
         if (count > 0) {
           setSyncFilled(count);
