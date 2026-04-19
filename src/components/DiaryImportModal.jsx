@@ -274,12 +274,15 @@ async function parseMonitoringPage(page, pageNum) {
   const workItemsStr = workItemsArr.join('\n') || null;
 
   // --- 5. Notes: section 二 content (excluding boilerplate) ---
-  // Collect text from x<400, y<400 that is not boilerplate and not in work table
+  // Collect text from x<400, y<400 that is not boilerplate and not a table row
+  
+  // Create a set of all Y coordinates used in the table section to exclude them
+  const tableYCoords = new Set(tableItems.map(i => i.y));
+  
   const noteItems = items.filter(i =>
     i.y < 450 && i.y > 50 &&
     !isBoilerplate(i.str) &&
-    !nameItems.some(n => n.y === i.y) &&
-    !todayItems.some(t => t.y === i.y) &&
+    !tableYCoords.has(i.y) &&
     i.str.length > 2
   ).sort((a,b) => b.y - a.y || a.x - b.x);
   
