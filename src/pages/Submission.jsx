@@ -137,11 +137,16 @@ export function Submission() {
 
   async function addRow() {
     if (!supabase) return;
-    const newRow = { ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: Math.max(...rows.map(r => r.sort_order ?? 0), -1) + 1 };
-    cols.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });
-    const { data, error } = await supabase.from(dbTable).insert([newRow]).select().single();
-    if (error) { console.error(error); return; }
-    setTables(prev => prev.map((t, i) => i === tab ? [...t, { ...data, _localId: data.id }] : t));
+    try {
+      const newRow = { ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: Math.max(...rows.map(r => r.sort_order ?? 0), -1) + 1 };
+      cols.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });
+      const { data, error } = await supabase.from(dbTable).insert([newRow]).select().single();
+      if (error) throw error;
+      setTables(prev => prev.map((t, i) => i === tab ? [...t, { ...data, _localId: data.id }] : t));
+    } catch (err) {
+      console.error('新增資料列失敗:', err);
+      alert(`新增失敗：${err.message || '未知錯誤'}`);
+    }
   }
 
   async function deleteSel() {

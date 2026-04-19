@@ -320,23 +320,59 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
       const datesToClean = mappedRows.map(r => r.log_date);
 
       // Step 1: Delete existing records for these dates to avoid unique constraint error
-      const { error: delError } = await supabase
-        .from('daily_logs')
-        .delete()
-        .eq('project_id', projectId)
-        .in('log_date', datesToClean);
+      await Promise.all([
+        supabase.from('daily_logs').delete().eq('project_id', projectId).in('log_date', datesToClean),
+        supabase.from('daily_report_items').delete().eq('project_id', projectId).in('log_date', datesToClean),
+        supabase.from('progress_records').delete().eq('project_id', projectId).in('report_date', datesToClean),
+      ]);
 
-      if (delError) {
-        throw new Error('清理舊資料失敗：' + delError.message);
-      }
-
-      // Step 2: Insert new records
+      // Step 2: Insert new daily_logs records
       const { error: insError } = await supabase
         .from('daily_logs')
         .insert(payload);
 
       if (insError) {
-        throw new Error('寫入資料失敗：' + insError.message);
+        throw new Error('寫入日誌失敗：' + insError.message);
+      }
+
+      // Step 3: Upsert progress_records (fixes Dashboard/Analytics data chain)
+      const progressPayload = mappedRows
+        .filter(r => r.planned_progress > 0 || r.actual_progress > 0)
+        .map(r => ({
+          project_id: projectId,
+          report_date: r.log_date,
+          planned_progress: r.planned_progress || 0,
+          actual_progress: r.actual_progress || 0,
+        }));
+      if (progressPayload.length) {
+        const { error: progErr } = await supabase.from('progress_records').insert(progressPayload);
+        if (progErr) console.error('寫入 progress_records 失敗:', progErr.message);
+      }
+
+      // Step 4: Parse work_items text → daily_report_items rows
+      const itemPayload = [];
+      for (const r of mappedRows) {
+        if (!r.work_items) continue;
+        r.work_items.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          const m = trimmed.match(/^(.+?)：([\d.]+)\s*(.*)$/);
+          if (m) {
+            itemPayload.push({
+              project_id: projectId,
+              log_date: r.log_date,
+              item_name: m[1].trim(),
+              unit: m[3].trim() || null,
+              today_qty: parseFloat(m[2]) || 0,
+              cumulative_qty: 0,
+              note: null,
+            });
+          }
+        });
+      }
+      if (itemPayload.length) {
+        const { error: itemErr } = await supabase.from('daily_report_items').insert(itemPayload);
+        if (itemErr) console.error('寫入 daily_report_items 失敗:', itemErr.message);
       }
 
       setDone(true);
@@ -344,7 +380,6 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
 
     } catch (err) {
       console.error('Import Exception:', err);
-      // Only keep error alert for user feedback
       alert(err.message);
       setErrors([err.message]);
     } finally {

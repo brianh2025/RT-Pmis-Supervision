@@ -166,35 +166,33 @@ function DiaryLogInner() {
   const selectedReport = selectedKey ? (reports.find(r => r.date === selectedKey) ?? null) : null;
   const importedCount  = Object.keys(importedData).length;
 
-  // 選擇日期時，從施工日誌（DB + localStorage）預取資料供「從施工日誌帶出」使用
+  // 選擇日期時，從 Supabase 預取資料供「從施工日誌帶出」使用
   const fetchDiaryInitialData = async (dateKey) => {
     if (diaryDataCache[dateKey] !== undefined) return;
 
-    // 1. 先查 daily_report_items（Drive 同步寫入的工項）
-    const { data: dbItems } = await supabase
-      .from('daily_report_items')
-      .select('item_name, unit, today_qty')
-      .eq('project_id', projectId)
-      .eq('log_date', dateKey);
+    // 查 daily_report_items（Drive 同步寫入的工項）
+    const [{ data: dbItems }, { data: log }] = await Promise.all([
+      supabase
+        .from('daily_report_items')
+        .select('item_name, unit, today_qty')
+        .eq('project_id', projectId)
+        .eq('log_date', dateKey),
+      supabase
+        .from('daily_logs')
+        .select('weather_am, weather_pm, notes, planned_progress, actual_progress, work_items')
+        .eq('project_id', projectId)
+        .eq('log_date', dateKey)
+        .maybeSingle(),
+    ]);
 
-    // 2. 再查 localStorage（手動建立的施工日誌）
-    let localMatch = null;
-    try {
-      const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
-      localMatch = stored.find(r => r.date === dateKey) || null;
-    } catch {}
-
-    // 3. 組合工項文字
+    // 組合工項文字
     const dbWorkText = (dbItems || [])
       .map(it => `${it.item_name}：${it.today_qty} ${it.unit || ''}`.trim())
       .join('\n');
-    const localWorkText = localMatch
-      ? [...(localMatch.quantities || []).map(q => `${q.item}：${q.todayQty} ${q.unit}`).filter(s => s.trim() !== '：'), localMatch.specialNote]
-          .filter(Boolean).join('\n')
-      : '';
+    const logWorkText = log?.work_items || '';
 
-    const workText = dbWorkText || localWorkText;
-    if (!workText && !localMatch) {
+    const workText = dbWorkText || logWorkText;
+    if (!workText && !log) {
       setDiaryDataCache(prev => ({ ...prev, [dateKey]: null }));
       return;
     }
@@ -202,12 +200,12 @@ function DiaryLogInner() {
     setDiaryDataCache(prev => ({
       ...prev,
       [dateKey]: {
-        weather_am: localMatch?.weather || '晴',
-        weather_pm: localMatch?.weather || '晴',
+        weather_am: log?.weather_am || '晴',
+        weather_pm: log?.weather_pm || '晴',
         work_items: workText,
-        notes: localMatch?.progressNote || '',
-        planned_progress: localMatch?.plannedProgress || null,
-        actual_progress:  localMatch?.actualProgress  || null,
+        notes: log?.notes || '',
+        planned_progress: log?.planned_progress || null,
+        actual_progress:  log?.actual_progress  || null,
       },
     }));
   };

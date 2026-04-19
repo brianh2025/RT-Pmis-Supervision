@@ -119,12 +119,18 @@ export function Quality() {
   async function addInspection() {
     if (!supabase || !inspForm.work_item.trim()) return;
     setSaving(true);
-    const { data } = await supabase.from('construction_inspections').insert([{
-      project_id: projectId, created_by: user?.id, ...inspForm,
-    }]).select().single();
-    if (data) setInspections(prev => [data, ...prev]);
-    setShowInspModal(false);
-    setInspForm({ ...EMPTY_INSPECT });
+    try {
+      const { data, error } = await supabase.from('construction_inspections').insert([{
+        project_id: projectId, created_by: user?.id, ...inspForm,
+      }]).select().single();
+      if (error) throw error;
+      if (data) setInspections(prev => [data, ...prev]);
+      setShowInspModal(false);
+      setInspForm({ ...EMPTY_INSPECT });
+    } catch (err) {
+      console.error('新增檢驗失敗:', err);
+      alert(`新增檢驗失敗：${err.message || '未知錯誤'}`);
+    }
     setSaving(false);
   }
 
@@ -139,13 +145,19 @@ export function Quality() {
   async function addIssue() {
     if (!supabase || !issueForm.item.trim()) return;
     setSaving(true);
-    const { data } = await supabase.from('quality_issues').insert([{
-      project_id: projectId, created_by: user?.id, status: 'open',
-      ...issueForm, deadline: issueForm.deadline || null,
-    }]).select().single();
-    if (data) setIssues(prev => [data, ...prev]);
-    setShowIssueModal(false);
-    setIssueForm({ ...EMPTY_QUALITY });
+    try {
+      const { data, error } = await supabase.from('quality_issues').insert([{
+        project_id: projectId, created_by: user?.id, status: 'open',
+        ...issueForm, deadline: issueForm.deadline || null,
+      }]).select().single();
+      if (error) throw error;
+      if (data) setIssues(prev => [data, ...prev]);
+      setShowIssueModal(false);
+      setIssueForm({ ...EMPTY_QUALITY });
+    } catch (err) {
+      console.error('新增缺失失敗:', err);
+      alert(`新增缺失失敗：${err.message || '未知錯誤'}`);
+    }
     setSaving(false);
   }
 

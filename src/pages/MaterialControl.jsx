@@ -159,17 +159,22 @@ export function MaterialControl() {
 
   async function addRow() {
     if (!supabase) return;
-    let newRow;
-    if (tab === 0) {
-      newRow = { project_id: projectId, created_by: user?.id, entry_date: new Date().toISOString().split('T')[0], name: '', spec: '', qty: '', vendor: '', inspector: '', remark: '' };
-    } else {
-      newRow = { ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: tstRows.length };
-      TST_COLS.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });
+    try {
+      let newRow;
+      if (tab === 0) {
+        newRow = { project_id: projectId, created_by: user?.id, entry_date: new Date().toISOString().split('T')[0], name: '', spec: '', qty: '', vendor: '', inspector: '', remark: '' };
+      } else {
+        newRow = { ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: tstRows.length };
+        TST_COLS.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });
+      }
+      const { data, error } = await supabase.from(dbTable).insert([newRow]).select().single();
+      if (error) throw error;
+      if (tab === 0) setEntries(prev => [data, ...prev]);
+      else setTstRows(prev => [...prev, data]);
+    } catch (err) {
+      console.error('新增資料列失敗:', err);
+      alert(`新增失敗：${err.message || '未知錯誤'}`);
     }
-    const { data, error } = await supabase.from(dbTable).insert([newRow]).select().single();
-    if (error) { console.error(error); return; }
-    if (tab === 0) setEntries(prev => [data, ...prev]);
-    else setTstRows(prev => [...prev, data]);
   }
 
   async function deleteSel() {

@@ -290,10 +290,6 @@ function DiaryJournalInner() {
       supabase.from('daily_report_items').delete().eq('project_id', projectId).eq('log_date', selectedKey),
       supabase.from('progress_records').delete().eq('project_id', projectId).eq('report_date', selectedKey),
     ]);
-    try {
-      const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
-      localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(stored.filter(r => r.date !== selectedKey)));
-    } catch {}
     setSelectedKey(null);
     setRefreshKey(k => k + 1);
     refreshReports();

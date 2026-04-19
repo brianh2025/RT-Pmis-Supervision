@@ -112,8 +112,8 @@ export function DailyReportForm({ existing, onSave, onBack, projectId, project }
                                 <Field label="預定進度 (%)">
                                     <input type="number" style={tisStyle} value={form.plannedProgress} onChange={e => set("plannedProgress", parseFloat(e.target.value) || 0)} />
                                 </Field>
-                                <Field label="實際進度 (%)">
-                                    <input type="number" style={tisStyle} value={form.actualProgress} onChange={e => set("actualProgress", parseFloat(e.target.value) || 0)} />
+                                <Field label="實際進度 (%) 🔒 由 PDF 匯入">
+                                    <input type="number" style={{ ...tisStyle, background: 'var(--color-bg2)', opacity: 0.7, cursor: 'not-allowed' }} value={form.actualProgress} readOnly title="實際進度僅能由官方 PDF 匯入更新" />
                                 </Field>
                             </div>
                             <div style={{ marginBottom: 14 }}>

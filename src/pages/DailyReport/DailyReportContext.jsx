@@ -1,142 +1,175 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
 export const DailyReportContext = createContext();
 
-// 將 daily_report_items（Supabase）合併進對應的 report
-function mergeItems(reports, itemsByDate) {
-    return reports.map(r => {
-        const dbItems = itemsByDate[r.date] || [];
-        if (!dbItems.length) return r;
-        // 轉換成 DailyReportForm 的 quantities 格式
-        const quantities = dbItems.map((it, i) => ({
-            id: it.id || i + 1,
-            item: it.item_name,
-            unit: it.unit || '',
-            contractQty: 0,
-            todayQty: it.today_qty != null ? parseFloat(it.today_qty.toFixed(3)) : 0,
-            cumQty: it.cumulative_qty != null ? parseFloat(it.cumulative_qty.toFixed(3)) : 0,
-            note: it.note || '',
-        }));
-        return { ...r, quantities };
-    });
+// ---------------------------------------------------------------------------
+// Build a DailyReportForm-compatible report object from DB records
+// ---------------------------------------------------------------------------
+function buildReport(date, log, items, progressRec) {
+    // progress priority: progress_records > daily_logs > 0
+    const planned = progressRec?.planned_progress ?? log?.planned_progress ?? 0;
+    const actual  = progressRec?.actual_progress  ?? log?.actual_progress  ?? 0;
+
+    const weatherStr = log?.weather_am
+        ? (log.weather_pm && log.weather_pm !== log.weather_am
+            ? `${log.weather_am}/${log.weather_pm}`
+            : log.weather_am)
+        : '晴';
+
+    // Convert daily_report_items → quantities array
+    const quantities = (items || []).map((it, i) => ({
+        id: it.id || i + 1,
+        item: it.item_name,
+        unit: it.unit || '',
+        contractQty: 0,
+        todayQty: it.today_qty != null ? parseFloat(Number(it.today_qty).toFixed(3)) : 0,
+        cumQty: it.cumulative_qty != null ? parseFloat(Number(it.cumulative_qty).toFixed(3)) : 0,
+        note: it.note || '',
+    }));
+
+    // If no daily_report_items but daily_logs has work_items text, parse it
+    if (quantities.length === 0 && log?.work_items) {
+        log.work_items.split('\n')
+            .map(line => line.trim()).filter(Boolean)
+            .forEach((line, i) => {
+                const m = line.match(/^(.+?)：([\d.]+)\s*(.*)$/);
+                if (m) {
+                    quantities.push({ id: i + 1, item: m[1].trim(), unit: m[3].trim(), contractQty: 0, todayQty: parseFloat(m[2]) || 0, cumQty: 0, note: '' });
+                } else {
+                    quantities.push({ id: i + 1, item: line, unit: '', contractQty: 0, todayQty: 0, cumQty: 0, note: '' });
+                }
+            });
+    }
+
+    // Parse form_data JSONB for extra fields saved from the form
+    const fd = log?.form_data || {};
+
+    return {
+        id: log?.id || `db-${date}`,
+        project_id: log?.project_id,
+        date,
+        reportNo: fd.reportNo || `Drive-${date}`,
+        weather: weatherStr,
+        tempHigh: fd.tempHigh ?? 0,
+        tempLow: fd.tempLow ?? 0,
+        supervisor: fd.supervisor || '',
+        contractor: fd.contractor || '',
+        plannedProgress: planned,
+        actualProgress: actual,
+        progressNote: log?.notes || '',
+        quantities,
+        inspections: fd.inspections || [],
+        qualityTests: fd.qualityTests || [],
+        documents: fd.documents || [],
+        specialNote: fd.specialNote || '',
+    };
 }
 
 export function DailyReportProvider({ children, projectId }) {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
+    const { user } = useAuth();
     const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
     useEffect(() => {
         async function init() {
-            // 1. 從 localStorage 讀取手動建立的報表
-            let localReports = [];
+            setLoading(true);
             try {
-                const saved = localStorage.getItem(`daily_reports_${projectId}`);
-                if (saved) localReports = JSON.parse(saved);
-            } catch {}
+                // Parallel fetch all relevant tables
+                const [{ data: logsData }, { data: dbItems }, { data: progressData }] = await Promise.all([
+                    supabase.from('daily_logs')
+                        .select('*')
+                        .eq('project_id', projectId)
+                        .order('log_date', { ascending: true }),
+                    supabase.from('daily_report_items')
+                        .select('*')
+                        .eq('project_id', projectId)
+                        .order('log_date', { ascending: false }),
+                    supabase.from('progress_records')
+                        .select('report_date, planned_progress, actual_progress')
+                        .eq('project_id', projectId),
+                ]);
 
-            // 2. 從 Supabase 並行讀取工項明細 + progress_records + daily_logs（進度來源三選一）
-            const [{ data: dbItems }, { data: progressData }, { data: logsData }] = await Promise.all([
-                supabase.from('daily_report_items').select('*').eq('project_id', projectId).order('log_date', { ascending: false }),
-                supabase.from('progress_records').select('report_date, planned_progress, actual_progress').eq('project_id', projectId),
-                supabase.from('daily_logs').select('log_date, planned_progress, actual_progress, weather_am, weather_pm, notes, work_items').eq('project_id', projectId),
-            ]);
+                // Group items by date
+                const itemsByDate = {};
+                (dbItems || []).forEach(it => {
+                    if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
+                    itemsByDate[it.log_date].push(it);
+                });
 
-            // 按日期分組
-            const itemsByDate = {};
-            (dbItems || []).forEach(it => {
-                if (!itemsByDate[it.log_date]) itemsByDate[it.log_date] = [];
-                itemsByDate[it.log_date].push(it);
-            });
-            // daily_logs 按日期建查詢表（含天氣/備註）
-            const logsByDate = {};
-            (logsData || []).forEach(l => { logsByDate[l.log_date] = l; });
-            // progress_records 優先，daily_logs 為 fallback
-            const progressByDate = {};
-            (logsData || []).forEach(l => {
-                if (l.actual_progress != null || l.planned_progress != null)
-                    progressByDate[l.log_date] = { planned_progress: l.planned_progress, actual_progress: l.actual_progress };
-            });
-            (progressData || []).forEach(p => { progressByDate[p.report_date] = p; }); // 覆寫
+                // Group progress by date
+                const progressByDate = {};
+                (progressData || []).forEach(p => { progressByDate[p.report_date] = p; });
 
-            // 3. 合併：local 報表 + DB 工項；DB 有但 local 沒有的日期，建立骨架
-            const localDates = new Set(localReports.map(r => r.date));
-            // 同時收錄 daily_report_items 與 daily_logs 的日期
-            const allDbDates = new Set([
-                ...Object.keys(itemsByDate),
-                ...(logsData || []).map(l => l.log_date),
-            ]);
-            const dbOnlyDates = [...allDbDates].filter(d => !localDates.has(d));
-            const dbOnlyReports = dbOnlyDates.map(date => {
-                const log = logsByDate[date];
-                const weatherStr = log?.weather_am
-                    ? (log.weather_pm && log.weather_pm !== log.weather_am
-                        ? `${log.weather_am}/${log.weather_pm}`
-                        : log.weather_am)
-                    : '晴';
-                // 將 work_items 文字（格式："工項名稱：qty unit"，每行一筆）轉換為 quantities
-                const quantities = (log?.work_items || '').split('\n')
-                    .map(line => line.trim()).filter(Boolean)
-                    .map((line, i) => {
-                        const m = line.match(/^(.+?)：([\d.]+)\s*(.*)$/);
-                        if (m) return { id: i + 1, item: m[1].trim(), unit: m[3].trim(), contractQty: 0, todayQty: parseFloat(m[2]) || 0, cumQty: 0, note: '' };
-                        return { id: i + 1, item: line, unit: '', contractQty: 0, todayQty: 0, cumQty: 0, note: '' };
-                    });
-                return {
-                    id: `db-${date}`,
-                    project_id: projectId,
-                    date,
-                    reportNo: `Drive-${date}`,
-                    weather: weatherStr,
-                    tempHigh: 0, tempLow: 0,
-                    supervisor: '', contractor: '',
-                    plannedProgress: progressByDate[date]?.planned_progress || 0,
-                    actualProgress:  progressByDate[date]?.actual_progress  || 0,
-                    progressNote: log?.notes || '',
-                    quantities,
-                    inspections: [], qualityTests: [], documents: [],
-                    specialNote: '',
-                };
-            });
+                // Collect all unique dates from logs + items
+                const allDates = new Set([
+                    ...(logsData || []).map(l => l.log_date),
+                    ...Object.keys(itemsByDate),
+                ]);
 
-            // 4. 對 local 報表：若本身沒有進度，也從 progress_records 回填
-            const localWithProgress = localReports.map(r => {
-                const prog = progressByDate[r.date];
-                if (!prog) return r;
-                return {
-                    ...r,
-                    plannedProgress: r.plannedProgress || prog.planned_progress || 0,
-                    actualProgress:  r.actualProgress  || prog.actual_progress  || 0,
-                };
-            });
+                // Build log lookup
+                const logsByDate = {};
+                (logsData || []).forEach(l => { logsByDate[l.log_date] = l; });
 
-            const allReports = mergeItems(
-                [...localWithProgress, ...dbOnlyReports],
-                itemsByDate
-            ).sort((a, b) => a.date.localeCompare(b.date));
+                // Build report objects
+                const allReports = [...allDates]
+                    .sort()
+                    .map(date => buildReport(
+                        date,
+                        logsByDate[date] || null,
+                        itemsByDate[date] || [],
+                        progressByDate[date] || null,
+                    ));
 
-            setReports(allReports);
+                setReports(allReports);
+            } catch (err) {
+                console.error('DailyReportContext init error:', err);
+            }
             setLoading(false);
         }
         if (projectId) init();
     }, [projectId, refreshKey]);
 
+    // ---------------------------------------------------------------------------
+    // Save a report: write to all relevant Supabase tables (NO localStorage)
+    // ---------------------------------------------------------------------------
     const saveReport = async (form) => {
-        // 更新 localStorage
-        setReports(prev => {
-            const exists = prev.find(r => r.id === form.id);
-            const newList = exists ? prev.map(r => r.id === form.id ? form : r) : [...prev, form];
-            // 只存 local（非 DB 骨架）記錄
-            const toStore = newList.filter(r => !r.id.startsWith('db-'));
-            localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(toStore));
-            return newList;
-        });
-
         const writes = [];
 
-        // 同步工項至 Supabase daily_report_items
+        // 1. Upsert daily_logs — basic info + form_data JSONB for extra fields
+        const logPayload = {
+            project_id: projectId,
+            log_date: form.date,
+            weather_am: form.weather?.split('/')[0]?.trim() || form.weather || null,
+            weather_pm: form.weather?.split('/')[1]?.trim() || form.weather?.split('/')[0]?.trim() || null,
+            notes: form.progressNote || null,
+            work_items: (form.quantities || [])
+                .filter(q => q.item?.trim())
+                .map(q => `${q.item}：${q.todayQty} ${q.unit || ''}`.trim())
+                .join('\n') || null,
+            planned_progress: form.plannedProgress || 0,
+            actual_progress: form.actualProgress || 0,
+            created_by: user?.id || null,
+            form_data: {
+                reportNo: form.reportNo,
+                tempHigh: form.tempHigh,
+                tempLow: form.tempLow,
+                supervisor: form.supervisor,
+                contractor: form.contractor,
+                inspections: form.inspections || [],
+                qualityTests: form.qualityTests || [],
+                documents: form.documents || [],
+                specialNote: form.specialNote || '',
+            },
+        };
+        writes.push(
+            supabase.from('daily_logs').upsert(logPayload, { onConflict: 'project_id,log_date' })
+        );
+
+        // 2. Sync quantities → daily_report_items
         if (form.quantities?.length > 0) {
             const payload = form.quantities
                 .filter(q => q.item?.trim())
@@ -150,40 +183,53 @@ export function DailyReportProvider({ children, projectId }) {
                     note: q.note || null,
                 }));
             if (payload.length) {
+                // Delete old items for this date first, then insert fresh
                 writes.push(
-                    supabase.from('daily_report_items').upsert(payload, { onConflict: 'project_id,log_date,item_name' })
+                    supabase.from('daily_report_items')
+                        .delete()
+                        .eq('project_id', projectId)
+                        .eq('log_date', form.date)
+                        .then(() =>
+                            supabase.from('daily_report_items').insert(payload)
+                        )
                 );
             }
         }
 
-        // 同步進度至 progress_records（儀表板與進度管理共用）
+        // 3. Sync progress → progress_records
         if (form.actualProgress > 0 || form.plannedProgress > 0) {
             writes.push(
                 supabase.from('progress_records').upsert({
                     project_id: projectId,
                     report_date: form.date,
                     planned_progress: form.plannedProgress || 0,
-                    actual_progress:  form.actualProgress  || 0,
+                    actual_progress: form.actualProgress || 0,
                 }, { onConflict: 'project_id,report_date' })
             );
         }
 
-        if (writes.length) await Promise.all(writes);
+        const results = await Promise.allSettled(writes);
+        const errors = results.filter(r => r.status === 'rejected' || r.value?.error);
+        if (errors.length) {
+            console.error('saveReport errors:', errors);
+            alert(`儲存部分失敗，請檢查主控台。(${errors.length} 錯誤)`);
+        }
+
+        // Refresh local state
+        refresh();
     };
 
+    // ---------------------------------------------------------------------------
+    // Delete a report by date (NO localStorage)
+    // ---------------------------------------------------------------------------
     const deleteReport = async (date) => {
-        // 1. 從 Supabase 刪除
         await Promise.all([
             supabase.from('daily_report_items').delete().eq('project_id', projectId).eq('log_date', date),
             supabase.from('daily_logs').delete().eq('project_id', projectId).eq('log_date', date),
             supabase.from('progress_records').delete().eq('project_id', projectId).eq('report_date', date),
         ]);
-        // 2. 從 localStorage 刪除
-        const stored = JSON.parse(localStorage.getItem(`daily_reports_${projectId}`) || '[]');
-        const filtered = stored.filter(r => r.date !== date);
-        localStorage.setItem(`daily_reports_${projectId}`, JSON.stringify(filtered));
-        // 3. 更新狀態
-        setReports(prev => prev.filter(r => r.date !== date));
+        // Refresh local state
+        refresh();
     };
 
     return (
