@@ -325,7 +325,7 @@ export function Quality() {
           <div className="mcs-tabs">
             {TNAMES.map((n, i) => (
               <button key={i} className={`mcs-tab${tab === i ? ' active' : ''}`}
-                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); }}>
+                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); setTestFilter('all'); }}>
                 {n}
               </button>
             ))}

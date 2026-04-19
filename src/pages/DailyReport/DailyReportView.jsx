@@ -20,7 +20,7 @@ function fmtPct(v) {
 
 export function DailyReportView({ report, onBack, onEdit, supervision = false }) {
     const [tab, setTab] = useState("progress");
-    const diff = parseFloat((report.actualProgress - report.plannedProgress).toFixed(2));
+    const diff = parseFloat(((report.actualProgress ?? 0) - (report.plannedProgress ?? 0)).toFixed(2));
     const ahead = diff >= 0;
     const docTitle  = supervision ? '監造報表' : '施工日誌';
     const editLabel = supervision ? '前往施工日誌編輯' : '編輯此施工日誌';

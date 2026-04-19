@@ -119,7 +119,7 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label"><span>預算（元）</span><span className="en">BUDGET (NTD)</span></label>
-              <input type="text" inputMode="numeric" name="budget" className="form-input" value={form.budget ? Number(form.budget).toLocaleString('zh-TW') : ''} onChange={handleChange} placeholder="例：52,000,000" />
+              <input type="text" inputMode="numeric" name="budget" className="form-input" value={form.budget ?? ''} onChange={handleChange} placeholder="例：52,000,000" />
             </div>
             <div className="form-group">
               <label className="form-label"><span>狀態</span><span className="en">STATUS</span></label>

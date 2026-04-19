@@ -10,6 +10,8 @@ export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
     if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>載入中...</div>;
 
     const thisMonthReports = reports.filter(r => r.date.startsWith(month)).length;
+    const daysElapsed = new Date().getDate();
+    const missingDays = Math.max(0, daysElapsed - thisMonthReports);
 
     return (
         <div style={{ background: 'transparent' }}>
@@ -19,7 +21,7 @@ export function DailyReportList({ onSelectReport, onNewReport, onImport }) {
                     {[
                         { label: "日報總數", value: reports.length, color: C.primary },
                         { label: "本月填報", value: thisMonthReports, color: C.success },
-                        { label: "缺報天數", value: 0, color: C.textMuted },
+                        { label: "缺報天數", value: missingDays, color: missingDays > 0 ? C.danger : C.textMuted },
                     ].map((s, idx) => (
                         <div key={s.label} style={{
                             background: "var(--color-surface)",

@@ -22,7 +22,7 @@ export function DiaryPrintView() {
         .eq('id', projectId)
         .single();
         
-      if (projErr) { setError('讀取工程資料失敗'); return; }
+      if (projErr) { setLoading(false); setError('讀取工程資料失敗'); return; }
       setProject(proj);
 
       const { data: logData, error: logErr } = await supabase
@@ -31,8 +31,8 @@ export function DiaryPrintView() {
         .eq('project_id', projectId)
         .eq('log_date', logDate)
         .single();
-        
-      if (logErr) { setError('讀取日誌資料失敗'); return; }
+
+      if (logErr) { setLoading(false); setError('讀取日誌資料失敗'); return; }
       setLog(logData);
       
       setLoading(false);
@@ -49,7 +49,7 @@ export function DiaryPrintView() {
   if (error) return <div className="print-error">{error}</div>;
 
   // Formatting date to ROC year (ex: 114 / 2 / 28)
-  const d = new Date(log.log_date);
+  const d = log.log_date ? new Date(log.log_date) : new Date();
   const rocYear = d.getFullYear() - 1911;
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -86,7 +86,7 @@ export function DiaryPrintView() {
             <div className="meta-item meta-label">工程名稱</div>
             <div className="meta-item">{project.name}</div>
             <div className="meta-item meta-label">工程編號</div>
-            <div className="meta-item">（尚未編號）</div>
+            <div className="meta-item">{project.project_no || '—'}</div>
           </div>
 
           <table className="sheet-table border-top-none">
@@ -145,7 +145,7 @@ export function DiaryPrintView() {
                     </thead>
                     <tbody>
                       {workRows.length > 0 ? workRows.map((line, idx) => {
-                        const parts = line.split(/[： ]/);
+                        const parts = line.split(/[：:]/);
                         const name = parts[0] || line;
                         const qty = parts[1] || '—';
                         const unit = parts[2] || '';

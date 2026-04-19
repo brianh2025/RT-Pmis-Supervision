@@ -259,8 +259,8 @@ export function ProjectDashboard() {
             </div>
           )}
         </div>
-        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : 'suspended'}`}>
-          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : '暫停'}
+        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
+          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
         </span>
       </div>
 
@@ -463,8 +463,10 @@ export function ProjectDashboard() {
                 <div className="proj-info-field">
                   <label>狀態</label>
                   <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="pending">未發包</option>
                     <option value="active">執行中</option>
                     <option value="completed">已完工</option>
+                    <option value="accepted">已竣工</option>
                     <option value="suspended">暫停</option>
                   </select>
                 </div>

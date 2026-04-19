@@ -40,8 +40,8 @@ export function useProjects() {
             .filter(r => r.actual_progress > 0)
             .sort((a, b) => new Date(b.report_date) - new Date(a.report_date))[0] ?? null;
           if (latest) {
-            latest.actual_progress  = parseFloat(latest.actual_progress.toFixed(2));
-            latest.planned_progress = parseFloat(latest.planned_progress.toFixed(2));
+            if (latest.actual_progress != null)  latest.actual_progress  = parseFloat(latest.actual_progress.toFixed(2));
+            if (latest.planned_progress != null) latest.planned_progress = parseFloat(latest.planned_progress.toFixed(2));
           }
           return { ...project, latest_progress: latest };
         });

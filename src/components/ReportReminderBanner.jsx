@@ -30,7 +30,7 @@ export function ReportReminderBanner({ projectId }) {
           .select('status')
           .eq('project_id', projectId)
           .eq('report_month', lastMonthKey)
-          .single();
+          .maybeSingle();
 
         const deadline = `${year}/${String(month + 1).padStart(2, '0')}/05`;
 
