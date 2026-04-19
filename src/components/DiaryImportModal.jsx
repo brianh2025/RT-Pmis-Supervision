@@ -65,7 +65,8 @@ async function extractPageItems(page) {
 // ---------------------------------------------------------------------------
 function parseDate(raw) {
   if (!raw) return null;
-  let s = String(raw).trim()
+  // Remove all spaces and normalize delimiters
+  let s = String(raw).replace(/\s+/g, '')
     .replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
     .trim();
   // ROC: 2~3 digit year like 113-05-12 or 99-05-12
@@ -97,10 +98,10 @@ async function parseMonitoringPage(page, pageNum) {
   console.log(`[PDF Parser] Page ${pageNum} — total items:`, items.length);
   console.log(`[PDF Parser] Page ${pageNum} — first 15 items:`, items.slice(0, 15).map(i => `(${i.x},${i.y})"${i.str}"`));
 
-  // Quick check: must contain "公共工程監造報表" to be a log page
+  // Quick check: must contain "公共工程監造報表" OR "施工日誌" to be a valid log page
   // Use regex to allow spaces between characters which sometimes happens in PDF extraction
-  if (!/公共\s*工程\s*監造\s*報表/.test(allText)) {
-    console.warn(`[PDF Parser] Page ${pageNum} — SKIP: 未找到「公共工程監造報表」標題`);
+  if (!/公共\s*工程\s*監造\s*報表/.test(allText) && !/施工日誌/.test(allText)) {
+    console.warn(`[PDF Parser] Page ${pageNum} — SKIP: 未找到「公共工程監造報表」或「施工日誌」標題`);
     // Also try looser match
     const hasPublic = allText.includes('公共');
     const hasEngineering = allText.includes('工程');
@@ -157,58 +158,120 @@ async function parseMonitoringPage(page, pageNum) {
   console.log(`[PDF Parser] Page ${pageNum} — resolved logDate:`, logDate);
   if (!logDate) return null;
 
-  // --- 2. Weather (y≈770, "上午" x≈386, value x≈427; "下午" x≈474, value x≈531) ---
-  const weatherItems = items.filter(i => Math.abs(i.y - (dateLabelItem?.y ?? 770)) <= 5);
-  const amIdx = weatherItems.findIndex(i => i.str === '上午');
-  const pmIdx = weatherItems.findIndex(i => i.str === '下午');
-  weatherItems.sort((a, b) => a.x - b.x);
-  
-  const VALID_WEATHER = ['晴', '多雲', '陰', '小雨', '中雨', '大雨', '颱風'];
+  // --- 2. Weather ---
+  const VALID_WEATHER = ['晴', '多雲', '陰', '小雨', '中雨', '大雨', '颱風', '豪雨'];
   let weatherAm = null;
   let weatherPm = null;
-  if (amIdx >= 0) {
-    const amItem = weatherItems.find(i => i.str === '上午');
-    const afterAm = weatherItems.filter(i => i.x > (amItem?.x ?? 0) + 10).sort((a,b) => a.x - b.x);
-    weatherAm = afterAm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
-  }
-  if (pmIdx >= 0) {
-    const pmItem = weatherItems.find(i => i.str === '下午');
-    const afterPm = weatherItems.filter(i => i.x > (pmItem?.x ?? 0) + 10).sort((a,b) => a.x - b.x);
-    weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
+
+  // Find items containing '上午' and '下午'
+  const amItem = items.find(i => i.str.includes('上午'));
+  const pmItem = items.find(i => i.str.includes('下午'));
+
+  if (amItem) {
+    // Check if weather is embedded (e.g. "上午：晴")
+    const embeddedMatch = amItem.str.match(/(?:上午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
+    if (embeddedMatch) {
+      weatherAm = embeddedMatch[1];
+    } else {
+      // Look for the weather word to the right (same y ± 5)
+      const afterAm = items.filter(i => Math.abs(i.y - amItem.y) <= 5 && i.x > amItem.x).sort((a,b) => a.x - b.x);
+      weatherAm = afterAm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
+    }
   }
 
-  // --- 3. Progress (y≈745, "預定" → next float; "實際" → next float) ---
-  const progItems = items.filter(i => i.y >= 742 && i.y <= 750).sort((a,b) => a.x - b.x);
+  if (pmItem) {
+    const embeddedMatch = pmItem.str.match(/(?:下午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
+    if (embeddedMatch) {
+      weatherPm = embeddedMatch[1];
+    } else {
+      const afterPm = items.filter(i => Math.abs(i.y - pmItem.y) <= 5 && i.x > pmItem.x).sort((a,b) => a.x - b.x);
+      weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
+    }
+  }
+
+  // --- 3. Progress ---
   let plannedProgress = null;
   let actualProgress = null;
-  const predIdx = progItems.findIndex(i => i.str === '預定');
-  const actIdx  = progItems.findIndex(i => i.str === '實際');
-  if (predIdx >= 0) plannedProgress = parseFloat(progItems[predIdx + 1]?.str) || null;
-  if (actIdx >= 0)  actualProgress  = parseFloat(progItems[actIdx  + 1]?.str) || null;
+  
+  // Find labels for progress anywhere on the page
+  const predLabel = items.find(i => i.str.includes('預定進度') || i.str.includes('預定'));
+  const actLabel = items.find(i => i.str.includes('實際進度') || i.str.includes('實際'));
 
-  // --- 4. Work Items Matrix (y < 733, x≈83=name, x≈486=today qty, x≈541=cumulative qty) ---
-  // Collect rows: items with x around 83±30 are work item names
-  const workItemRows = {};
-  const nameItems  = items.filter(i => i.y < 733 && i.y > 50 && i.x >= 60 && i.x <= 160 && !isBoilerplate(i.str));
-  const todayItems = items.filter(i => i.y < 733 && i.y > 50 && i.x >= 455 && i.x <= 510);
-  const unitItems  = items.filter(i => i.y < 733 && i.y > 50 && i.x >= 375 && i.x <= 415);
-
-  for (const ni of nameItems) {
-    // Skip section headers (壹, 一, 二, 三... single char or table headers)
-    if (/^[壹貳參肆一二三四五六七八九十]$/.test(ni.str)) continue;
-    if (/^(工程項目|單位|契約數量|今日完成數量|累計完成數量|發包工程費|第.號明細表)/.test(ni.str)) continue;
-    if (isBoilerplate(ni.str)) continue;
-
-    // Find today's qty for this row (same y ± 4)
-    const todayQty = todayItems.find(i => Math.abs(i.y - ni.y) <= 4);
-    if (!todayQty || todayQty.str === '-' || todayQty.str === '0' || todayQty.str === '0.00') continue;
-
-    const unit = unitItems.find(i => Math.abs(i.y - ni.y) <= 4)?.str ?? '';
-    const qty  = todayQty.str;
-    workItemRows[ni.y] = `${ni.str}：${qty} ${unit}`.trim();
+  if (predLabel) {
+    // Look for numbers on the same line (y ± 5)
+    const nums = items.filter(i => Math.abs(i.y - predLabel.y) <= 5 && /^[\d.]+$/.test(i.str));
+    if (nums.length) {
+      // Pick the number closest to the label to its right, or to its left if none on right
+      const rightNums = nums.filter(i => i.x > predLabel.x).sort((a,b) => a.x - b.x);
+      const leftNums = nums.filter(i => i.x < predLabel.x).sort((a,b) => predLabel.x - a.x);
+      plannedProgress = parseFloat((rightNums[0] || leftNums[0])?.str) || null;
+    }
   }
 
-  const workItemsStr = Object.values(workItemRows).join('\n') || null;
+  if (actLabel) {
+    const nums = items.filter(i => Math.abs(i.y - actLabel.y) <= 5 && /^[\d.]+$/.test(i.str));
+    if (nums.length) {
+      const rightNums = nums.filter(i => i.x > actLabel.x).sort((a,b) => a.x - b.x);
+      const leftNums = nums.filter(i => i.x < actLabel.x).sort((a,b) => actLabel.x - a.x);
+      actualProgress = parseFloat((rightNums[0] || leftNums[0])?.str) || null;
+    }
+  }
+
+  // --- 4. Work Items (Table section) ---
+  // A coordinate-agnostic approach:
+  // 1. Filter out boilerplate headers and footers (y > 740 or y < 50)
+  // 2. Group Remaining items by Y coordinate
+  // 3. Keep rows that look like table data (contain at least one non-number string and at least one number)
+  const tableItems = items.filter(i => i.y < 740 && i.y > 50 && !isBoilerplate(i.str));
+  
+  // Group by Y (allow 4px variance for slight misalignments)
+  const rowsByY = [];
+  tableItems.forEach(item => {
+    // skip section headers
+    if (/^[壹貳參肆一二三四五六七八九十]$/.test(item.str)) return;
+    if (/^(工程項目|單位|契約數量|今日|累計|發包工程費|第.號明細表|約定之重要施工)/.test(item.str)) return;
+    
+    let row = rowsByY.find(r => Math.abs(r.y - item.y) <= 4);
+    if (!row) {
+      row = { y: item.y, items: [] };
+      rowsByY.push(row);
+    }
+    row.items.push(item);
+  });
+
+  const workItemsArr = [];
+  rowsByY.sort((a, b) => b.y - a.y); // top to bottom
+
+  for (const row of rowsByY) {
+    if (row.items.length < 2) continue; // skip floating single items
+    row.items.sort((a, b) => a.x - b.x); // left to right
+    
+    // Check if row has text and numbers
+    const hasText = row.items.some(i => /[^\d,.%\-\s]/.test(i.str));
+    const hasNum = row.items.some(i => /^[\d,.%-]+$/.test(i.str));
+    
+    if (hasText && hasNum) {
+      // Find the name (usually leftmost text) and numbers (usually rightmost)
+      const texts = row.items.filter(i => /[^\d,.%\-\s]/.test(i.str)).map(i => i.str);
+      const nums = row.items.filter(i => /^[\d,.%-]+$/.test(i.str)).map(i => i.str);
+      
+      const name = texts[0];
+      const unit = texts.length > 1 ? texts[1] : '';
+      // We take the number that isn't the total contract qty. Usually the last or second to last is fine.
+      // We will just print the primary number (e.g., today's qty) and the unit.
+      // Often numbers block looks like: [contract_qty, today_qty, accum_qty]
+      let displayNum = '-';
+      if (nums.length >= 3) displayNum = nums[1]; // middle is often today
+      else if (nums.length === 2) displayNum = nums[0];
+      else if (nums.length === 1) displayNum = nums[0];
+      
+      if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
+        workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
+      }
+    }
+  }
+
+  const workItemsStr = workItemsArr.join('\n') || null;
 
   // --- 5. Notes: section 二 content (excluding boilerplate) ---
   // Collect text from x<400, y<400 that is not boilerplate and not in work table
