@@ -251,26 +251,40 @@ async function parseMonitoringPage(page, pageNum) {
     
     if (texts.length > 0 && nums.length > 0) {
       const name = texts[0].str;
-      // Skip irrelevant text rows that accidentally parsed
       if (name.length <= 1) continue;
 
       // Skip overhead / pro-rata items commonly found in TW public works
-      if (/(清運費|清潔費|清除費|灑水費|環境保護|作業費|設施|管理費|利雜費|營業稅|攝影|測量|檢驗費|保險費|工程牌|維持費|應變措施)/.test(name)) continue;
+      if (/(清運費|清潔費|清除費|灑水費|環境保護|作業費|搬運費|設施|管理費|利雜費|營業稅|攝影|測量|檢驗費|保險費|工程牌|維持費|應變措施|交通維持|圖說|安衛)/.test(name)) continue;
       
       const unit = texts.length > 1 ? texts[1].str : '';
       
       let displayNum = '-';
-      // Topological column mapping (right-to-left)
-      // Standard: [Contract] [Today] [Cumulative]
+      
+      // Hybrid Topological & Threshold Mapping
+      // Standard: [Contract (x < 310)] [Today (310 < x < 400)] [Cumulative (x > 400)]
       if (nums.length >= 3) {
         displayNum = nums[nums.length - 2].str; // Today is usually the second to last
       } else if (nums.length === 2) {
-        displayNum = nums[0].str; // Best guess if missing columns (might be [Today, Cumul])
+        // If there are only 2 numbers, one column is omitted.
+        const num1 = nums[0];
+        const num2 = nums[1];
+        if (num1.x < 310 && num2.x > 400) {
+          // [Contract, Cumul] -> Today is skipped (blank)
+          displayNum = '-';
+        } else if (num1.x > 310) {
+          // [Today, Cumul]
+          displayNum = num1.str;
+        } else {
+          // [Contract, Today]
+          displayNum = num2.str;
+        }
       } else if (nums.length === 1) {
-        displayNum = nums[0].str;
+        const num = nums[0];
+        if (num.x > 310 && num.x < 400) displayNum = num.str;
+        else displayNum = '-';
       }
 
-      if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
+      if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00' && displayNum !== '.') {
         workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
       }
     }
