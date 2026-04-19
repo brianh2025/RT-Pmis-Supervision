@@ -167,7 +167,7 @@ export function ProjectDashboard() {
       title: `施工日誌未補 ${stats.pendingLogs} 天`,
       desc: `本月已匯入 ${stats.thisMonthLogs} 筆，以下日期缺少日誌`,
       due: `補至 ${monthEnd}`,
-      path: 'diary',
+      path: 'supervision',
       action: '前往補填',
       dates: stats.missingDates,
     },
