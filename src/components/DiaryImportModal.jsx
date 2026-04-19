@@ -239,10 +239,6 @@ async function parseMonitoringPage(page, pageNum) {
     row.items.push(item);
   });
 
-  // Find the exact X coordinate for "Today Quantity" column based on the table header
-  const todayHeader = items.find(i => i.str.includes('今日') || i.str.includes('本日'));
-  const todayHeaderX = todayHeader ? todayHeader.x : 480; // default fallback if not found
-
   const workItemsArr = [];
   rowsByY.sort((a, b) => b.y - a.y); // top to bottom
 
@@ -257,28 +253,25 @@ async function parseMonitoringPage(page, pageNum) {
       const name = texts[0].str;
       // Skip irrelevant text rows that accidentally parsed
       if (name.length <= 1) continue;
+
+      // Skip overhead / pro-rata items commonly found in TW public works
+      if (/(清運費|清潔費|清除費|灑水費|環境保護|作業費|設施|管理費|利雜費|營業稅|攝影|測量|檢驗費|保險費|工程牌|維持費|應變措施)/.test(name)) continue;
       
       const unit = texts.length > 1 ? texts[1].str : '';
       
-      // Calculate distances to todayHeaderX to find the right number
-      // We look for the number physically closest to the 'today' column header
-      let closestNumObj = null;
-      let minDistance = 9999;
-      
-      for (const num of nums) {
-        const dist = Math.abs(num.x - todayHeaderX);
-        // Ensure distance is within a reasonable column width (e.g., 80px)
-        if (dist < minDistance && dist < 80) {
-          minDistance = dist;
-          closestNumObj = num;
-        }
+      let displayNum = '-';
+      // Topological column mapping (right-to-left)
+      // Standard: [Contract] [Today] [Cumulative]
+      if (nums.length >= 3) {
+        displayNum = nums[nums.length - 2].str; // Today is usually the second to last
+      } else if (nums.length === 2) {
+        displayNum = nums[0].str; // Best guess if missing columns (might be [Today, Cumul])
+      } else if (nums.length === 1) {
+        displayNum = nums[0].str;
       }
 
-      if (closestNumObj) {
-        const displayNum = closestNumObj.str;
-        if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
-          workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
-        }
+      if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
+        workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
       }
     }
   }
