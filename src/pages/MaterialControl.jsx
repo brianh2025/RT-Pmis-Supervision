@@ -161,7 +161,7 @@ export function MaterialControl() {
     if (!supabase) return;
     let newRow;
     if (tab === 0) {
-      newRow = { project_id: projectId, created_by: user?.id, entry_date: '', name: '', spec: '', qty: '', vendor: '', inspector: '', remark: '' };
+      newRow = { project_id: projectId, created_by: user?.id, entry_date: new Date().toISOString().split('T')[0], name: '', spec: '', qty: '', vendor: '', inspector: '', remark: '' };
     } else {
       newRow = { ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: tstRows.length };
       TST_COLS.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });

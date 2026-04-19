@@ -367,7 +367,7 @@ export function Archive() {
                       })()}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
-                      {doc.category === '施工照片' && doc.remark && (
+                      {doc.category === 'photo' && doc.remark && (
                         <button
                           onClick={() => previewPhotoDoc(doc, project?.name)}
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: 'rgba(21,101,192,0.08)', border: '1px solid rgba(21,101,192,0.2)', borderRadius: '6px', fontSize: '11px', color: 'var(--color-primary-light)', cursor: 'pointer', transition: 'all 0.15s' }}
