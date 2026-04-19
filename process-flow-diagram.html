@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RT-PMIS 前後端流程關係圖</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Microsoft JhengHei', '微軟正黑體', 'PingFang TC', sans-serif;
+      background: #0b1120;
+      color: #e2e8f0;
+      padding: 28px 24px 40px;
+      min-height: 100vh;
+    }
+
+    /* ── 標題 ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .page-header h1 {
+      font-size: 20px;
+      color: #93c5fd;
+      letter-spacing: 2px;
+    }
+    .page-header p {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* ── 主流程列 ── */
+    .flow-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    /* ── 欄位 ── */
+    .lane {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .lane-title {
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #475569;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 2px;
+    }
+
+    /* ── 箭頭連接段 ── */
+    .connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 52px;
+      width: 52px;
+      flex-shrink: 0;
+      gap: 4px;
+    }
+    .connector .arr-label {
+      font-size: 9px;
+      color: #475569;
+      text-align: center;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .connector .arr {
+      font-size: 22px;
+      color: #334155;
+      line-height: 1;
+    }
+    .connector .arr-back {
+      font-size: 10px;
+      color: #1e293b;
+    }
+    .connector.mid {
+      padding-top: 320px;
+    }
+
+    /* ── 卡片 ── */
+    .card {
+      border-radius: 8px;
+      padding: 10px 13px 11px;
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+    .card-title {
+      font-weight: 700;
+      font-size: 12.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .card-item {
+      color: inherit;
+      opacity: 0.82;
+      font-size: 11px;
+      padding-left: 11px;
+      position: relative;
+    }
+    .card-item::before { content: '·'; position: absolute; left: 3px; }
+
+    /* colour themes */
+    .c-user    { background:#0f2244; border:1px solid #1d4ed8; color:#93c5fd; }
+    .c-router  { background:#19244a; border:1px solid #3b82f6; color:#bfdbfe; }
+    .c-state   { background:#1e1b4b; border:1px solid #818cf8; color:#c7d2fe; }
+    .c-page    { background:#0c2318; border:1px solid #16a34a; color:#86efac; }
+    .c-comp    { background:#17230a; border:1px solid #65a30d; color:#bef264; }
+    .c-sdk     { background:#261a08; border:1px solid #d97706; color:#fcd34d; }
+    .c-auth    { background:#2a0f22; border:1px solid #db2777; color:#fbcfe8; }
+    .c-db      { background:#071d2e; border:1px solid #0891b2; color:#a5f3fc; }
+    .c-storage { background:#0f1f0c; border:1px solid #4ade80; color:#bbf7d0; }
+    .c-edge    { background:#1f1005; border:1px solid #ea580c; color:#fed7aa; }
+    .c-ext     { background:#190f2e; border:1px solid #9333ea; color:#e9d5ff; }
+
+    /* ── 資料流說明區 ── */
+    .flow-notes {
+      max-width: 1480px;
+      margin: 24px auto 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .note-card {
+      background: #131d2e;
+      border-radius: 9px;
+      padding: 13px 14px;
+      border: 1px solid #1e293b;
+    }
+    .note-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .note-step {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.9;
+    }
+    .note-step span {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    /* ── RLS badge ── */
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 99px;
+      margin-left: 4px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+    }
+    .badge-rls { background:#0e4429; color:#4ade80; border:1px solid #16a34a; }
+
+    /* ── 底部 ── */
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 10px;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>RT-PMIS 前後端流程關係圖</h1>
+  <p>雲林縣公共工程監造管理系統 · React 19 + Vite 8 + Supabase BaaS</p>
+</div>
+
+<div class="flow-row">
+
+  <!-- ══ Lane 1：使用者 ══ -->
+  <div class="lane" style="width:130px">
+    <div class="lane-title">使用者</div>
+    <div class="card c-user">
+      <div class="card-title">👤 瀏覽器</div>
+      <div class="card-item">點擊操作</div>
+      <div class="card-item">表單輸入</div>
+      <div class="card-item">Excel 上傳</div>
+      <div class="card-item">相片上傳</div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="connector">
+    <div class="arr-label">HTTP</div>
+    <div class="arr">→</div>
+  </div>
+
+  <!-- ══ Lane 2：前端框架層 ══ -->
+  <div class="lane" style="width:190px">
+    <div class="lane-title">前端框架層</div>
+
+    <div class="card c-router">
+      <div class="card-title">🛣 React Router v7</div>
+      <div class="card-item">SPA 路由導航</div>
+      <div class="card-item">ProtectedRoute（認証守衛）</div>
+      <div class="card-item">ProjectLayout 巢狀路由</div>
+    </div>
+
+    <div class="card c-state">
+      <div class="card-title">🔑 AuthContext</div>
+      <div class="card-item">signIn / signOut</div>
+      <div class="card-item">JWT Session 管理</div>
+      <div class="card-item">user 狀態全域共享</div>
+    </div>
+
+    <div class="card c-state">
+      <div class="card-title">📦 狀態管理 Hooks</div>
+      <div class="card-item">DailyReportContext</div>
+      <div class="card-item">useProjects()</div>
+      <div class="card-item">useProject()</div>
+      <div class="card-item">ThemeContext（深/淺色）</div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="connector">
+    <div class="arr-label">props / state</div>
+    <div class="arr">→</div>
+  </div>
+
+  <!-- ══ Lane 3：頁面 & 元件層 ══ -->
+  <div class="lane" style="width:210px">
+    <div class="lane-title">頁面 &amp; 元件層</div>
+
+    <div class="card c-page">
+      <div class="card-title">📄 Pages（11 頁）</div>
+      <div class="card-item">Dashboard — 全工程總覽</div>
+      <div class="card-item">ProjectDashboard — 工程儀板</div>
+      <div class="card-item">DiaryLog / DiaryJournal</div>
+      <div class="card-item">ProgressManagement</div>
+      <div class="card-item">MaterialControl</div>
+      <div class="card-item">Quality — 品質管理</div>
+      <div class="card-item">Submission — 提送管制</div>
+      <div class="card-item">Archive / PhotoTable</div>
+      <div class="card-item">Analytics — 統計分析</div>
+      <div class="card-item">DailyReport — 日報</div>
+    </div>
+
+    <div class="card c-comp">
+      <div class="card-title">🧩 Components（Modals）</div>
+      <div class="card-item">AddProject / EditProject / Delete</div>
+      <div class="card-item">DiaryImportModal</div>
+      <div class="card-item">DriveSyncModal ← Drive 同步入口</div>
+      <div class="card-item">ExcelImportModal</div>
+      <div class="card-item">ScheduleImportModal</div>
+      <div class="card-item">QuickDiaryModal</div>
+      <div class="card-item">InspectionQuickModal</div>
+    </div>
+  </div>
+
+  <!-- arrow (SDK) -->
+  <div class="connector" style="padding-top:52px;width:72px">
+    <div class="arr-label" style="color:#d97706">Supabase</div>
+    <div class="arr-label" style="color:#d97706">JS SDK</div>
+    <div class="arr" style="color:#d97706;font-size:24px">⇄</div>
+    <div class="arr-label" style="margin-top:6px;color:#ea580c">fetch()</div>
+    <div class="arr" style="color:#ea580c">→</div>
+  </div>
+
+  <!-- ══ Lane 4：Supabase 後端 ══ -->
+  <div class="lane" style="width:240px">
+    <div class="lane-title">Supabase 後端（BaaS）</div>
+
+    <div class="card c-auth">
+      <div class="card-title">🔐 Supabase Auth</div>
+      <div class="card-item">Email / Password 登入</div>
+      <div class="card-item">JWT 簽發與驗証</div>
+      <div class="card-item">Session 自動 refresh</div>
+      <div class="card-item">auth.uid() → RLS 判斷</div>
+    </div>
+
+    <div class="card c-db">
+      <div class="card-title">
+        🗄 PostgreSQL
+        <span class="badge badge-rls">RLS</span>
+      </div>
+      <div class="card-item">projects（工程基本資訊）</div>
+      <div class="card-item">progress_records / progress_items</div>
+      <div class="card-item">daily_logs / daily_report_items</div>
+      <div class="card-item">schedule_items（進度表）</div>
+      <div class="card-item">supervision_reports（監造月報）</div>
+      <div class="card-item">material_entries（材料進場）</div>
+      <div class="card-item">mcs_submission / mcs_test / mcs_plan</div>
+      <div class="card-item">quality_issues（品管缺失）</div>
+      <div class="card-item">construction_inspections</div>
+      <div class="card-item">archive_docs（文件歸檔）</div>
+    </div>
+
+    <div class="card c-storage">
+      <div class="card-title">🗃 Supabase Storage</div>
+      <div class="card-item">工地相片上傳 / 讀取</div>
+      <div class="card-item">文件附件儲存</div>
+    </div>
+
+    <div class="card c-edge">
+      <div class="card-title">⚡ Edge Function（Deno）</div>
+      <div class="card-item">sync-diary — 施工日誌同步</div>
+      <div class="card-item">Google Service Account JWT</div>
+      <div class="card-item">fflate 輕量 Excel 解析</div>
+      <div class="card-item">民國 ↔ 西元年日期轉換</div>
+      <div class="card-item">upsert daily_logs</div>
+      <div class="card-item">upsert daily_report_items</div>
+      <div class="card-item">upsert progress_records</div>
+    </div>
+  </div>
+
+  <!-- arrow (Google Drive) -->
+  <div class="connector mid" style="width:56px">
+    <div class="arr-label" style="color:#9333ea">Drive API</div>
+    <div class="arr" style="color:#9333ea">⇄</div>
+  </div>
+
+  <!-- ══ Lane 5：外部服務 ══ -->
+  <div class="lane" style="width:155px">
+    <div class="lane-title">外部服務</div>
+    <div style="margin-top:240px">
+      <div class="card c-ext">
+        <div class="card-title">🌐 Google Drive</div>
+        <div class="card-item">施工日誌 Excel 儲存</div>
+        <div class="card-item">Service Account 驗証</div>
+        <div class="card-item">遞迴資料夾搜尋</div>
+        <div class="card-item">Excel 檔案下載</div>
+        <div class="card-item">多工作表解析</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ 資料流說明 ══ -->
+<div class="flow-notes">
+
+  <div class="note-card">
+    <div class="note-title" style="color:#93c5fd">① 使用者認証流程</div>
+    <div class="note-step">
+      <span>Login.jsx</span> → AuthContext.signIn()<br>
+      → supabase.auth.signInWithPassword()<br>
+      → Supabase Auth 驗証帳密<br>
+      → 回傳 JWT Token + Session<br>
+      → ProtectedRoute 放行 → Dashboard
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-title" style="color:#86efac">② 一般 CRUD 資料流</div>
+    <div class="note-step">
+      <span>頁面元件</span> 觸發操作<br>
+      → useProjects() / 直接 supabase.from()<br>
+      → Supabase JS SDK 組裝 REST 請求<br>
+      → PostgreSQL + RLS 政策驗証<br>
+      → 回傳 data / error → React 重新渲染
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-title" style="color:#fed7aa">③ Google Drive 日誌同步</div>
+    <div class="note-step">
+      <span>DriveSyncModal</span> 觸發同步<br>
+      → fetch(EDGE_FN_URL, { mode:'sync_one' })<br>
+      → sync-diary Edge Function 執行<br>
+      → Drive API 下載 Excel → fflate 解析<br>
+      → upsert daily_logs / report_items
+    </div>
+  </div>
+
+</div>
+
+<footer>RT-PMIS 雲林縣公共工程監造管理系統 · 2026 · React 19 + Vite 8 + Supabase</footer>
+
+</body>
+</html>
