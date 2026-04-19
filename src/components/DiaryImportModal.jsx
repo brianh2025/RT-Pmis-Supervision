@@ -239,6 +239,17 @@ async function parseMonitoringPage(page, pageNum) {
     row.items.push(item);
   });
 
+  // Find the exact X coordinates for all numeric columns based on the table headers
+  const contractHeader = items.find(i => i.str.includes('契約') || i.str.includes('設計數量'));
+  const todayHeader = items.find(i => (i.str.includes('今日') || i.str.includes('本日')) && i.str.includes('數'));
+  const cumulHeader = items.find(i => i.str.includes('累計'));
+
+  const colXs = {
+    contract: contractHeader ? contractHeader.x : 250,
+    today: todayHeader ? todayHeader.x : 330,
+    cumul: cumulHeader ? cumulHeader.x : 410,
+  };
+
   const workItemsArr = [];
   rowsByY.sort((a, b) => b.y - a.y); // top to bottom
 
@@ -258,32 +269,37 @@ async function parseMonitoringPage(page, pageNum) {
       
       const unit = texts.length > 1 ? texts[1].str : '';
       
-      let displayNum = '-';
-      
-      // Hybrid Topological & Threshold Mapping
-      // Standard: [Contract (x < 310)] [Today (310 < x < 400)] [Cumulative (x > 400)]
-      if (nums.length >= 3) {
-        displayNum = nums[nums.length - 2].str; // Today is usually the second to last
-      } else if (nums.length === 2) {
-        // If there are only 2 numbers, one column is omitted.
-        const num1 = nums[0];
-        const num2 = nums[1];
-        if (num1.x < 310 && num2.x > 400) {
-          // [Contract, Cumul] -> Today is skipped (blank)
-          displayNum = '-';
-        } else if (num1.x > 310) {
-          // [Today, Cumul]
-          displayNum = num1.str;
-        } else {
-          // [Contract, Today]
-          displayNum = num2.str;
+      // Dynamic Nearest-Neighbor Column Mapping
+      const assignedCols = {};
+      for (const num of nums) {
+        let bestCol = null;
+        let minDistance = 9999;
+        for (const [colName, colX] of Object.entries(colXs)) {
+          const dist = Math.abs(num.x - colX);
+          // If the text is long, its left X might be skewed. We allow flexible assignment.
+          if (dist < minDistance) {
+            minDistance = dist;
+            bestCol = colName;
+          }
         }
-      } else if (nums.length === 1) {
-        const num = nums[0];
-        if (num.x > 310 && num.x < 400) displayNum = num.str;
-        else displayNum = '-';
+        if (bestCol && !assignedCols[bestCol]) {
+            assignedCols[bestCol] = num.str;
+        } else if (bestCol && assignedCols[bestCol]) {
+            // Collision fallback: if mapped to same column, fallback to topology
+            assignedCols.today = nums.length >= 3 ? nums[nums.length-2].str : num.str;
+        }
       }
 
+      let displayNum = assignedCols.today || '-';
+
+      // Fallback: if 'today' was missing but num length === 2 and one mapped to cumul, the other to contract, today is truly empty.
+      if (nums.length === 2 && assignedCols.contract && assignedCols.cumul && !assignedCols.today) {
+          displayNum = '-';
+      } else if (nums.length === 1 && !assignedCols.today) {
+          displayNum = '-';
+      }
+
+      // Final sanitization
       if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00' && displayNum !== '.') {
         workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
       }
