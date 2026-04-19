@@ -239,6 +239,10 @@ async function parseMonitoringPage(page, pageNum) {
     row.items.push(item);
   });
 
+  // Find the exact X coordinate for "Today Quantity" column based on the table header
+  const todayHeader = items.find(i => i.str.includes('今日') || i.str.includes('本日'));
+  const todayHeaderX = todayHeader ? todayHeader.x : 480; // default fallback if not found
+
   const workItemsArr = [];
   rowsByY.sort((a, b) => b.y - a.y); // top to bottom
 
@@ -246,27 +250,35 @@ async function parseMonitoringPage(page, pageNum) {
     if (row.items.length < 2) continue; // skip floating single items
     row.items.sort((a, b) => a.x - b.x); // left to right
     
-    // Check if row has text and numbers
-    const hasText = row.items.some(i => /[^\d,.%\-\s]/.test(i.str));
-    const hasNum = row.items.some(i => /^[\d,.%-]+$/.test(i.str));
+    const texts = row.items.filter(i => /[^\d,.%\-\s]/.test(i.str));
+    const nums = row.items.filter(i => /^[\d,.%-]+$/.test(i.str));
     
-    if (hasText && hasNum) {
-      // Find the name (usually leftmost text) and numbers (usually rightmost)
-      const texts = row.items.filter(i => /[^\d,.%\-\s]/.test(i.str)).map(i => i.str);
-      const nums = row.items.filter(i => /^[\d,.%-]+$/.test(i.str)).map(i => i.str);
+    if (texts.length > 0 && nums.length > 0) {
+      const name = texts[0].str;
+      // Skip irrelevant text rows that accidentally parsed
+      if (name.length <= 1) continue;
       
-      const name = texts[0];
-      const unit = texts.length > 1 ? texts[1] : '';
-      // We take the number that isn't the total contract qty. Usually the last or second to last is fine.
-      // We will just print the primary number (e.g., today's qty) and the unit.
-      // Often numbers block looks like: [contract_qty, today_qty, accum_qty]
-      let displayNum = '-';
-      if (nums.length >= 3) displayNum = nums[1]; // middle is often today
-      else if (nums.length === 2) displayNum = nums[0];
-      else if (nums.length === 1) displayNum = nums[0];
+      const unit = texts.length > 1 ? texts[1].str : '';
       
-      if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
-        workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
+      // Calculate distances to todayHeaderX to find the right number
+      // We look for the number physically closest to the 'today' column header
+      let closestNumObj = null;
+      let minDistance = 9999;
+      
+      for (const num of nums) {
+        const dist = Math.abs(num.x - todayHeaderX);
+        // Ensure distance is within a reasonable column width (e.g., 80px)
+        if (dist < minDistance && dist < 80) {
+          minDistance = dist;
+          closestNumObj = num;
+        }
+      }
+
+      if (closestNumObj) {
+        const displayNum = closestNumObj.str;
+        if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00') {
+          workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
+        }
       }
     }
   }
