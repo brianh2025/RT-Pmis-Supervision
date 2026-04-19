@@ -9,7 +9,7 @@ export const C = {
     blue: "#2563eb", blueLight: "rgba(37,99,235,0.10)",
     text: "var(--color-text-main)", textMid: "var(--color-text2)", textMuted: "var(--color-text-muted)",
     border: "var(--color-border)", bg: "var(--color-bg1)", card: "var(--color-surface)",
-    sidebar: "var(--color-background-base)",
+    sidebar: "var(--color-bg1)",
 };
 
 export const I = {

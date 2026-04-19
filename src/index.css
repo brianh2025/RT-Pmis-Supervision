@@ -91,15 +91,6 @@
   --color-border: rgba(0, 0, 0, 0.08);
 }
 
-body {
-  font-family: 'Outfit', 'Noto Sans TC', system-ui, sans-serif;
-  font-size: var(--fs-base);
-  background-color: var(--color-background-base);
-  color: var(--color-text-main);
-  line-height: 1.5;
-  letter-spacing: -0.01em;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -110,15 +101,16 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  font-size: var(--fs-base);
   background-color: var(--color-background-base);
   color: var(--color-text-main);
   line-height: 1.6;
-  font-weight: 400; /* 預設不適用粗體 */
+  letter-spacing: -0.01em;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);
-  font-size: 16.5px; /* Slightly larger base font */
 }
 
 a {
