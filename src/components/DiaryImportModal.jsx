@@ -525,6 +525,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
           report_date: r.log_date,
           planned_progress: r.planned_progress || 0,
           actual_progress: r.actual_progress || 0,
+          created_by: user?.id || null,
         }));
       if (progressPayload.length) {
         const { error: progErr } = await supabase.from('progress_records').upsert(progressPayload, { onConflict: 'project_id,report_date' });
