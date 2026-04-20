@@ -482,7 +482,7 @@ export function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="layered-progress-bar" style={{ height: '4px' }}>
+          <div className="layered-progress-bar">
             <div className="bar-planned" style={{ width: `${planned}%` }} />
             <div className="bar-actual" style={{
               width: `${prog}%`,

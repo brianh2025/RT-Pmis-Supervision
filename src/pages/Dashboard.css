@@ -869,7 +869,7 @@
 
 .layered-progress-bar {
   position: relative;
-  height: 6px;
+  height: 10px;
   width: 100%;
   background: rgba(0,0,0,0.05);
   border-radius: 999px;
@@ -1393,10 +1393,10 @@
 /* 右側進度數字區 */
 .card-pct-block {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: baseline;
   flex-shrink: 0;
-  gap: 2px;
+  gap: 6px;
 }
 .card-pct-num {
   font-size: 1.35rem;
