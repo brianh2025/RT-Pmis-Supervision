@@ -527,8 +527,8 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
           actual_progress: r.actual_progress || 0,
         }));
       if (progressPayload.length) {
-        const { error: progErr } = await supabase.from('progress_records').insert(progressPayload);
-        if (progErr) console.error('寫入 progress_records 失敗:', progErr.message);
+        const { error: progErr } = await supabase.from('progress_records').upsert(progressPayload, { onConflict: 'project_id,report_date' });
+        if (progErr) throw new Error('寫入 progress_records 失敗: ' + progErr.message);
       }
 
       // Step 4: Parse work_items text → daily_report_items rows
