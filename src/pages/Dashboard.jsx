@@ -472,6 +472,16 @@ export function Dashboard() {
         <div className="card-compact-body">
           <div className="card-compact-top">
             <div className="card-title-compact">{p.name}</div>
+          </div>
+          <div className="card-progress-row">
+          <div className="layered-progress-bar">
+            <div className="bar-planned" style={{ width: `${planned}%` }} />
+            <div className="bar-actual" style={{
+              width: `${prog}%`,
+              background: isBehind(p) ? 'var(--color-danger)' :
+                          (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
+            }} />
+          </div>
             <div className="card-pct-block">
               <span className="card-pct-num" style={{
                 color: isBehind(p) ? 'var(--color-danger)' :
@@ -481,14 +491,6 @@ export function Dashboard() {
                 {diff >= 0 ? '+' : ''}{diff}%
               </span>
             </div>
-          </div>
-          <div className="layered-progress-bar">
-            <div className="bar-planned" style={{ width: `${planned}%` }} />
-            <div className="bar-actual" style={{
-              width: `${prog}%`,
-              background: isBehind(p) ? 'var(--color-danger)' :
-                          (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
-            }} />
           </div>
           <div className="card-bottom-row">
             <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'accepted' ? 'chip-accepted' : p.status === 'pending' ? 'chip-pending' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>

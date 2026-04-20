@@ -888,6 +888,12 @@
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@keyframes bar-shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
 .bar-actual {
   position: absolute;
   top: 0;
@@ -896,6 +902,18 @@
   background: var(--color-primary);
   border-radius: 999px;
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+  overflow: hidden;
+}
+
+.bar-actual::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+  animation: bar-shimmer 2.5s ease-in-out infinite;
 }
 
 .card-bottom {
@@ -1382,12 +1400,19 @@
   min-width: 0;
 }
 
-/* 上排：工程名稱（左） + 大 % 數字（右） */
+/* 上排：工程名稱（單行截斷） */
 .card-compact-top {
+  min-width: 0;
+}
+
+/* 進度條列：進度條（左彈性）+ 百分比（右固定） */
+.card-progress-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+}
+.card-progress-row .layered-progress-bar {
+  flex: 1;
 }
 
 /* 右側進度數字區 */
@@ -1396,10 +1421,10 @@
   flex-direction: row;
   align-items: baseline;
   flex-shrink: 0;
-  gap: 6px;
+  gap: 4px;
 }
 .card-pct-num {
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1472,10 +1497,9 @@
   font-weight: 500;
   color: var(--color-text-main);
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.2s;
 }
 
