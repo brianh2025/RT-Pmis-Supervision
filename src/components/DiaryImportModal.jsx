@@ -196,8 +196,11 @@ async function parseMonitoringPage(page, pageNum) {
   let actualProgress = null;
   
   // Find labels for progress anywhere on the page
-  const predLabel = items.find(i => i.str.includes('預定進度') || i.str.includes('預定'));
-  const actLabel = items.find(i => i.str.includes('實際進度') || i.str.includes('實際'));
+  // Prioritize exact '預定進度'/'實際進度' matches; exclude date-related '預定完工日期'
+  const predLabel = items.find(i => i.str.includes('預定進度'))
+    || items.find(i => i.str.includes('預定') && !i.str.includes('完工') && !i.str.includes('日期'));
+  const actLabel = items.find(i => i.str.includes('實際進度'))
+    || items.find(i => i.str.includes('實際') && !i.str.includes('完工') && !i.str.includes('日期'));
 
   if (predLabel) {
     // Look for numbers on the same line (y ± 5)
