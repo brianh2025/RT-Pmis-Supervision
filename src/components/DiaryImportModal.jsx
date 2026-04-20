@@ -32,7 +32,7 @@ const SKIP_PATTERNS = [
   /^監造單位/,
   /註：/,
   /^本表原則應按日填寫/,
-  /^本監造報告表格式/,
+  /^\d*\.?本監造報告表格式/,
   /^契約工期如有修正/,
   /^公共工程屬建築物者/,
   /^施工廠商施工前檢查/,
@@ -326,6 +326,7 @@ async function parseMonitoringPage(page, pageNum) {
   
   const notes = [...new Set(noteItems.map(i => i.str))]
     .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s))
+    .filter(s => /^\d+\./.test(s.trim())) // Only accept enumerated list texts (e.g. "1. 進行整地")
     .slice(0, 10)
     .join('\n') || null;
 
