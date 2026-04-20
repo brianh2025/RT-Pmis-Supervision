@@ -449,6 +449,13 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         
         if (!ex.weather_am && rec.weather_am) ex.weather_am = rec.weather_am;
         if (!ex.weather_pm && rec.weather_pm) ex.weather_pm = rec.weather_pm;
+        
+        if (typeof rec.planned_progress === 'number') {
+            ex.planned_progress = Math.max(ex.planned_progress || 0, rec.planned_progress);
+        }
+        if (typeof rec.actual_progress === 'number') {
+            ex.actual_progress = Math.max(ex.actual_progress || 0, rec.actual_progress);
+        }
       }
     }
 
