@@ -311,15 +311,18 @@ async function parseMonitoringPage(page, pageNum) {
   // --- 5. Notes: section 二 content (excluding boilerplate) ---
   // Collect text from x<700, y<400 that is not boilerplate and not a table row
   
-  // Create a set of all Y coordinates used in the table section to exclude them
-  const tableYCoords = new Set(tableItems.map(i => i.y));
+  // Track Y coordinates of ACTUAL table rows (where there are multiple columns)
+  const validRowYs = rowsByY.filter(r => r.items.length >= 2).map(r => r.y);
   
-  const noteItems = items.filter(i =>
-    i.y < 700 && i.y > 50 &&
-    !isBoilerplate(i.str) &&
-    !tableYCoords.has(i.y) &&
-    i.str.length > 2
-  ).sort((a,b) => b.y - a.y || a.x - b.x);
+  const noteItems = items.filter(i => {
+    // If this item is vertically associated with a valid table row (within 4px), skip it
+    const isTablePart = validRowYs.some(rowY => Math.abs(rowY - i.y) <= 4);
+    
+    return i.y < 700 && i.y > 50 &&
+           !isBoilerplate(i.str) &&
+           !isTablePart &&
+           i.str.length > 2;
+  }).sort((a,b) => b.y - a.y || a.x - b.x);
   
   const notes = [...new Set(noteItems.map(i => i.str))]
     .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s))
