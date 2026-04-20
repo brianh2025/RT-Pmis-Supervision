@@ -306,7 +306,7 @@ async function parseMonitoringPage(page, pageNum) {
     }
   }
 
-  const workItemsStr = workItemsArr.join('\n') || null;
+  let workItemsStr = workItemsArr.join('\n') || null;
 
   // --- 5. Notes: section 二 content (excluding boilerplate) ---
   // Collect text from x<400, y<400 that is not boilerplate and not a table row
@@ -322,9 +322,15 @@ async function parseMonitoringPage(page, pageNum) {
   ).sort((a,b) => b.y - a.y || a.x - b.x);
   
   const notes = [...new Set(noteItems.map(i => i.str))]
-    .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十]$/.test(s))
+    .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s))
     .slice(0, 10)
     .join('\n') || null;
+
+  // Narrative Fallback: If the user didn't write ANY valid quantities in the formal matrix table,
+  // but they DID write free text about what they worked on (e.g. "進行整地"), use it as the item!
+  if (!workItemsStr && notes) {
+      workItemsStr = notes;
+  }
 
   return {
     log_date: logDate,
