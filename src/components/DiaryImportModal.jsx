@@ -426,14 +426,27 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
       } else {
         // Merge multi-page same-day records
         const ex = dateMap[rec.log_date];
+        
         if (rec.work_items) {
           const allItems = [ex.work_items, rec.work_items].filter(Boolean).join('\n').split('\n').map(s => s.trim()).filter(Boolean);
-          ex.work_items = [...new Set(allItems)].join('\n');
+          const uniqueItems = new Map();
+          allItems.forEach(item => {
+              const normalized = item.replace(/\s+/g, '');
+              if (!uniqueItems.has(normalized)) uniqueItems.set(normalized, item);
+          });
+          ex.work_items = Array.from(uniqueItems.values()).join('\n');
         }
+        
         if (rec.notes) {
           const allNotes = [ex.notes, rec.notes].filter(Boolean).join('\n').split('\n').map(s => s.trim()).filter(Boolean);
-          ex.notes = [...new Set(allNotes)].join('\n');
+          const uniqueNotes = new Map();
+          allNotes.forEach(note => {
+              const normalized = note.replace(/\s+/g, '');
+              if (!uniqueNotes.has(normalized)) uniqueNotes.set(normalized, note);
+          });
+          ex.notes = Array.from(uniqueNotes.values()).join('\n');
         }
+        
         if (!ex.weather_am && rec.weather_am) ex.weather_am = rec.weather_am;
         if (!ex.weather_pm && rec.weather_pm) ex.weather_pm = rec.weather_pm;
       }
