@@ -3,9 +3,9 @@
    Tab 0: 施工檢驗管制（construction_inspections）
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './MaterialControl.css';
@@ -50,6 +50,7 @@ const EMPTY_QUALITY = {
 export function Quality() {
   const { id: projectId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState(0);
 
   // Tab 0: construction_inspections
@@ -77,6 +78,9 @@ export function Quality() {
   const [verifyTarget, setVerifyTarget] = useState(null); // { id, item, location }
   const [verifyChecks, setVerifyChecks] = useState([]);
   const [verifyNote, setVerifyNote] = useState('');
+
+  // 施工抽查照片計數
+  const [inspPhotoMap, setInspPhotoMap] = useState({});
 
   const loadInspections = useCallback(async () => {
     if (!supabase) return [];
@@ -106,6 +110,16 @@ export function Quality() {
       setInspections(ins);
       setIssues(iss);
       setTests(tsts);
+      // 照片計數
+      if (supabase) {
+        const { data: photoDocs } = await supabase.from('archive_docs').select('submission_id')
+          .eq('project_id', projectId).eq('source_table', 'construction_inspections');
+        const map = {};
+        for (const r of (photoDocs || [])) {
+          if (r.submission_id) map[r.submission_id] = (map[r.submission_id] || 0) + 1;
+        }
+        setInspPhotoMap(map);
+      }
       setLoading(false);
     }
     if (projectId) init();
@@ -114,6 +128,17 @@ export function Quality() {
   useEffect(() => {
     if (editCell) setTimeout(() => editInputRef.current?.focus(), 10);
   }, [editCell]);
+
+  // 以 source_record_id 索引缺失改善（施工抽查用）
+  const issueByInspMap = useMemo(() => {
+    const map = {};
+    for (const iss of issues) {
+      if (iss.source_table === 'construction_inspections' && iss.source_record_id) {
+        map[iss.source_record_id] = iss;
+      }
+    }
+    return map;
+  }, [issues]);
 
   /* ── Tab 0: Inspections ── */
   async function addInspection() {
@@ -124,7 +149,24 @@ export function Quality() {
         project_id: projectId, created_by: user?.id, ...inspForm,
       }]).select().single();
       if (error) throw error;
-      if (data) setInspections(prev => [data, ...prev]);
+      if (data) {
+        setInspections(prev => [data, ...prev]);
+        if (inspForm.result === '不合格') {
+          const today = new Date().toISOString().split('T')[0];
+          if (confirm(`此抽查結果為「不合格」，是否立即建立缺失改善單？\n\n工項：${inspForm.work_item}\n位置：${inspForm.location || '（未填）'}`)) {
+            const { data: issue } = await supabase.from('quality_issues').insert([{
+              project_id: projectId, created_by: user?.id,
+              inspection_date: inspForm.inspect_date || today,
+              location: inspForm.location || null,
+              item: inspForm.work_item,
+              severity: 'major', status: 'open',
+              description: inspForm.remark || null,
+              source_table: 'construction_inspections', source_record_id: data.id,
+            }]).select().single();
+            if (issue) setIssues(prev => [issue, ...prev]);
+          }
+        }
+      }
       setShowInspModal(false);
       setInspForm({ ...EMPTY_INSPECT });
     } catch (err) {
@@ -139,6 +181,21 @@ export function Quality() {
     const next = RESULT_CYCLE[(RESULT_CYCLE.indexOf(cur) + 1) % RESULT_CYCLE.length];
     await supabase.from('construction_inspections').update({ result: next }).eq('id', id);
     setInspections(prev => prev.map(r => r.id === id ? { ...r, result: next } : r));
+    if (next === '不合格' && !issueByInspMap[id]) {
+      const row = inspections.find(r => r.id === id);
+      const today = new Date().toISOString().split('T')[0];
+      if (row && confirm(`抽查結果改為「不合格」，是否建立缺失改善單？\n\n工項：${row.work_item}\n位置：${row.location || '（未填）'}`)) {
+        const { data: issue } = await supabase.from('quality_issues').insert([{
+          project_id: projectId, created_by: user?.id,
+          inspection_date: row.inspect_date || today,
+          location: row.location || null,
+          item: row.work_item,
+          severity: 'major', status: 'open',
+          source_table: 'construction_inspections', source_record_id: id,
+        }]).select().single();
+        if (issue) setIssues(prev => [issue, ...prev]);
+      }
+    }
   }
 
   /* ── Tab 1: Quality Issues ── */
@@ -375,12 +432,14 @@ export function Quality() {
                 <th style={{ width: 100 }}>檢驗類型</th>
                 <th style={{ width: 90 }}>人員</th>
                 <th style={{ width: 80 }}>結果</th>
+                <th style={{ width: 90 }}>缺失狀態</th>
+                <th style={{ width: 52 }}>照片</th>
                 <th>備註</th>
               </tr>
             </thead>
             <tbody>
               {filteredInsp.length === 0 ? (
-                <tr><td colSpan={8} className="mcs-empty">
+                <tr><td colSpan={10} className="mcs-empty">
                   <ShieldCheck size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
                   <div>尚無施工檢驗記錄 — 點擊「新增檢驗」建立</div>
                 </td></tr>
@@ -412,6 +471,27 @@ export function Quality() {
                           color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
                         {row.result || '待複驗'}
                       </span>
+                    </td>
+                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
+                      {(() => {
+                        const iss = issueByInspMap[row.id];
+                        if (!iss) return row.result === '不合格' ? <span style={{ fontSize: '10px', color: '#94a3b8' }}>無缺失單</span> : null;
+                        const cfg = RESOLVE_STATUS[iss.status] || RESOLVE_STATUS.open;
+                        const closed = iss.status === 'verified' || iss.status === 'waived';
+                        return (
+                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 600,
+                            color: cfg.color, background: `${cfg.color}15`, border: `1px solid ${cfg.color}40` }}>
+                            {closed ? '✅ 結案' : cfg.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
+                      <button className="mcs-photo-btn" title="點擊查看/上傳照片記錄"
+                        onClick={() => navigate(`/projects/${projectId}/photos?src_table=construction_inspections&src_id=${row.id}&src_name=${encodeURIComponent((row.work_item || '施工抽查') + (row.location ? ' ' + row.location : ''))}`)}>
+                        <Camera size={11} />
+                        {inspPhotoMap[row.id] > 0 ? inspPhotoMap[row.id] : ''}
+                      </button>
                     </td>
                     <td style={{ padding: '2px 4px' }}>
                       <EditableCell id={row.id} field="remark" table="construction_inspections" val={row.remark} />

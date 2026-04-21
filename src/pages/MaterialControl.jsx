@@ -4,8 +4,8 @@
    Tab 1: 檢試驗管制表（mcs_test）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ClipboardCheck, Plus, Trash2, Download, Columns, RotateCcw, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { ClipboardCheck, Plus, Trash2, Download, Columns, RotateCcw, ChevronDown, ChevronUp, Loader2, Camera } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './MaterialControl.css';
@@ -22,6 +22,8 @@ const ENTRY_COLS = [
   { k: 'vendor', l: '廠商', w: 120 },
   { k: 'inspector', l: '驗收人員', w: 90 },
   { k: 'remark', l: '備註', w: 200, wrap: true },
+  { k: 'result', l: '驗收', w: 72, resultToggle: true },
+  { k: 'photos', l: '照片', w: 52, photoLink: true },
 ];
 
 /* 檢試驗管制表 columns */
@@ -37,6 +39,19 @@ const TST_COLS = [
 
 const TNAMES = ['材料進場紀錄', '檢試驗管制表'];
 const VER_COLORS = ['#1565C0', '#0a8a4a', '#c2410c', '#6d28d9', '#0f766e', '#b45309'];
+
+const RESULT_CYCLE = ['合格', '不合格', ''];
+const RESULT_CFG = {
+  '合格':  { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  '不合格': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+};
+const ISSUE_STATUS_CFG = {
+  open:        { label: '待改善', color: '#ef4444' },
+  in_progress: { label: '改善中', color: '#f59e0b' },
+  resolved:    { label: '已改善', color: '#10b981' },
+  verified:    { label: '已驗收', color: '#6366f1' },
+  waived:      { label: '免改善', color: '#6b7280' },
+};
 
 /* ── Seed Data for 檢試驗管制 ── */
 const SEED_TST = [
@@ -84,11 +99,12 @@ function VerBadge({ val, color, onDblClick, onCycleColor }) {
 export function MaterialControl() {
   const { id: projectId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState(0);
 
   // Tab 0: material_entries, Tab 1: mcs_test
-  const [entries, setEntries] = useState([]);     // material_entries
-  const [tstRows, setTstRows] = useState([]);     // mcs_test
+  const [entries, setEntries] = useState([]);
+  const [tstRows, setTstRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -98,6 +114,15 @@ export function MaterialControl() {
   const [showCols, setShowCols] = useState(false);
   const [hiddenCols, setHiddenCols] = useState({ entry: new Set(), tst: new Set() });
   const [seeding, setSeeding] = useState(false);
+
+  // 照片計數 & 缺失改善狀態 (僅 Tab 0 用)
+  const [photoCountMap, setPhotoCountMap] = useState({});
+  const [issueStatusMap, setIssueStatusMap] = useState({});
+
+  // 試驗管制材料提示 toast
+  const [tstToast, setTstToast] = useState(null);
+  // { type: 'match'|'nomatch', matched: tstRow|null, entry: entryRow }
+
   const saveQueueRef = useRef({});
   const editInputRef = useRef(null);
 
@@ -128,12 +153,40 @@ export function MaterialControl() {
     return data || [];
   }, [projectId]);
 
+  async function loadPhotoCountMap() {
+    if (!supabase) return {};
+    const { data } = await supabase.from('archive_docs').select('submission_id')
+      .eq('project_id', projectId).eq('source_table', 'material_entries');
+    const map = {};
+    for (const row of (data || [])) {
+      if (row.submission_id) map[row.submission_id] = (map[row.submission_id] || 0) + 1;
+    }
+    return map;
+  }
+
+  async function loadIssueStatusMap() {
+    if (!supabase) return {};
+    const { data } = await supabase.from('quality_issues')
+      .select('source_record_id, status')
+      .eq('project_id', projectId)
+      .eq('source_table', 'material_entries');
+    const map = {};
+    for (const row of (data || [])) {
+      if (row.source_record_id) map[row.source_record_id] = row.status;
+    }
+    return map;
+  }
+
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const [e, t] = await Promise.all([loadEntries(), loadTst()]);
+      const [e, t, pc, is] = await Promise.all([
+        loadEntries(), loadTst(), loadPhotoCountMap(), loadIssueStatusMap(),
+      ]);
       setEntries(e);
       setTstRows(t);
+      setPhotoCountMap(pc);
+      setIssueStatusMap(is);
       setLoading(false);
     }
     if (projectId) init();
@@ -215,13 +268,89 @@ export function MaterialControl() {
     if (!editCell) return;
     const { rowId, field } = editCell;
     const patch = { [field]: editVal };
-    if (tab === 0) setEntries(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
-    else setTstRows(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
+    if (tab === 0) {
+      setEntries(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
+      if (field === 'name' && editVal.trim()) {
+        const entry = entries.find(r => r.id === rowId);
+        if (entry) checkTestControlled({ ...entry, name: editVal });
+      }
+    } else {
+      setTstRows(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
+    }
     scheduleDbUpdate(rowId, patch, dbTable);
     setEditCell(null); setEditVal('');
   }
 
   function cancelEdit() { setEditCell(null); setEditVal(''); }
+
+  function checkTestControlled(entry) {
+    if (!entry.name || !entry.name.trim()) return;
+    const name4 = entry.name.trim().slice(0, 4);
+    const matched = tstRows.find(t => t.name && t.name.includes(name4));
+    setTstToast(matched
+      ? { type: 'match', matched, entry }
+      : { type: 'nomatch', matched: null, entry }
+    );
+  }
+
+  async function confirmTstAction() {
+    if (!tstToast) return;
+    if (tstToast.type === 'match') {
+      const { matched, entry } = tstToast;
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('mcs_test').update({
+        a_date: entry.entry_date || today,
+        cum_qty: entry.qty || matched.cum_qty || '',
+      }).eq('id', matched.id);
+      setTstRows(prev => prev.map(r => r.id === matched.id
+        ? { ...r, a_date: entry.entry_date || today, cum_qty: entry.qty || r.cum_qty }
+        : r
+      ));
+    } else {
+      const name4 = tstToast.entry.name.trim().slice(0, 4);
+      const newRow = {
+        ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id,
+        sort_order: tstRows.length, name: tstToast.entry.name,
+        a_date: tstToast.entry.entry_date || '', qty: tstToast.entry.qty || '',
+        no: '', ci: '', freq: '',
+      };
+      TST_COLS.forEach(c => { if (!(c.k in newRow)) newRow[c.k] = ''; });
+      const { data } = await supabase.from('mcs_test').insert([newRow]).select().single();
+      if (data) setTstRows(prev => [...prev, data]);
+      setTab(1);
+    }
+    setTstToast(null);
+  }
+
+  async function handleMaterialResult(row) {
+    const cur = row.result || '';
+    const next = RESULT_CYCLE[(RESULT_CYCLE.indexOf(cur) + 1) % RESULT_CYCLE.length];
+    const patch = { result: next || null };
+    setEntries(prev => prev.map(r => r.id === row.id ? { ...r, result: next || null } : r));
+    await supabase.from('material_entries').update(patch).eq('id', row.id);
+
+    if (next === '不合格') {
+      const { data: existing } = await supabase.from('quality_issues')
+        .select('id').eq('project_id', projectId)
+        .eq('source_table', 'material_entries').eq('source_record_id', row.id).maybeSingle();
+      if (!existing && confirm(`「${row.name || '此材料'}」驗收不合格，是否建立缺失改善單？`)) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: issue } = await supabase.from('quality_issues').insert([{
+          project_id: projectId, created_by: user?.id,
+          inspection_date: row.entry_date || today,
+          item: row.name || '材料驗收不合格',
+          location: row.spec || '',
+          severity: 'major', status: 'open',
+          source_table: 'material_entries', source_record_id: row.id,
+        }]).select('id, status').single();
+        if (issue) setIssueStatusMap(prev => ({ ...prev, [row.id]: issue.status }));
+      } else if (existing) {
+        setIssueStatusMap(prev => ({ ...prev, [row.id]: prev[row.id] || 'open' }));
+      }
+    } else if (next === '合格' || next === '') {
+      setIssueStatusMap(prev => { const m = { ...prev }; delete m[row.id]; return m; });
+    }
+  }
 
   function scheduleDbUpdate(rowId, patch, targetTable = dbTable) {
     if (!supabase) return;
@@ -247,7 +376,7 @@ export function MaterialControl() {
   function resetHidCols() { setHiddenCols(prev => ({ ...prev, [tkey]: new Set() })); }
 
   function exportCSV() {
-    const cs = cols.filter(c => !hiddenCols[tkey].has(c.k));
+    const cs = cols.filter(c => !hiddenCols[tkey].has(c.k) && !c.photoLink);
     const header = cs.map(c => `"${c.l}"`).join(',');
     const lines = rows.map(r => cs.map(c => `"${(r[c.k] || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`).join(','));
     const a = document.createElement('a');
@@ -260,6 +389,47 @@ export function MaterialControl() {
     if (hiddenCols[tkey].has(col.k)) return null;
     const isEd = editCell?.rowId === row.id && editCell?.field === col.k;
     const val = row[col.k] || '';
+
+    if (col.photoLink) {
+      const count = photoCountMap[row.id] || 0;
+      return (
+        <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
+          <button className="mcs-photo-btn" title="點擊查看/上傳照片記錄"
+            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}`)}>
+            <Camera size={11} />
+            {count > 0 ? count : ''}
+          </button>
+        </td>
+      );
+    }
+
+    if (col.resultToggle) {
+      const issueStatus = issueStatusMap[row.id];
+      if (row.result === '不合格' && issueStatus) {
+        const cfg = ISSUE_STATUS_CFG[issueStatus] || ISSUE_STATUS_CFG.open;
+        const isVerified = issueStatus === 'verified';
+        return (
+          <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
+            <span className={`mcs-result-badge${isVerified ? ' closed' : ' fail'}`}
+              title={isVerified ? '缺失已驗收結案' : `缺失${cfg.label}，點擊切換`}
+              onClick={() => !isVerified && handleMaterialResult(row)}
+              style={{ cursor: isVerified ? 'default' : 'pointer' }}>
+              {isVerified ? '✅ 結案' : `⚠️ ${cfg.label}`}
+            </span>
+          </td>
+        );
+      }
+      const cfg = RESULT_CFG[row.result];
+      return (
+        <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
+          <span className="mcs-result-badge" title="點擊切換驗收結果"
+            onClick={() => handleMaterialResult(row)}
+            style={cfg ? { color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40`, cursor: 'pointer' } : { cursor: 'pointer' }}>
+            {row.result || '—'}
+          </span>
+        </td>
+      );
+    }
 
     if (col.ver) {
       return (
@@ -303,6 +473,8 @@ export function MaterialControl() {
   const tstPending = tstRows.filter(r => !r.result || !r.result.trim()).length;
   const allSel = selected.size === rows.length && rows.length > 0;
   const hasHidden = hiddenCols[tkey].size > 0;
+  const failCount = entries.filter(r => r.result === '不合格').length;
+  const okCount = entries.filter(r => r.result === '合格').length;
 
   if (loading) return (
     <div className="mcs-loading"><Loader2 size={28} className="animate-spin" /><span>載入材料管制資料中…</span></div>
@@ -312,7 +484,12 @@ export function MaterialControl() {
     <div className="mcs-root">
       {/* Stats */}
       <div className="mcs-stats">
-        {[
+        {tab === 0 ? [
+          { val: entries.length, label: '進場紀錄', cls: '' },
+          { val: okCount, label: '驗收合格', cls: 'mcs-stat-ok' },
+          { val: failCount, label: '驗收不合格', cls: failCount > 0 ? 'mcs-stat-warn' : '' },
+          { val: entries.filter(r => !r.result).length, label: '待驗收', cls: '' },
+        ] : [
           { val: entries.length, label: '進場紀錄', cls: '' },
           { val: tstRows.length, label: '試驗項目', cls: '' },
           { val: tstPending, label: '待試驗', cls: 'mcs-stat-warn' },
@@ -364,7 +541,7 @@ export function MaterialControl() {
       {showCols && (
         <div className="mcs-col-strip">
           <span className="mcs-col-label">欄位▸</span>
-          {cols.map(c => (
+          {cols.filter(c => !c.photoLink && !c.resultToggle).map(c => (
             <span key={c.k} className={`mcs-col-chip${hiddenCols[tkey].has(c.k) ? ' hidden' : ''}`} onClick={() => togHidCol(c.k)}>{c.l}</span>
           ))}
           <span className={`mcs-col-chip mcs-col-reset${hasHidden ? '' : ' disabled'}`} onClick={() => hasHidden && resetHidCols()}>還原預設</span>
@@ -412,8 +589,27 @@ export function MaterialControl() {
         <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.7rem' }}>
           雙擊儲存格編輯 · Esc 取消 · Enter 確認
           {tab === 1 && ' · 點擊標記切換 · ⬤ 版本顏色'}
+          {tab === 0 && ' · 點擊驗收欄切換結果 · 點擊📷查看照片'}
         </span>
       </div>
+
+      {/* 試驗管制材料提示 Toast */}
+      {tstToast && (
+        <div className="mcs-tst-toast">
+          <div className="mcs-tst-toast-msg">
+            {tstToast.type === 'match'
+              ? <>⚗️ 「{tstToast.entry.name}」已列於試驗管制表第 {tstToast.matched.no} 項，是否更新實際進場日期？</>
+              : <>📋 「{tstToast.entry.name}」未在試驗管制表中，是否加入？</>
+            }
+          </div>
+          <div className="mcs-tst-toast-actions">
+            <button className="mcs-btn mcs-btn-add" onClick={confirmTstAction}>
+              {tstToast.type === 'match' ? '更新管制表' : '加入管制表'}
+            </button>
+            <button className="mcs-btn" onClick={() => setTstToast(null)}>略過</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

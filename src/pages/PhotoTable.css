@@ -163,6 +163,24 @@
   color: var(--color-primary-light);
 }
 
+/* ── 來源 breadcrumb ── */
+.pt-src-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(99,102,241,0.06);
+  border-bottom: 1px solid rgba(99,102,241,0.2);
+}
+.pt-src-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6366f1;
+}
+
 /* 操作按鈕 */
 .pt-action-btn {
   display: inline-flex;

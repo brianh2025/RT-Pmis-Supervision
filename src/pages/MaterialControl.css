@@ -357,6 +357,76 @@
 }
 .mcs-spin { animation: mcs-spin 0.8s linear infinite; }
 
+/* ── 照片連結按鈕 ── */
+.mcs-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(99,102,241,0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99,102,241,0.3);
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.mcs-photo-btn:hover { background: rgba(99,102,241,0.2); }
+
+/* ── 驗收結果標籤 ── */
+.mcs-result-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+.mcs-result-badge.closed {
+  color: #6366f1;
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.3);
+}
+.mcs-result-badge.fail {
+  color: #f59e0b;
+  background: rgba(245,158,11,0.1);
+  border-color: rgba(245,158,11,0.3);
+}
+
+/* ── 試驗管制材料 Toast ── */
+.mcs-tst-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  max-width: 600px;
+  width: calc(100vw - 48px);
+}
+.mcs-tst-toast-msg {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--color-text1);
+  line-height: 1.4;
+}
+.mcs-tst-toast-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* Extra btn variants */
 .mcs-btn-primary { background: rgba(21,101,192,0.1); color: var(--color-primary-light); border-color: rgba(21,101,192,0.2); }
 .mcs-btn-primary:hover { background: rgba(21,101,192,0.2); }

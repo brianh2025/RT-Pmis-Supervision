@@ -2,11 +2,11 @@
    PhotoTable.jsx — 工程照片記錄系統
    ============================================================ */
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
-  Save, Loader2, FileText, Plus, Trash2, Lock, Zap,
+  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2,
 } from 'lucide-react';
 import * as exifr from 'exifr';
 import { supabase } from '../lib/supabaseClient';
@@ -442,7 +442,8 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
 }
 
 /* ── 雙頁籤列表 ── */
-function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }) {
+function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx }) {
+  const navigate = useNavigate();
   const [tab,      setTab]      = useState('records');
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -453,20 +454,25 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
   function fetchRecords() {
     if (!projectId || !supabase) { setLoading(false); return; }
     setLoading(true);
-    supabase.from('archive_docs')
-      .select('id, title, doc_date, doc_no, remark, tags, created_at')
+    let q = supabase.from('archive_docs')
+      .select('id, title, doc_date, doc_no, remark, tags, created_at, source_table, submission_id')
       .eq('project_id', projectId).eq('category', 'photo')
-      .order('doc_date', { ascending: false })
-      .then(({ data }) => { setRecords(data || []); setLoading(false); });
+      .order('doc_date', { ascending: false });
+    if (srcCtx?.srcTable && srcCtx?.srcId) {
+      q = q.eq('source_table', srcCtx.srcTable).eq('submission_id', srcCtx.srcId);
+    }
+    q.then(({ data }) => { setRecords(data || []); setLoading(false); });
   }
 
-  useEffect(() => { async function init() { await fetchRecords(); } init(); }, [projectId]);
+  useEffect(() => { fetchRecords(); }, [projectId, srcCtx?.srcId]);
 
-  const locked   = records.filter(r => r.tags?.includes('日報已附註'));
-  const unlocked = records.filter(r => !r.tags?.includes('日報已附註'));
-  const display  = tab === 'records' ? records : locked;
+  const SOURCE_LABEL = { material_entries: '材料管制', construction_inspections: '施工抽查' };
 
-  const selectableIds = unlocked.map(r => r.id);
+  const attached = records.filter(r => r.source_table || r.tags?.includes('日報已附註'));
+  const unattached = records.filter(r => !r.source_table && !r.tags?.includes('日報已附註'));
+  const display = tab === 'records' ? records : attached;
+
+  const selectableIds = unattached.map(r => r.id);
   const allSel  = selectableIds.length > 0 && selectableIds.every(id => selected.has(id));
   const someSel = selectableIds.some(id => selected.has(id));
 
@@ -479,15 +485,10 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
     setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   }
 
-  async function attachToLog(rec) {
-    if (!window.confirm(`確定將「${rec.title}」附入日報並鎖定？\n鎖定後僅可於報表資料庫執行抽回。`)) return;
-    const newTags = [...(rec.tags || []), '日報已附註'];
-    const { error } = await supabase.from('archive_docs').update({ tags: newTags }).eq('id', rec.id);
-    if (!error) fetchRecords();
-  }
+  // attachToLog 已移除；照片透過 source_table/submission_id 連結至材料管制或施工抽查
 
   async function bulkDelete() {
-    const ids = [...selected].filter(id => unlocked.find(r => r.id === id));
+    const ids = [...selected].filter(id => unattached.find(r => r.id === id));
     if (!ids.length || !window.confirm(`確定刪除選取的 ${ids.length} 筆記錄？此操作無法復原。`)) return;
     setBusy(true);
     await Promise.all(ids.map(id => supabase.from('archive_docs').delete().eq('id', id)));
@@ -495,24 +496,36 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
   }
 
   async function handleWithdraw(rec) {
-    if (!window.confirm(`確定從報表資料庫抽回「${rec.title}」？\n抽回後解除鎖定，可再次編輯。`)) return;
-    const newTags = (rec.tags || []).filter(t => t !== '日報已附註');
-    const { error } = await supabase.from('archive_docs').update({ tags: newTags }).eq('id', rec.id);
+    if (!window.confirm(`確定解除「${rec.title}」的來源連結？\n解除後可再次編輯。`)) return;
+    const newTags = (rec.tags || []).filter(t => t !== '日報已附註' && t !== '材料管制已附' && t !== '施工抽查已附');
+    const { error } = await supabase.from('archive_docs').update({ tags: newTags, source_table: null, submission_id: null }).eq('id', rec.id);
     if (!error) fetchRecords();
   }
 
   return (
     <div className="pt-step-list">
+      {/* 來源 breadcrumb（從材料/施工抽查跳轉時顯示） */}
+      {srcCtx?.srcName && (
+        <div className="pt-src-breadcrumb">
+          <button className="pt-btn" onClick={() => navigate(-1)}><ArrowLeft size={12} />返回</button>
+          <span className="pt-src-label">
+            <Link2 size={12} />
+            {SOURCE_LABEL[srcCtx.srcTable] || srcCtx.srcTable} ／ {decodeURIComponent(srcCtx.srcName)}
+          </span>
+        </div>
+      )}
       {/* 頁籤列 */}
       <div className="pt-db-tabs">
         <button className={`pt-db-tab ${tab === 'records' ? 'active' : ''}`}
           onClick={() => { setTab('records'); setSelected(new Set()); }}>
           <Camera size={13} />照片記錄資料庫<span className="pt-tab-count">{records.length}</span>
         </button>
-        <button className={`pt-db-tab ${tab === 'report' ? 'active' : ''}`}
-          onClick={() => { setTab('report'); setSelected(new Set()); }}>
-          <FileText size={13} />報表資料庫<span className="pt-tab-count">{locked.length}</span>
-        </button>
+        {!srcCtx && (
+          <button className={`pt-db-tab ${tab === 'report' ? 'active' : ''}`}
+            onClick={() => { setTab('report'); setSelected(new Set()); }}>
+            <FileText size={13} />已附記錄<span className="pt-tab-count">{attached.length}</span>
+          </button>
+        )}
         {tab === 'records' && (
           <button className="pt-btn pt-btn-primary" style={{ marginLeft: 'auto' }} onClick={onNew}>
             <Plus size={13} />新增照片記錄
@@ -551,20 +564,21 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
       ) : display.length === 0 ? (
         <div className="pt-list-empty">
           <Camera size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
-          <div>{tab === 'records' ? '尚無照片記錄' : '尚無附入日報的記錄'}</div>
+          <div>{tab === 'records' ? '尚無照片記錄' : '尚無已附來源的記錄'}</div>
           {tab === 'records' && <div style={{ fontSize: '0.72rem', marginTop: 4 }}>點擊「新增照片記錄」開始建立</div>}
         </div>
       ) : display.map(rec => {
-        const isLocked = rec.tags?.includes('日報已附註');
+        const isAttached = !!(rec.source_table || rec.tags?.includes('日報已附註'));
+        const srcLabel = SOURCE_LABEL[rec.source_table] || (rec.tags?.includes('日報已附註') ? '日報' : null);
         const info = parseRemark(rec.remark);
         return (
           <div key={rec.id}
-            className={`pt-record-item ${isLocked ? 'locked' : ''} ${selected.has(rec.id) ? 'selected' : ''}`}
+            className={`pt-record-item ${isAttached ? 'locked' : ''} ${selected.has(rec.id) ? 'selected' : ''}`}
             onClick={() => onDetail(rec)}>
             {tab === 'records' && (
               <span className="col-check" onClick={e => e.stopPropagation()}>
-                <input type="checkbox" checked={selected.has(rec.id)} disabled={isLocked}
-                  onChange={() => !isLocked && toggleOne(rec.id)} />
+                <input type="checkbox" checked={selected.has(rec.id)} disabled={isAttached}
+                  onChange={() => !isAttached && toggleOne(rec.id)} />
               </span>
             )}
             <div className="col-title pt-record-title">{rec.title}</div>
@@ -572,12 +586,11 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail }
             <div className="col-docno pt-record-meta" style={{ fontFamily: 'monospace' }}>{rec.doc_no || '—'}</div>
             <div className="col-count pt-record-meta">{info.count ?? 0} 張</div>
             <div className="col-status" onClick={e => e.stopPropagation()}>
-              {isLocked
-                ? <span className="pt-log-tag attached"><Lock size={10} />已附日報</span>
-                : <button className="pt-log-tag unlocked" onClick={() => attachToLog(rec)}
-                    title="點擊附入日報並鎖定">
-                    <FileText size={10} />未附日報
-                  </button>
+              {srcLabel
+                ? <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
+                : <span className="pt-log-tag unlocked" style={{ opacity: 0.45, cursor: 'default' }}>
+                    <FileText size={10} />未附來源
+                  </span>
               }
             </div>
             {tab === 'report' && (
@@ -790,16 +803,42 @@ function StepEntry({ photos, onComplete, onBack }) {
 
 const SUBTITLE_OPTIONS = ['施工抽查紀錄', '材料抽查紀錄'];
 
+const SOURCE_TYPE_OPTIONS = [
+  { value: '',                     label: '（僅歸檔，不附入）' },
+  { value: 'material_entries',     label: '附入材料管制' },
+  { value: 'construction_inspections', label: '附入施工抽查' },
+];
+
 /* ── 報告預覽 ── */
-function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved }) {
-  const [saving,      setSaving]      = useState(false);
-  const [saved,       setSaved]       = useState(false);
-  const [logAttached, setLogAttached] = useState(false);
-  const [subtitle,    setSubtitle]    = useState(SUBTITLE_OPTIONS[0]);
+function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved, srcCtx }) {
+  const [saving,         setSaving]         = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [subtitle,       setSubtitle]       = useState(SUBTITLE_OPTIONS[0]);
+  // 附入來源（獨立開啟時顯示）
+  const [srcTypeChoice,  setSrcTypeChoice]  = useState('');
+  const [srcRecords,     setSrcRecords]     = useState([]);
+  const [srcRecordId,    setSrcRecordId]    = useState('');
+  const [srcLoading,     setSrcLoading]     = useState(false);
 
   const pages = [];
   for (let i = 0; i < photos.length; i += PHOTOS_PER_PAGE) {
     pages.push(photos.slice(i, i + PHOTOS_PER_PAGE).map((p, j) => ({ photo: p, info: data[i + j] })));
+  }
+
+  async function loadSrcRecords(tableKey) {
+    if (!tableKey || !supabase) { setSrcRecords([]); return; }
+    setSrcLoading(true);
+    const field = tableKey === 'material_entries' ? 'name' : 'work_item';
+    const { data: recs } = await supabase.from(tableKey).select(`id, ${field}`)
+      .eq('project_id', projectId).order('created_at', { ascending: false }).limit(50);
+    setSrcRecords((recs || []).map(r => ({ id: r.id, label: r[field] || '（無名稱）' })));
+    setSrcRecordId('');
+    setSrcLoading(false);
+  }
+
+  function handleSrcTypeChange(val) {
+    setSrcTypeChoice(val);
+    loadSrcRecords(val);
   }
 
   function handlePrint() {
@@ -813,7 +852,6 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
     if (!projectId || !supabase) return;
     setSaving(true);
     try {
-      // 若照片還是 blob（本機選取但尚未上傳），在存檔時一次上傳至 Drive
       let token = null;
       const needUpload = photos.some(p => p.blob);
       if (needUpload) {
@@ -829,13 +867,21 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
         return { location: d.location, description: d.description, date: d.date, gps: d.gps, url };
       }));
 
+      // 決定 source_table / submission_id / tags
+      const effectiveSrcTable = srcCtx?.srcTable || (srcTypeChoice || null);
+      const effectiveSrcId    = srcCtx?.srcId    || (srcTypeChoice && srcRecordId ? srcRecordId : null);
+      const srcTagMap = { material_entries: '材料管制已附', construction_inspections: '施工抽查已附' };
+      const tags = effectiveSrcTable ? [srcTagMap[effectiveSrcTable] || '已附記錄'] : [];
+
       const title = batchTitle || `${data[0]?.date || todayISO()} 施工照片（${photos.length}張）`;
       const { error } = await supabase.from('archive_docs').insert({
         project_id: projectId, category: 'photo', title,
         doc_no: reportNo || null, doc_date: data[0]?.date || todayISO(),
         remark: JSON.stringify({ count: photos.length, photos: photoDetails }),
         file_url: photoDetails[0]?.url || null,
-        tags: logAttached ? ['日報已附註'] : [],
+        tags,
+        source_table: effectiveSrcTable || null,
+        submission_id: effectiveSrcId || null,
       });
       if (error) throw error;
       setSaved(true);
@@ -863,10 +909,28 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
           ))}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label className="pt-check-label">
-            <input type="checkbox" checked={logAttached} onChange={e => setLogAttached(e.target.checked)} />
-            存檔後標記已附日報（鎖定）
-          </label>
+          {/* 附入來源 */}
+          {srcCtx?.srcName ? (
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Link2 size={11} />附入：{decodeURIComponent(srcCtx.srcName)}
+            </span>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <select value={srcTypeChoice} onChange={e => handleSrcTypeChange(e.target.value)}
+                style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '0.72rem', color: 'var(--color-text1)' }}>
+                {SOURCE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {srcTypeChoice && (
+                srcLoading
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <select value={srcRecordId} onChange={e => setSrcRecordId(e.target.value)}
+                      style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '0.72rem', color: 'var(--color-text1)', maxWidth: 160 }}>
+                      <option value="">選擇記錄…</option>
+                      {srcRecords.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+              )}
+            </div>
+          )}
           <button className="pt-btn" onClick={handleSave} disabled={saving || saved}>
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
             {saved ? '已存檔' : '儲存至系統'}
@@ -919,6 +983,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
 export function PhotoTable() {
   const { id: projectId } = useParams();
   const { project }       = useProject(projectId);
+  const [searchParams]    = useSearchParams();
   const [view,        setView]        = useState('list');
   const [detailRec,   setDetailRec]   = useState(null);
   const [photos,      setPhotos]      = useState([]);
@@ -926,6 +991,12 @@ export function PhotoTable() {
   const [reportNo,    setReportNo]    = useState('');
   const [batchTitle,  setBatchTitle]  = useState('');
   const [refreshKey,  setRefreshKey]  = useState(0);
+
+  const srcCtx = {
+    srcTable: searchParams.get('src_table') || '',
+    srcId:    searchParams.get('src_id')    || '',
+    srcName:  searchParams.get('src_name')  || '',
+  };
 
   /* 自動產生流水號：YYYYMMDD-NNN */
   useEffect(() => {
@@ -969,7 +1040,8 @@ export function PhotoTable() {
 
       {view === 'list' && (
         <PhotoRecordDB key={refreshKey} projectId={projectId} projectName={project?.name}
-          onNew={() => setView('upload')} onDetail={openDetail} />
+          onNew={() => setView('upload')} onDetail={openDetail}
+          srcCtx={srcCtx.srcTable ? srcCtx : null} />
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}
@@ -988,7 +1060,8 @@ export function PhotoTable() {
       {view === 'report' && (
         <StepReport photos={photos} data={photoData} projectName={project?.name}
           batchTitle={batchTitle} reportNo={reportNo} setReportNo={setReportNo}
-          projectId={projectId} onBack={() => setView('entry')} onSaved={handleSaved} />
+          projectId={projectId} onBack={() => setView('entry')} onSaved={handleSaved}
+          srcCtx={srcCtx.srcTable ? srcCtx : null} />
       )}
     </div>
   );
