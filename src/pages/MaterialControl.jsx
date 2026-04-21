@@ -484,7 +484,7 @@ export function MaterialControl() {
     <div className="mcs-root">
       {/* Stats */}
       <div className="mcs-stats">
-        {tab === 0 ? [
+        {(tab === 0 ? [
           { val: entries.length, label: '進場紀錄', cls: '' },
           { val: okCount, label: '驗收合格', cls: 'mcs-stat-ok' },
           { val: failCount, label: '驗收不合格', cls: failCount > 0 ? 'mcs-stat-warn' : '' },
@@ -494,7 +494,7 @@ export function MaterialControl() {
           { val: tstRows.length, label: '試驗項目', cls: '' },
           { val: tstPending, label: '待試驗', cls: 'mcs-stat-warn' },
           { val: tstRows.filter(r => r.result && r.result.trim()).length, label: '試驗完成', cls: 'mcs-stat-ok' },
-        ].map(s => (
+        ]).map(s => (
           <div key={s.label} className="mcs-stat">
             <span className={`mcs-stat-val ${s.cls}`}>{s.val}</span>
             <span className="mcs-stat-label">{s.label}</span>
