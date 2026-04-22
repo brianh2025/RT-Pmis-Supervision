@@ -360,20 +360,21 @@
 .pl-back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text1);
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .pl-back-btn:hover {
-  background: rgba(21, 101, 192, 0.08);
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
   color: var(--color-primary-light);
 }
 
@@ -867,8 +868,8 @@
   /* 時間/天氣欄位在行動版隱藏（sidebar 已有） */
   .topbar-info-group { display: none; }
 
-  /* 返回按鈕縮小 */
-  .pl-back-btn { font-size: 0.72rem; padding: 3px 7px; }
+  /* 返回按鈕行動版稍縮 */
+  .pl-back-btn { font-size: 13px; padding: 5px 10px; }
 }
 
 @media (max-width: 480px) {

@@ -20,7 +20,7 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
         {/* 返回按鈕 */}
         {backInfo && (
           <button className="pl-back-btn" onClick={backInfo.onClick}>
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} />
             <span>{backInfo.label}</span>
           </button>
         )}

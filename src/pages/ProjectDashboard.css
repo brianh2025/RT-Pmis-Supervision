@@ -564,79 +564,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 8px 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 8px;
   border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg2);
+  border: none;
+  background: transparent;
   cursor: pointer;
   text-align: center;
-  transition: transform 0.12s, border-color 0.15s, background 0.15s;
-  position: relative;
+  transition: transform 0.12s, background 0.15s;
 }
 .dash-sc-card:hover {
   transform: translateY(-2px);
   background: var(--color-surface-hover);
-  border-color: var(--color-primary);
 }
 .dash-sc-card:active {
   transform: translateY(0);
-}
-.dash-sc-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  border: 1px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  flex-shrink: 0;
-}
-.dash-sc-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.dash-sc-badge-urgent {
-  background: #ef4444;
-  color: #fff;
 }
 .dash-sc-label {
   font-size: 14px;
   font-weight: 700;
   color: var(--color-text1);
   line-height: 1.2;
-}
-.dash-sc-desc {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.3;
-}
-.dash-sc-stat {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  line-height: 1.4;
-}
-.dash-sc-stat-urgent {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-}
-.dash-sc-stat-ok {
-  background: rgba(99, 102, 241, 0.1);
-  color: #818cf8;
 }
 
 /* ── 工程資訊 Modal ── */

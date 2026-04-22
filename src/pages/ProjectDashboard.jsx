@@ -5,24 +5,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, FileText, Calendar, Loader2,
-  AlertTriangle, CheckCircle2, ChevronRight, BookOpen, AlertCircle, Clock,
-  ChevronDown, ChevronUp,
-  ClipboardList, Package, Shield, Archive, BarChart2, Camera,
+  TrendingUp, Calendar, Loader2,
+  AlertTriangle, CheckCircle2, ChevronRight, AlertCircle, Clock,
+  BookOpen, Camera, Package,
+  Shield, Archive, BarChart2,
   Pencil, X,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
-import { EmergencyStopModal } from '../components/EmergencyStopModal';
 import './ProjectDashboard.css';
 
 const SHORTCUTS = [
-  { label: '照片記錄', desc: '現場施工影像',   icon: Camera,        path: 'photos',     color: '#f472b6', statKey: null },
-  { label: '日誌報表', desc: '施工日誌與報表', icon: BookOpen,      path: 'journal',    color: '#60a5fa', statKey: 'pendingLogs',       statLabel: '天待補', statUrgent: true },
-  { label: '進度管理', desc: 'S曲線進度追蹤', icon: TrendingUp,    path: 'progress',   color: '#6366f1', statKey: 'latestActual',      statLabel: '% 實際', statUrgent: false },
-  { label: '品質管理', desc: '缺失改善追蹤',   icon: Shield,        path: 'quality',    color: '#fb923c', statKey: 'qualityOpen',       statLabel: '件待結案', statUrgent: true },
-  { label: '歸檔管理', desc: '核定文件總覽',   icon: Archive,       path: 'archive',    color: '#34d399', statKey: 'archiveCount',      statLabel: '份', statUrgent: false },
-  { label: '統計分析', desc: '工程數據圖表',   icon: BarChart2,     path: 'analytics',  color: '#818cf8', statKey: null },
+  { label: '照片記錄', icon: Camera,    path: 'photos',    color: '#f472b6' },
+  { label: '日誌報表', icon: BookOpen,  path: 'journal',   color: '#60a5fa' },
+  { label: '進度管理', icon: TrendingUp,path: 'progress',  color: '#6366f1' },
+  { label: '品質管理', icon: Shield,    path: 'quality',   color: '#fb923c' },
+  { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#34d399' },
+  { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#818cf8' },
 ];
 
 export function ProjectDashboard() {
@@ -46,7 +45,6 @@ export function ProjectDashboard() {
     matUnregistered: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
-  const [showEmergency, setShowEmergency] = useState(false);
 
   useEffect(() => {
     if (!projectId || !supabase) { setStatsLoading(false); return; }
@@ -150,90 +148,59 @@ export function ProjectDashboard() {
     ? Math.ceil((new Date(project.end_date).getTime() - now) / 86400000)
     : null;
 
-  // 本月底日期（供日誌截止標籤用）
   const monthEnd = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()}`;
   })();
 
-  // ── 待辦任務清單（從現有 stats 聚合）──
   const tasks = statsLoading ? [] : [
     stats.pendingLogs > 0 && {
-      id: 'diary',
-      level: stats.pendingLogs >= 3 ? 'urgent' : 'warning',
-      icon: BookOpen,
+      id: 'diary', level: stats.pendingLogs >= 3 ? 'urgent' : 'warning', icon: BookOpen,
       title: `施工日誌未補 ${stats.pendingLogs} 天`,
       desc: `本月已匯入 ${stats.thisMonthLogs} 筆，以下日期缺少日誌`,
-      due: `補至 ${monthEnd}`,
-      path: 'journal',
-      action: '前往補填',
-      dates: stats.missingDates,
+      due: `補至 ${monthEnd}`, path: 'journal', action: '前往補填', dates: stats.missingDates,
     },
     stats.qualityOpen > 0 && {
-      id: 'quality',
-      level: 'urgent',
-      icon: AlertCircle,
+      id: 'quality', level: 'urgent', icon: AlertCircle,
       title: `品管缺失未結案 ${stats.qualityOpen} 件`,
-      desc: `共 ${stats.qualityCount} 件缺失，${stats.qualityOpen} 件待改善或驗收`,
-      due: '請儘速結案',
-      path: 'quality',
-      action: '查看缺失',
+      desc: `共 ${stats.qualityCount} 件缺失，${stats.qualityOpen} 件待改善`,
+      due: '請儘速結案', path: 'quality', action: '查看缺失',
     },
     stats.submissionPending > 0 && {
-      id: 'submission',
-      level: 'warning',
-      icon: Clock,
+      id: 'submission', level: 'warning', icon: Clock,
       title: `送審件待處理 ${stats.submissionPending} 件`,
-      desc: `共 ${stats.submissionCount} 件送審，${stats.submissionPending} 件審查中或待送出`,
-      path: 'submission',
-      action: '前往送審',
+      desc: `共 ${stats.submissionCount} 件送審，${stats.submissionPending} 件待送出`,
+      path: 'submission', action: '前往送審',
     },
     diff < -5 && {
-      id: 'progress',
-      level: 'urgent',
-      icon: TrendingUp,
+      id: 'progress', level: 'urgent', icon: TrendingUp,
       title: `進度落後 ${Math.abs(diff).toFixed(1)}%，需提出趕工計畫`,
-      desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%，請更新進度並說明原因`,
-      due: '請儘速更新',
-      path: 'progress',
-      action: '更新進度',
+      desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%`,
+      due: '請儘速更新', path: 'progress', action: '更新進度',
     },
     daysRemaining !== null && daysRemaining <= 30 && daysRemaining >= 0 && {
-      id: 'deadline',
-      level: daysRemaining <= 14 ? 'urgent' : 'warning',
-      icon: Calendar,
+      id: 'deadline', level: daysRemaining <= 14 ? 'urgent' : 'warning', icon: Calendar,
       title: `工程剩餘工期 ${daysRemaining} 天`,
-      desc: `完工期限：${project.end_date}，請確認最終驗收作業準備`,
-      due: project.end_date,
-      path: 'progress',
-      action: '查看進度',
+      desc: `完工期限：${project.end_date}，請確認驗收作業準備`,
+      due: project.end_date, path: 'progress', action: '查看進度',
     },
     stats.inspFail > 0 && {
-      id: 'insp-fail',
-      level: 'urgent',
-      icon: AlertCircle,
+      id: 'insp-fail', level: 'urgent', icon: AlertCircle,
       title: `施工檢驗不合格 ${stats.inspFail} 項，需複驗`,
-      desc: `共 ${stats.inspTotal} 項檢驗，${stats.inspPending} 待複驗，${stats.inspFail} 不合格`,
-      path: 'quality',
-      action: '前往複驗',
+      desc: `共 ${stats.inspTotal} 項檢驗，${stats.inspFail} 不合格`,
+      path: 'quality', action: '前往複驗',
     },
     stats.inspFail === 0 && stats.inspPending > 0 && {
-      id: 'insp-pending',
-      level: 'warning',
-      icon: Clock,
+      id: 'insp-pending', level: 'warning', icon: Clock,
       title: `施工檢驗待複驗 ${stats.inspPending} 項`,
-      desc: `共 ${stats.inspTotal} 項檢驗，請安排複驗作業`,
-      path: 'quality',
-      action: '查看檢驗',
+      desc: `共 ${stats.inspTotal} 項檢驗，請安排複驗`,
+      path: 'quality', action: '查看檢驗',
     },
     stats.matUnregistered > 0 && project?.status === 'active' && {
-      id: 'mat-unregistered',
-      level: 'warning',
-      icon: Package,
+      id: 'mat-unregistered', level: 'warning', icon: Package,
       title: '材料進場管制尚未回填',
-      desc: '廠商施工日誌已有記錄，請至材料管制頁回填材料進場資料',
-      path: 'material',
-      action: '前往回填',
+      desc: '廠商日誌已有記錄，請至材料管制頁回填進場資料',
+      path: 'material', action: '前往回填',
     },
   ].filter(Boolean);
 
@@ -245,70 +212,65 @@ export function ProjectDashboard() {
       {/* ── 專案標頭 ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: '0.6rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.1em', marginBottom: '4px' }}>
-            PROJECT DASHBOARD
-          </div>
-          <h1 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
             {project.name}
           </h1>
           {project.contractor && (
-            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
               承包商：{project.contractor}
             </div>
           )}
         </div>
-        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
-          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+          <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
+            {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
+          </span>
+          <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>
+            PROJECT DASHBOARD
+          </span>
+        </div>
       </div>
 
-      {/* ── 查驗任務看板 ── */}
+      {/* ── 六大功能模組 ── */}
+      <div className="dash-sc-grid">
+        {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
+          <button key={path} className="dash-sc-card" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+            <Icon size={26} style={{ color }} />
+            <div className="dash-sc-label">{label}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 今日任務 ── */}
       <div className="task-board">
         <div className="task-board-header">
           <div className="task-board-title">
             {allDone
-              ? <><CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />今日查驗任務</>
-              : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦查驗任務</>
+              ? <><CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />今日任務</>
+              : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦任務</>
             }
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="task-board-count">
-              {statsLoading ? '載入中…' : allDone ? '全部完成' : `${tasks.length} 項待處理`}
-            </span>
-            <button
-              className="task-emergency-btn"
-              onClick={() => setShowEmergency(true)}
-              title="緊急停工通報"
-            >
-              <AlertTriangle size={12} />緊急停工
-            </button>
-          </div>
+          {!allDone && (
+            <span className="task-board-count">{statsLoading ? '載入中…' : `${tasks.length} 項待處理`}</span>
+          )}
         </div>
 
         {statsLoading && (
-          <div className="task-board-loading">
-            <Loader2 size={14} className="animate-spin" />載入任務中…
-          </div>
+          <div className="task-board-loading"><Loader2 size={14} className="animate-spin" />載入任務中…</div>
         )}
 
         {allDone && (
           <div className="task-board-done">
             <CheckCircle2 size={20} />
-            <span>今日查驗任務全數完成，繼續保持！</span>
+            <span>今日任務全數完成，繼續保持！</span>
           </div>
         )}
 
         {tasks.map(task => {
           const Icon = task.icon;
           return (
-            <div
-              key={task.id}
-              className={`task-item task-item-${task.level}`}
-              onClick={() => navigate(`/projects/${projectId}/${task.path}`)}
-            >
-              <div className="task-item-icon">
-                <Icon size={15} />
-              </div>
+            <div key={task.id} className={`task-item task-item-${task.level}`} onClick={() => navigate(`/projects/${projectId}/${task.path}`)}>
+              <div className="task-item-icon"><Icon size={15} /></div>
               <div className="task-item-body">
                 <div className="task-item-title">{task.title}</div>
                 <div className="task-item-desc">{task.desc}</div>
@@ -316,47 +278,14 @@ export function ProjectDashboard() {
                   <div className="task-missing-dates">
                     {task.dates.map(d => {
                       const [, m, day] = d.split('-');
-                      return (
-                        <span key={d} className="task-missing-date-chip">
-                          {+m}/{+day}
-                        </span>
-                      );
+                      return <span key={d} className="task-missing-date-chip">{+m}/{+day}</span>;
                     })}
                   </div>
                 )}
               </div>
-              {task.due && (
-                <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>
-              )}
-              <div className="task-item-action">
-                {task.action}<ChevronRight size={13} />
-              </div>
+              {task.due && <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>}
+              <div className="task-item-action">{task.action}<ChevronRight size={13} /></div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* ── 六大功能模組 ── */}
-      <div className="dash-sc-grid">
-        {SHORTCUTS.map(({ icon: Icon, label, desc, path, color, statKey, statLabel, statUrgent }) => {
-          const statVal = statKey ? stats[statKey] : null;
-          const showStat = statVal !== null && statVal !== undefined && statVal !== 0;
-          return (
-            <button key={path} className="dash-sc-card" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-              <div className="dash-sc-icon-wrap" style={{ background: color + '20', borderColor: color + '40' }}>
-                <Icon size={22} style={{ color }} />
-                {showStat && statUrgent && (
-                  <span className="dash-sc-badge dash-sc-badge-urgent">{statVal}</span>
-                )}
-              </div>
-              <div className="dash-sc-label">{label}</div>
-              <div className="dash-sc-desc">{desc}</div>
-              {showStat && (
-                <div className={`dash-sc-stat ${statUrgent ? 'dash-sc-stat-urgent' : 'dash-sc-stat-ok'}`}>
-                  {statKey === 'latestActual' ? `${statVal}%` : statVal} {statLabel}
-                </div>
-              )}
-            </button>
           );
         })}
       </div>
@@ -530,13 +459,6 @@ export function ProjectDashboard() {
         </div>
       )}
 
-      {showEmergency && (
-        <EmergencyStopModal
-          projectId={projectId}
-          onClose={() => setShowEmergency(false)}
-          onSuccess={() => { setShowEmergency(false); /* 重新抓 stats */ setStatsLoading(true); }}
-        />
-      )}
     </div>
   );
 }
