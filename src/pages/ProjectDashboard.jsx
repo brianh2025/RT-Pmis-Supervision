@@ -292,21 +292,21 @@ export function ProjectDashboard() {
           <h3 className="stunning-card-title">工程進度</h3>
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-            <span style={{ color: 'var(--color-text-muted)' }}>預定 {stats.latestPlanned}%</span>
-            {stats.latestPlanned > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className="stunning-progress-wrap">
+            <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
+            <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }} />
+            <span className="stunning-progress-label">
+              預定 {stats.latestPlanned}%　／　實際 {stats.latestActual}%
+            </span>
+          </div>
+          {stats.latestPlanned > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
                 {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
               </span>
-            )}
-          </div>
-          <div className="stunning-progress-wrap">
-            <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
-            <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }}>
-              {stats.latestActual > 5 && `${stats.latestActual}%`}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
