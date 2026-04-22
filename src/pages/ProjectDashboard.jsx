@@ -210,8 +210,8 @@ export function ProjectDashboard() {
     <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
 
       {/* ── 專案標頭 ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-        <div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'nowrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
             {project.name}
           </h1>
