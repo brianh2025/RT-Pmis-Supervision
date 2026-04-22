@@ -294,7 +294,7 @@ export function ProjectDashboard() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)', lineHeight: 1 }}>
+            <span style={{ fontSize: '2.2rem', fontWeight: 400, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)', lineHeight: 1 }}>
               {stats.latestActual}%
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>

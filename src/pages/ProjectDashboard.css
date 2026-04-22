@@ -374,6 +374,10 @@
   background: rgba(21, 101, 192, 0.22);
   color: var(--color-primary-light);
 }
+.stunning-card-progress .stunning-card-title,
+.stunning-card-progress .stunning-card-title * {
+  color: #e2e8f0;
+}
 
 /* 工程資訊：輕量參考卡——最中性、最輕 */
 .stunning-card-info {
@@ -395,6 +399,9 @@
   background: #f0f4ff;
   border: 1px solid rgba(21, 101, 192, 0.3);
   box-shadow: 0 4px 20px rgba(21, 101, 192, 0.1), 0 1px 4px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .stunning-card-progress .stunning-card-title {
+  color: var(--color-text1);
 }
 [data-theme="light"] .stunning-card-info {
   background: #f8fafc;
