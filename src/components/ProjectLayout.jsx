@@ -80,9 +80,10 @@ export function ProjectLayout() {
       />
 
       <div className="pl-main-wrapper">
-        <Topbar 
+        <Topbar
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
+          pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : null}
         />
         
         <main ref={contentRef} className="pl-content-area custom-scrollbar">

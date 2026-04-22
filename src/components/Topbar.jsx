@@ -7,7 +7,7 @@ import { Menu, ChevronLeft, LogOut, FileSpreadsheet } from 'lucide-react';
  * 漢堡鍵移至右側 (.pl-topbar-right)。
  * 若為 isGlobalDashboard，隱藏漢堡鍵並在右側顯示 Excel匯入 + 登出。
  */
-export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel }) {
+export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel, pageLabel }) {
   return (
     <header className={`pl-topbar ${backInfo ? 'has-back' : 'pl-topbar-mobile-only'}`}>
       <div className="pl-topbar-left">
@@ -27,6 +27,11 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
       </div>
 
       <div className="pl-topbar-right">
+        {pageLabel && (
+          <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>
+            {pageLabel}
+          </span>
+        )}
         {/* 總覽頁行動版專用：Excel匯入（次要）+ 登出（危險） */}
         {isGlobalDashboard && onShowExcel && (
           <button className="pl-topbar-excel-btn" onClick={onShowExcel}>

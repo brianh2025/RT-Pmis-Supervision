@@ -209,26 +209,21 @@ export function ProjectDashboard() {
   return (
     <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
 
-      {/* ── PROJECT DASHBOARD 標籤列 ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>
-          PROJECT DASHBOARD
-        </span>
-        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
+      {/* ── 專案標頭 ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'nowrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {project.name}
+          </h1>
+          {project.contractor && (
+            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              承包商：{project.contractor}
+            </div>
+          )}
+        </div>
+        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`} style={{ flexShrink: 0, marginTop: '2px' }}>
           {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
         </span>
-      </div>
-
-      {/* ── 專案標頭 ── */}
-      <div style={{ minWidth: 0 }}>
-        <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {project.name}
-        </h1>
-        {project.contractor && (
-          <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-            承包商：{project.contractor}
-          </div>
-        )}
       </div>
 
       {/* ── 六大功能模組 ── */}
