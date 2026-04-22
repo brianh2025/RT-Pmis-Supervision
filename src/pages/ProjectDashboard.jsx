@@ -242,7 +242,7 @@ export function ProjectDashboard() {
   const allDone = !statsLoading && tasks.length === 0;
 
   return (
-    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
 
       {/* ── 專案標頭 ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -393,13 +393,13 @@ export function ProjectDashboard() {
       </div>
 
       {/* ── 工程資訊 ── */}
-      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active' }); setShowProjectInfo(true); }}>
+      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
         <div className="stunning-card-header">
           <div className="stunning-icon-box"><Calendar size={14} /></div>
           <h3 className="stunning-card-title">工程資訊</h3>
           <button
             className="proj-info-edit-btn"
-            onClick={e => { e.stopPropagation(); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active' }); setEditMode(true); setShowProjectInfo(true); }}
+            onClick={e => { e.stopPropagation(); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setEditMode(true); setShowProjectInfo(true); }}
             title="編輯工程資訊"
           >
             <Pencil size={12} />
@@ -461,6 +461,16 @@ export function ProjectDashboard() {
                   </div>
                 ))}
                 <div className="proj-info-field">
+                  <label>監造人員</label>
+                  <textarea
+                    value={editForm.supervisor_name || ''}
+                    onChange={e => setEditForm(f => ({ ...f, supervisor_name: e.target.value }))}
+                    placeholder="每行一位監造人員姓名"
+                    rows={3}
+                    style={{ width: '100%', padding: '5px 8px', background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: 6, color: 'var(--color-text1)', fontSize: '0.82rem', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+                  />
+                </div>
+                <div className="proj-info-field">
                   <label>狀態</label>
                   <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
                     <option value="pending">未發包</option>
@@ -483,6 +493,7 @@ export function ProjectDashboard() {
                         start_date: editForm.start_date || null,
                         end_date: editForm.end_date || null,
                         status: editForm.status,
+                        supervisor_name: editForm.supervisor_name || null,
                       }).eq('id', projectId);
                       setSaving(false);
                       setEditMode(false);
@@ -499,6 +510,7 @@ export function ProjectDashboard() {
                 {[
                   { label: '工程名稱', value: project.name },
                   { label: '承包商',   value: project.contractor },
+                  { label: '監造人員', value: project.supervisor_name },
                   { label: '開工日期', value: project.start_date },
                   { label: '完工日期', value: project.end_date },
                   { label: '狀態',     value: project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : '暫停' },

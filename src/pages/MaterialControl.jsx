@@ -16,14 +16,14 @@ const VER_COL = { k: 'ver', l: 'VER', w: 68, ver: true };
 /* 材料進場紀錄 columns */
 const ENTRY_COLS = [
   { k: 'entry_date', l: '進場日期', w: 90 },
+  { k: 'photos', l: '照片', w: 52, photoLink: true },
   { k: 'name', l: '材料名稱', w: 180, wrap: true },
   { k: 'spec', l: '規格', w: 130, wrap: true },
   { k: 'qty', l: '數量', w: 80 },
   { k: 'vendor', l: '廠商', w: 120 },
-  { k: 'inspector', l: '驗收人員', w: 90 },
+  { k: 'inspector', l: '監造人員', w: 100, dropdown: true },
   { k: 'remark', l: '備註', w: 200, wrap: true },
   { k: 'result', l: '驗收', w: 72, resultToggle: true },
-  { k: 'photos', l: '照片', w: 52, photoLink: true },
 ];
 
 /* 檢試驗管制表 columns */
@@ -95,6 +95,52 @@ function VerBadge({ val, color, onDblClick, onCycleColor }) {
   );
 }
 
+/* ── 行動版材料進場卡片 ── */
+function MobileEntryCard({ row, photoCountMap, issueStatusMap, navigate, projectId, selected, onToggleSel }) {
+  const [expanded, setExpanded] = useState(false);
+  const count = photoCountMap[row.id] || 0;
+  const cfg = RESULT_CFG[row.result];
+  const issueStatus = issueStatusMap[row.id];
+  const isVerified = issueStatus === 'verified';
+  return (
+    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
+      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
+        <input type="checkbox" checked={selected} onChange={() => onToggleSel(row.id)}
+          onClick={e => e.stopPropagation()} style={{ accentColor: 'var(--color-primary)', flexShrink: 0 }} />
+        <span className="mcs-mc-date">{row.entry_date || '—'}</span>
+        <button className="mcs-photo-btn" title="照片記錄"
+          onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}`); }}>
+          <Camera size={11} />{count > 0 ? count : ''}
+        </button>
+        <span className="mcs-mc-name">{row.name || '—'}</span>
+        {row.result === '不合格' && issueStatus
+          ? <span className="mcs-result-badge" style={isVerified ? { color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' } : { color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              {isVerified ? '✅' : '⚠️'}
+            </span>
+          : cfg && <span className="mcs-result-badge" style={{ color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40` }}>{row.result}</span>
+        }
+        <ChevronDown size={12} style={{ marginLeft: 'auto', flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </div>
+      {expanded && (
+        <div className="mcs-mc-body">
+          {[
+            { l: '規格', v: row.spec },
+            { l: '數量', v: row.qty },
+            { l: '廠商', v: row.vendor },
+            { l: '監造人員', v: row.inspector },
+            { l: '備註', v: row.remark },
+          ].filter(i => i.v).map(({ l, v }) => (
+            <div key={l} className="mcs-mc-row">
+              <span className="mcs-mc-label">{l}</span>
+              <span className="mcs-mc-val">{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Component ── */
 export function MaterialControl() {
   const { id: projectId } = useParams();
@@ -114,6 +160,8 @@ export function MaterialControl() {
   const [showCols, setShowCols] = useState(false);
   const [hiddenCols, setHiddenCols] = useState({ entry: new Set(), tst: new Set() });
   const [seeding, setSeeding] = useState(false);
+  const [supervisorOptions, setSupervisorOptions] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   // 照片計數 & 缺失改善狀態 (僅 Tab 0 用)
   const [photoCountMap, setPhotoCountMap] = useState({});
@@ -153,6 +201,12 @@ export function MaterialControl() {
     return data || [];
   }, [projectId]);
 
+  const loadSupervisor = useCallback(async () => {
+    if (!supabase) return '';
+    const { data } = await supabase.from('projects').select('supervisor_name').eq('id', projectId).single();
+    return data?.supervisor_name || '';
+  }, [projectId]);
+
   async function loadPhotoCountMap() {
     if (!supabase) return {};
     const { data } = await supabase.from('archive_docs').select('submission_id')
@@ -178,19 +232,27 @@ export function MaterialControl() {
   }
 
   useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  useEffect(() => {
     async function init() {
       setLoading(true);
-      const [e, t, pc, is] = await Promise.all([
-        loadEntries(), loadTst(), loadPhotoCountMap(), loadIssueStatusMap(),
+      const [e, t, pc, is, sv] = await Promise.all([
+        loadEntries(), loadTst(), loadPhotoCountMap(), loadIssueStatusMap(), loadSupervisor(),
       ]);
       setEntries(e);
       setTstRows(t);
       setPhotoCountMap(pc);
       setIssueStatusMap(is);
+      setSupervisorOptions((sv || '').split('\n').map(s => s.trim()).filter(Boolean));
       setLoading(false);
     }
     if (projectId) init();
-  }, [projectId, loadEntries, loadTst]);
+  }, [projectId, loadEntries, loadTst, loadSupervisor]);
 
   useEffect(() => {
     if (editCell) setTimeout(() => { editInputRef.current?.focus(); editInputRef.current?.select?.(); }, 10);
@@ -403,6 +465,23 @@ export function MaterialControl() {
       );
     }
 
+    if (col.dropdown) {
+      return (
+        <td key={col.k} style={{ width: col.w, minWidth: col.w, padding: '1px 2px' }}>
+          <select className="mcs-sel" value={val}
+            onChange={e => {
+              const v = e.target.value;
+              setEntries(prev => prev.map(r => r.id === row.id ? { ...r, [col.k]: v } : r));
+              scheduleDbUpdate(row.id, { [col.k]: v });
+            }}>
+            <option value="">—</option>
+            {supervisorOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            {val && !supervisorOptions.includes(val) && <option value={val}>{val}</option>}
+          </select>
+        </td>
+      );
+    }
+
     if (col.resultToggle) {
       const issueStatus = issueStatusMap[row.id];
       if (row.result === '不合格' && issueStatus) {
@@ -548,48 +627,64 @@ export function MaterialControl() {
         </div>
       )}
 
-      <div className="mcs-tbl-wrap">
-        <table className="mcs-table">
-          <thead>
-            <tr>
-              <th style={{ width: 28 }}>
-                <input type="checkbox" checked={allSel} onChange={togAll} style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
-              </th>
-              {cols.map(c => hiddenCols[tkey].has(c.k) ? null : (
-                <th key={c.k} style={{ width: c.w, minWidth: c.w }}>{c.l}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
+      {isMobile && tab === 0 ? (
+        <div className="mcs-card-list">
+          {rows.length === 0 ? (
+            <div className="mcs-empty">
+              <ClipboardCheck size={32} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+              <div>尚無進場紀錄 — 點擊「新增」建立第一筆</div>
+            </div>
+          ) : rows.map(row => (
+            <MobileEntryCard key={row.id} row={row} photoCountMap={photoCountMap}
+              issueStatusMap={issueStatusMap} navigate={navigate} projectId={projectId}
+              selected={selected.has(row.id)} onToggleSel={togSel} />
+          ))}
+        </div>
+      ) : (
+        <div className="mcs-tbl-wrap">
+          <table className="mcs-table">
+            <thead>
               <tr>
-                <td colSpan={cols.length + 1} className="mcs-empty">
-                  <ClipboardCheck size={32} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                  <div>
-                    {tab === 0
-                      ? '尚無進場紀錄 — 點擊「新增」建立第一筆'
-                      : '目前無資料 — 點擊「載入預設範本」插入範例資料，或「新增」手動建立'}
-                  </div>
-                </td>
+                <th style={{ width: 28 }}>
+                  <input type="checkbox" checked={allSel} onChange={togAll} style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                </th>
+                {cols.map(c => hiddenCols[tkey].has(c.k) ? null : (
+                  <th key={c.k} style={{ width: c.w, minWidth: c.w }}>{c.l}</th>
+                ))}
               </tr>
-            ) : rows.map(row => (
-              <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}>
-                <td style={{ textAlign: 'center', padding: '1px 2px' }}>
-                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
-                </td>
-                {cols.map(c => renderCell(row, c))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={cols.length + 1} className="mcs-empty">
+                    <ClipboardCheck size={32} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+                    <div>
+                      {tab === 0
+                        ? '尚無進場紀錄 — 點擊「新增」建立第一筆'
+                        : '目前無資料 — 點擊「載入預設範本」插入範例資料，或「新增」手動建立'}
+                    </div>
+                  </td>
+                </tr>
+              ) : rows.map(row => (
+                <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}>
+                  <td style={{ textAlign: 'center', padding: '1px 2px' }}>
+                    <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                  </td>
+                  {cols.map(c => renderCell(row, c))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="mcs-footer">
         <span>共 {rows.length} 筆 · 已選 {selected.size} 筆 · {TNAMES[tab]}</span>
         <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.7rem' }}>
-          雙擊儲存格編輯 · Esc 取消 · Enter 確認
-          {tab === 1 && ' · 點擊標記切換 · ⬤ 版本顏色'}
-          {tab === 0 && ' · 點擊驗收欄切換結果 · 點擊📷查看照片'}
+          {isMobile && tab === 0
+            ? '點擊卡片展開詳情'
+            : `雙擊儲存格編輯 · Esc 取消 · Enter 確認${tab === 1 ? ' · 點擊標記切換 · ⬤ 版本顏色' : ' · 點擊驗收欄切換結果 · 點擊📷查看照片'}`
+          }
         </span>
       </div>
 
