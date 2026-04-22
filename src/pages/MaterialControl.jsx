@@ -23,7 +23,7 @@ const ENTRY_COLS = [
   { k: 'vendor', l: '廠商', w: 120 },
   { k: 'inspector', l: '監造人員', w: 100, dropdown: true },
   { k: 'remark', l: '備註', w: 200, wrap: true },
-  { k: 'result', l: '驗收', w: 72, resultToggle: true },
+  { k: 'result', l: '判定', w: 72, resultToggle: true },
 ];
 
 /* 檢試驗管制表 columns */
@@ -49,7 +49,7 @@ const ISSUE_STATUS_CFG = {
   open:        { label: '待改善', color: '#ef4444' },
   in_progress: { label: '改善中', color: '#f59e0b' },
   resolved:    { label: '已改善', color: '#10b981' },
-  verified:    { label: '已驗收', color: '#6366f1' },
+  verified:    { label: '已判定', color: '#6366f1' },
   waived:      { label: '免改善', color: '#6b7280' },
 };
 
@@ -395,12 +395,12 @@ export function MaterialControl() {
       const { data: existing } = await supabase.from('quality_issues')
         .select('id').eq('project_id', projectId)
         .eq('source_table', 'material_entries').eq('source_record_id', row.id).maybeSingle();
-      if (!existing && confirm(`「${row.name || '此材料'}」驗收不合格，是否建立缺失改善單？`)) {
+      if (!existing && confirm(`「${row.name || '此材料'}」判定不合格，是否建立缺失改善單？`)) {
         const today = new Date().toISOString().split('T')[0];
         const { data: issue } = await supabase.from('quality_issues').insert([{
           project_id: projectId, created_by: user?.id,
           inspection_date: row.entry_date || today,
-          item: row.name || '材料驗收不合格',
+          item: row.name || '材料判定不合格',
           location: row.spec || '',
           severity: 'major', status: 'open',
           source_table: 'material_entries', source_record_id: row.id,
@@ -490,7 +490,7 @@ export function MaterialControl() {
         return (
           <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
             <span className={`mcs-result-badge${isVerified ? ' closed' : ' fail'}`}
-              title={isVerified ? '缺失已驗收結案' : `缺失${cfg.label}，點擊切換`}
+              title={isVerified ? '缺失已判定結案' : `缺失${cfg.label}，點擊切換`}
               onClick={() => !isVerified && handleMaterialResult(row)}
               style={{ cursor: isVerified ? 'default' : 'pointer' }}>
               {isVerified ? '✅ 結案' : `⚠️ ${cfg.label}`}
@@ -501,7 +501,7 @@ export function MaterialControl() {
       const cfg = RESULT_CFG[row.result];
       return (
         <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
-          <span className="mcs-result-badge" title="點擊切換驗收結果"
+          <span className="mcs-result-badge" title="點擊切換判定結果"
             onClick={() => handleMaterialResult(row)}
             style={cfg ? { color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40`, cursor: 'pointer' } : { cursor: 'pointer' }}>
             {row.result || '—'}
@@ -565,9 +565,9 @@ export function MaterialControl() {
       <div className="mcs-stats">
         {(tab === 0 ? [
           { val: entries.length, label: '進場紀錄', cls: '' },
-          { val: okCount, label: '驗收合格', cls: 'mcs-stat-ok' },
-          { val: failCount, label: '驗收不合格', cls: failCount > 0 ? 'mcs-stat-warn' : '' },
-          { val: entries.filter(r => !r.result).length, label: '待驗收', cls: '' },
+          { val: okCount, label: '判定合格', cls: 'mcs-stat-ok' },
+          { val: failCount, label: '判定不合格', cls: failCount > 0 ? 'mcs-stat-warn' : '' },
+          { val: entries.filter(r => !r.result).length, label: '待判定', cls: '' },
         ] : [
           { val: entries.length, label: '進場紀錄', cls: '' },
           { val: tstRows.length, label: '試驗項目', cls: '' },
@@ -683,7 +683,7 @@ export function MaterialControl() {
         <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.7rem' }}>
           {isMobile && tab === 0
             ? '點擊卡片展開詳情'
-            : `雙擊儲存格編輯 · Esc 取消 · Enter 確認${tab === 1 ? ' · 點擊標記切換 · ⬤ 版本顏色' : ' · 點擊驗收欄切換結果 · 點擊📷查看照片'}`
+            : `雙擊儲存格編輯 · Esc 取消 · Enter 確認${tab === 1 ? ' · 點擊標記切換 · ⬤ 版本顏色' : ' · 點擊判定欄切換結果 · 點擊📷查看照片'}`
           }
         </span>
       </div>
