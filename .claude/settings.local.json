@@ -19,7 +19,12 @@
       "mcp__supabase__list_edge_functions",
       "PowerShell(cd c:\\\\RT\\\\RT-Pmis-Supervision; node .\\\\node_modules\\\\vite\\\\bin\\\\vite.js build 2>&1 | Out-String | Select-String -Pattern \"error|built|chunk|warn\" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -Last 20)",
       "Skill(ui-rules)",
-      "Skill(ui-rules:*)"
+      "Skill(ui-rules:*)",
+      "Bash(git -C c:/RT/RT-Pmis-Supervision add src/pages/ProjectDashboard.jsx src/pages/ProjectDashboard.css src/components/ProjectLayout.css src/components/Topbar.jsx)",
+      "Bash(git -C c:/RT/RT-Pmis-Supervision commit -m \"fix: 儀表板5項修正——任務看板恢復/去查驗/去重複、按鈕透明無框、返回按鈕加大加框、PROJECT DASHBOARD移右\")",
+      "Bash(git -C c:/RT/RT-Pmis-Supervision push)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)"
     ]
   },
   "enableAllProjectMcpServers": true,
