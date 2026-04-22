@@ -16,12 +16,12 @@ import { useProject } from '../hooks/useProject';
 import './ProjectDashboard.css';
 
 const SHORTCUTS = [
-  { label: '照片記錄', icon: Camera,    path: 'photos',    color: '#f472b6' },
-  { label: '日誌報表', icon: BookOpen,  path: 'journal',   color: '#60a5fa' },
-  { label: '進度管理', icon: TrendingUp,path: 'progress',  color: '#6366f1' },
-  { label: '品質管理', icon: Shield,    path: 'quality',   color: '#fb923c' },
-  { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#34d399' },
-  { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#818cf8' },
+  { label: '照片記錄', icon: Camera,    path: 'photos',    color: '#FF6D92' },
+  { label: '日誌報表', icon: BookOpen,  path: 'journal',   color: '#1AAFD0' },
+  { label: '進度管理', icon: TrendingUp,path: 'progress',  color: '#796EFF' },
+  { label: '品質管理', icon: Shield,    path: 'quality',   color: '#FC636B' },
+  { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#3BE8B0' },
+  { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#FFB900' },
 ];
 
 export function ProjectDashboard() {
@@ -291,7 +291,7 @@ export function ProjectDashboard() {
       </div>
 
       {/* ── 工程進度 ── */}
-      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
+      <div className="stunning-card stunning-card-progress" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
         <div className="stunning-card-header">
           <div className="stunning-icon-box"><TrendingUp size={14} /></div>
           <h3 className="stunning-card-title">工程進度</h3>
@@ -325,7 +325,7 @@ export function ProjectDashboard() {
       </div>
 
       {/* ── 工程資訊 ── */}
-      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
+      <div className="stunning-card stunning-card-info" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
         <div className="stunning-card-header">
           <div className="stunning-icon-box"><Calendar size={14} /></div>
           <h3 className="stunning-card-title">工程資訊</h3>
