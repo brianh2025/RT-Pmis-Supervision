@@ -548,7 +548,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
         {tab === 'records' && (
           <span className="col-check">
             <input type="checkbox" ref={selectAllRef} checked={allSel}
-              onChange={toggleAll} disabled={unlocked.length === 0} />
+              onChange={toggleAll} disabled={unattached.length === 0} />
           </span>
         )}
         <span className="col-title">標題</span>
