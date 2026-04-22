@@ -234,8 +234,8 @@ export function ProjectDashboard() {
       {/* ── 六大功能模組 ── */}
       <div className="dash-sc-grid">
         {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
-          <button key={path} className="dash-sc-card" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-            <Icon size={26} style={{ color }} />
+          <button key={path} className="dash-sc-card" style={{ '--btn-color': color }} onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+            <Icon size={28} style={{ color }} />
             <div className="dash-sc-label">{label}</div>
           </button>
         ))}

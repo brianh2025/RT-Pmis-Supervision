@@ -555,37 +555,94 @@
 }
 
 /* ── 六大功能模組 ── */
+@keyframes scCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
 .dash-sc-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
+
 .dash-sc-card {
+  --btn-color: #60a5fa;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 6px;
+  padding: 12px 6px;
   border-radius: 12px;
-  border: none;
-  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--btn-color) 35%, transparent);
+  background: color-mix(in srgb, var(--btn-color) 5%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--btn-color) 12%, transparent);
   cursor: pointer;
   text-align: center;
-  transition: transform 0.12s, background 0.15s;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease;
+  animation: scCardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.dash-sc-card:nth-child(1) { animation-delay:   0ms; }
+.dash-sc-card:nth-child(2) { animation-delay:  60ms; }
+.dash-sc-card:nth-child(3) { animation-delay: 120ms; }
+.dash-sc-card:nth-child(4) { animation-delay: 180ms; }
+.dash-sc-card:nth-child(5) { animation-delay: 240ms; }
+.dash-sc-card:nth-child(6) { animation-delay: 300ms; }
+
 .dash-sc-card:hover {
-  transform: translateY(-2px);
-  background: var(--color-surface-hover);
+  transform: translateY(-4px) scale(1.05);
+  border-color: color-mix(in srgb, var(--btn-color) 65%, transparent);
+  background: color-mix(in srgb, var(--btn-color) 10%, transparent);
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--btn-color) 28%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--btn-color) 18%, transparent);
 }
 .dash-sc-card:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--btn-color) 12%, transparent);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
 }
+
+.dash-sc-card svg {
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.22s ease;
+}
+.dash-sc-card:hover svg {
+  transform: scale(1.18) translateY(-2px);
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--btn-color) 70%, transparent));
+}
+
 .dash-sc-label {
   font-size: 14px;
   font-weight: 700;
   color: var(--color-text1);
   line-height: 1.2;
+  transition: color 0.2s ease;
+}
+.dash-sc-card:hover .dash-sc-label {
+  color: color-mix(in srgb, var(--btn-color) 90%, var(--color-text1));
+}
+
+/* 亮色模式：以向下投影取代外發光 */
+[data-theme="light"] .dash-sc-card {
+  background: color-mix(in srgb, var(--btn-color) 6%, #ffffff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .dash-sc-card:hover {
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.12),
+    0 2px 8px color-mix(in srgb, var(--btn-color) 22%, transparent);
+}
+[data-theme="light"] .dash-sc-card:hover svg {
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--btn-color) 50%, transparent));
 }
 
 /* ── 工程資訊 Modal ── */
