@@ -529,23 +529,24 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
         </div>
       )}
 
-      {/* 表頭 */}
-      <div className="pt-record-header">
-        <span className="col-check">
-          <input type="checkbox" ref={selectAllRef} checked={allSel}
-            onChange={toggleAll} disabled={unattached.length === 0} />
-        </span>
-        <span className="col-title">標題</span>
-        <span className="col-date">查驗日期</span>
-        <span className="col-docno">記錄編號</span>
-        <span className="col-count">張數</span>
-        <span className="col-status">狀態</span>
-      </div>
+      {/* 表格：表頭 + 資料列（subgrid 自動欄寬） */}
+      <div className="pt-record-table">
+        <div className="pt-record-header">
+          <span className="col-check">
+            <input type="checkbox" ref={selectAllRef} checked={allSel}
+              onChange={toggleAll} disabled={unattached.length === 0} />
+          </span>
+          <span className="col-title">標題</span>
+          <span className="col-date">查驗日期</span>
+          <span className="col-docno">記錄編號</span>
+          <span className="col-count">張數</span>
+          <span className="col-status">狀態</span>
+        </div>
 
       {loading ? (
-        <div className="pt-list-loading"><Loader2 size={14} className="animate-spin" />載入中…</div>
+        <div className="pt-list-loading" style={{ gridColumn: '1 / -1' }}><Loader2 size={14} className="animate-spin" />載入中…</div>
       ) : records.length === 0 ? (
-        <div className="pt-list-empty">
+        <div className="pt-list-empty" style={{ gridColumn: '1 / -1' }}>
           <Camera size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
           <div>尚無照片記錄</div>
           <div style={{ fontSize: '13px', marginTop: 4 }}>點擊「新增照片記錄」開始建立</div>
@@ -583,6 +584,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
