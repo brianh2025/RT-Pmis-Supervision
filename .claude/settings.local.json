@@ -17,7 +17,9 @@
       "Bash(npm run:*)",
       "Bash(git -C e:/RT-Pmis-Supervision diff --stat HEAD)",
       "mcp__supabase__list_edge_functions",
-      "PowerShell(cd c:\\\\RT\\\\RT-Pmis-Supervision; node .\\\\node_modules\\\\vite\\\\bin\\\\vite.js build 2>&1 | Out-String | Select-String -Pattern \"error|built|chunk|warn\" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -Last 20)"
+      "PowerShell(cd c:\\\\RT\\\\RT-Pmis-Supervision; node .\\\\node_modules\\\\vite\\\\bin\\\\vite.js build 2>&1 | Out-String | Select-String -Pattern \"error|built|chunk|warn\" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -Last 20)",
+      "Skill(ui-rules)",
+      "Skill(ui-rules:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
