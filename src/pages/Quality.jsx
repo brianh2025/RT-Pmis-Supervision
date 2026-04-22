@@ -37,6 +37,12 @@ const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 
 const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
+const WORK_ITEMS_PRESET = [
+  '基礎開挖', '鋼筋綁紮', '模板安裝', '混凝土澆置', '土方回填',
+  '瀝青鋪設', '基樁施工', '植筋工程', '防水工程', '安全設施',
+  '鋼筋進場', '混凝土進場', '材料進場驗收',
+];
+
 const EMPTY_INSPECT = {
   inspect_date: new Date().toISOString().split('T')[0],
   work_item: '', location: '', inspect_type: '', inspector: '', result: '待複驗', remark: '',
@@ -103,6 +109,7 @@ export function Quality() {
   // Tab 0: construction_inspections
   const [inspections, setInspections] = useState([]);
   const [inspFilter, setInspFilter] = useState('all');
+  const [inspItemFilter, setInspItemFilter] = useState(null);
   const [showInspModal, setShowInspModal] = useState(false);
   const [inspForm, setInspForm] = useState({ ...EMPTY_INSPECT });
 
@@ -395,8 +402,23 @@ export function Quality() {
   /* ── Stats ── */
   const inspStats = RESULT_CYCLE.reduce((acc, r) => { acc[r] = inspections.filter(i => i.result === r).length; return acc; }, {});
   const issueStats = RESOLVE_CYCLE.reduce((acc, s) => { acc[s] = issues.filter(i => i.status === s).length; return acc; }, {});
-  const filteredInsp = inspFilter === 'all' ? inspections : inspections.filter(r => r.result === inspFilter);
+  const filteredInsp = inspections
+    .filter(r => inspFilter === 'all' || r.result === inspFilter)
+    .filter(r => !inspItemFilter || (r.work_item || '未分類') === inspItemFilter);
   const filteredIssues = issueFilter === 'all' ? issues : issues.filter(r => r.status === issueFilter);
+
+  /* 施工抽查 — 依工項分組統計 */
+  const workItemGroups = React.useMemo(() => {
+    const map = {};
+    inspections.forEach(r => {
+      const k = r.work_item || '未分類';
+      if (!map[k]) map[k] = { name: k, pass: 0, fail: 0, pending: 0 };
+      if (r.result === '合格') map[k].pass++;
+      else if (r.result === '不合格') map[k].fail++;
+      else map[k].pending++;
+    });
+    return Object.values(map).sort((a, b) => (b.pass + b.fail + b.pending) - (a.pass + a.fail + a.pending));
+  }, [inspections]);
   const openIssues = (issueStats.open || 0) + (issueStats.in_progress || 0);
 
   if (loading) return (
@@ -447,7 +469,7 @@ export function Quality() {
           <div className="mcs-tabs">
             {TNAMES.map((n, i) => (
               <button key={i} className={`mcs-tab${tab === i ? ' active' : ''}`}
-                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); setTestFilter('all'); }}>
+                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); setTestFilter('all'); setInspItemFilter(null); }}>
                 {n}
               </button>
             ))}
@@ -467,6 +489,58 @@ export function Quality() {
           )}
         </div>
       </div>
+
+      {/* Tab 0: 施工抽查 — 工項分組總覽 */}
+      {tab === 0 && workItemGroups.length > 0 && (
+        <div style={{ padding: '0 0 8px 0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+            <thead>
+              <tr style={{ background: 'var(--color-bg2)', color: 'var(--color-text-muted)' }}>
+                <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>工項</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#10b981' }}>合格</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#ef4444' }}>不合格</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#f59e0b' }}>待複驗</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>合計</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>合格率</th>
+              </tr>
+            </thead>
+            <tbody>
+              {workItemGroups.map(g => {
+                const total = g.pass + g.fail + g.pending;
+                const rate = total > 0 ? Math.round((g.pass / total) * 100) : 0;
+                const isActive = inspItemFilter === g.name;
+                return (
+                  <tr key={g.name}
+                    onClick={() => setInspItemFilter(f => f === g.name ? null : g.name)}
+                    style={{ cursor: 'pointer', background: isActive ? 'rgba(var(--color-primary-rgb),0.08)' : undefined,
+                      borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '3px 8px', fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--color-primary-light)' : 'var(--color-text1)' }}>
+                      {g.name}
+                    </td>
+                    <td style={{ padding: '3px 8px', textAlign: 'center', color: '#10b981', fontWeight: 600 }}>{g.pass || '—'}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'center', color: g.fail > 0 ? '#ef4444' : 'var(--color-text-muted)', fontWeight: g.fail > 0 ? 600 : 400 }}>{g.fail || '—'}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'center', color: g.pending > 0 ? '#f59e0b' : 'var(--color-text-muted)' }}>{g.pending || '—'}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'center', color: 'var(--color-text2)' }}>{total}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'center' }}>
+                      <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: 3, fontSize: '10px', fontWeight: 600,
+                        background: rate === 100 ? 'rgba(16,185,129,0.1)' : rate >= 80 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: rate === 100 ? '#10b981' : rate >= 80 ? '#f59e0b' : '#ef4444' }}>
+                        {rate}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {inspItemFilter && (
+            <div style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--color-text-muted)' }}>
+              篩選工項：<strong style={{ color: 'var(--color-primary-light)' }}>{inspItemFilter}</strong>
+              <span onClick={() => setInspItemFilter(null)} style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--color-danger)', textDecoration: 'underline' }}>清除篩選</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab 0: 施工檢驗管制 */}
       {tab === 0 && (
@@ -687,19 +761,18 @@ export function Quality() {
                 <th style={{ width: 36 }}>#</th>
                 <th style={{ width: 88 }}>契約項次</th>
                 <th style={{ width: 180 }}>材料/設備名稱</th>
-                <th style={{ width: 84 }}>預定送審</th>
-                <th style={{ width: 84 }}>實際送審</th>
-                <th style={{ width: 80 }}>取樣數量</th>
-                <th style={{ width: 90 }}>頻率</th>
-                <th style={{ width: 90 }}>累計數量</th>
-                <th style={{ width: 80 }}>試驗結果</th>
+                <th style={{ width: 200 }}>抽樣頻率</th>
+                <th style={{ width: 82 }}>預定進場</th>
+                <th style={{ width: 82 }}>實際進場</th>
+                <th style={{ width: 76 }}>累積進場</th>
+                <th style={{ width: 72 }}>累積抽樣</th>
                 <th style={{ width: 80 }}>可入判定</th>
                 <th>備註</th>
               </tr>
             </thead>
             <tbody>
               {filteredTests.length === 0 ? (
-                <tr><td colSpan={12} className="mcs-empty">
+                <tr><td colSpan={11} className="mcs-empty">
                   <FlaskConical size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
                   <div>尚無試驗報告記錄 — 請至「材料管制」頁面的「檢試驗管制表」新增資料</div>
                 </td></tr>
@@ -719,22 +792,19 @@ export function Quality() {
                       <EditableCell id={row.id} field="name" table="mcs_test" val={row.name} />
                     </td>
                     <td style={{ padding: '2px 4px' }}>
+                      <EditableCell id={row.id} field="freq" table="mcs_test" val={row.freq} />
+                    </td>
+                    <td style={{ padding: '2px 4px' }}>
                       <EditableCell id={row.id} field="p_date" table="mcs_test" val={row.p_date} />
                     </td>
                     <td style={{ padding: '2px 4px' }}>
                       <EditableCell id={row.id} field="a_date" table="mcs_test" val={row.a_date} />
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="s_qty" table="mcs_test" val={row.s_qty} />
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="freq" table="mcs_test" val={row.freq} />
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
                       <EditableCell id={row.id} field="cum_qty" table="mcs_test" val={row.cum_qty} />
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="personnel" table="mcs_test" val={row.personnel} />
+                      <EditableCell id={row.id} field="cum_smp" table="mcs_test" val={row.cum_smp} />
                     </td>
                     <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                       <span onClick={() => cycleTestResult(row.id, resultKey)} title="點擊切換可入判定"
@@ -777,17 +847,23 @@ export function Quality() {
             </div>
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <datalist id="work-items-list">
+                  {[...WORK_ITEMS_PRESET,
+                    ...workItemGroups.map(g => g.name).filter(n => !WORK_ITEMS_PRESET.includes(n))
+                  ].map(item => <option key={item} value={item} />)}
+                </datalist>
                 {[
                   { label: '檢驗日期', field: 'inspect_date', type: 'date' },
-                  { label: '檢驗類型', field: 'inspect_type', type: 'text', placeholder: '例：鋼筋綁紮' },
-                  { label: '工程項目', field: 'work_item', type: 'text', placeholder: '例：主體鋼筋工程', full: true },
+                  { label: '檢驗類型', field: 'inspect_type', type: 'text', placeholder: '例：施工抽查' },
+                  { label: '工程項目', field: 'work_item', type: 'text', placeholder: '例：混凝土澆置', full: true, list: 'work-items-list' },
                   { label: '部位/位置', field: 'location', type: 'text', placeholder: '例：B2F 柱位 A3' },
                   { label: '檢驗人員', field: 'inspector', type: 'text', placeholder: '姓名' },
                   { label: '備註', field: 'remark', type: 'text', placeholder: '備註說明', full: true },
-                ].map(({ label, field, type, placeholder, full }) => (
+                ].map(({ label, field, type, placeholder, full, list }) => (
                   <div key={field} style={{ gridColumn: full ? '1 / -1' : undefined }}>
                     <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{label}</label>
                     <input type={type} placeholder={placeholder} value={inspForm[field] || ''}
+                      list={list}
                       onChange={e => setInspForm(prev => ({ ...prev, [field]: e.target.value }))}
                       style={{ width: '100%', padding: '6px 8px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: '6px', color: 'var(--color-text1)', fontSize: '13px', boxSizing: 'border-box' }} />
                   </div>

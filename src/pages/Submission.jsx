@@ -35,6 +35,25 @@ const TKEYS = ['sub', 'pln'];
 const DB_TABLES = ['mcs_submission', 'mcs_plan'];
 const VER_COLORS = ['#1565C0', '#0a8a4a', '#c2410c', '#6d28d9', '#0f766e', '#b45309'];
 
+/* ── Seed Data for 材料送審 ── */
+const SEED_SUB = [
+  { no: '1',  ci: '壹.一.3',     name: '構造物回填，回填土，機械夯實' },
+  { no: '2',  ci: '壹.一.7',     name: '結構用混凝土，預拌140kgf/cm2', test: 'X' },
+  { no: '2',  ci: '壹.一.8',     name: '結構用混凝土，預拌210kgf/cm2', test: 'V' },
+  { no: '3',  ci: '壹.一.9',     name: '鋼筋SD280', test: 'V' },
+  { no: '3',  ci: '壹.一.10',    name: '鋼筋SD420', test: 'V' },
+  { no: '4',  ci: '壹.一.31',    name: '混凝土基樁Ø30cm L=6m', test: 'V' },
+  { no: '5',  ci: '壹.一.14',    name: '銲接鋼線網 D=10mm', test: 'V' },
+  { no: '6',  ci: '壹.一.15',    name: '瀝青混凝土鋪面 密級配 10cm', test: 'V' },
+  { no: '6',  ci: '壹.一.16',    name: '瀝青黏層', test: 'V' },
+  { no: '7',  ci: '壹.一.18',    name: '控制性低強度回填材料（CLSM）', test: 'V' },
+  { no: '8',  ci: '壹.一.19',    name: '地工織布', test: 'V' },
+  { no: '9',  ci: '壹.一.20',    name: 'PS版（保麗龍板）', test: 'V' },
+  { no: '10', ci: '壹.一.21',    name: 'PVC止水帶', test: 'V' },
+  { no: '11', ci: '壹.一.29',    name: '不銹鋼爬梯 ∮19mm', test: 'V' },
+  { no: '12', ci: '壹.五.1(4)',  name: '化學植筋', test: 'V' },
+];
+
 /* ── Check if row is approved ── */
 function isApproved(row, tkey) {
   if (tkey === 'sub') return row.result === '同意備查';
@@ -102,6 +121,7 @@ export function Submission() {
   const [hiddenCols, setHiddenCols] = useState({ sub: new Set(), pln: new Set() });
   const [archivingId, setArchivingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [seeding, setSeeding] = useState(false);
   const saveQueueRef = useRef({});
   const editInputRef = useRef(null);
 
@@ -213,6 +233,22 @@ export function Submission() {
     }, 800);
   }
 
+  /* ── Seed 材料送審預設範本 ── */
+  async function seedSub() {
+    if (!supabase) return;
+    if (!confirm('將載入預設材料送審管制範例資料（不覆蓋現有資料）。確定繼續？')) return;
+    setSeeding(true);
+    const inserts = SEED_SUB.map((r, idx) => ({
+      ...Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v ?? ''])),
+      ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id, sort_order: idx,
+    }));
+    COLS.sub.forEach(c => { inserts.forEach(row => { if (!(c.k in row)) row[c.k] = ''; }); });
+    await supabase.from('mcs_submission').insert(inserts);
+    const fresh = await loadTable(0);
+    setTables(prev => [fresh, prev[1]]);
+    setSeeding(false);
+  }
+
   /* ── Archive approved row ── */
   async function archiveRow(row) {
     if (!supabase) return;
@@ -290,6 +326,12 @@ export function Submission() {
           <button className="mcs-btn" onClick={exportJSON}>
             <Download size={14} /> 匯出
           </button>
+          {tab === 0 && rows.length === 0 && (
+            <button className="mcs-btn mcs-btn-seed" onClick={seedSub} disabled={seeding}>
+              {seeding ? <Loader2 size={12} className="mcs-spin" /> : <RotateCcw size={12} />}
+              載入預設範本
+            </button>
+          )}
           <button className="mcs-btn mcs-btn-danger" onClick={deleteSel} disabled={!selected.size}>
             <Trash2 size={14} /> 刪除({selected.size})
           </button>

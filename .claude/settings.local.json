@@ -16,7 +16,8 @@
       "Bash(node -e \"import\\(''./node_modules/lucide-react/dist/esm/lucide-react.js''\\).then\\(l => { const icons = Object.keys\\(l\\); [''AlertTriangle'',''CheckCircle2'',''AlertCircle'',''Edit'',''Columns'',''HelpCircle''].forEach\\(i => console.log\\(i, icons.includes\\(i\\) ? ''OK'' : ''MISSING''\\)\\); }\\)\")",
       "Bash(npm run:*)",
       "Bash(git -C e:/RT-Pmis-Supervision diff --stat HEAD)",
-      "mcp__supabase__list_edge_functions"
+      "mcp__supabase__list_edge_functions",
+      "PowerShell(cd c:\\\\RT\\\\RT-Pmis-Supervision; node .\\\\node_modules\\\\vite\\\\bin\\\\vite.js build 2>&1 | Out-String | Select-String -Pattern \"error|built|chunk|warn\" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -Last 20)"
     ]
   },
   "enableAllProjectMcpServers": true,
