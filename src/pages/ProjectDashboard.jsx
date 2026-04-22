@@ -293,18 +293,13 @@ export function ProjectDashboard() {
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: 400, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)', lineHeight: 1 }}>
-              {stats.latestActual}%
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-              {stats.latestPlanned > 0 && (
-                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                  {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
-                </span>
-              )}
-              <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>預定 {stats.latestPlanned}%</span>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>預定 {stats.latestPlanned}%</span>
+            {stats.latestPlanned > 0 && (
+              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+              </span>
+            )}
           </div>
           <div className="stunning-progress-wrap">
             <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
