@@ -615,6 +615,102 @@
   font-size: 0.85rem;
 }
 
+/* ── 監造人員下拉選單 ── */
+.mcs-sel {
+  width: 100%;
+  padding: 2px 4px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  color: var(--color-text1);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mcs-sel:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(21,101,192,0.15);
+}
+
+/* ── 行動版卡片列表 ── */
+.mcs-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.mcs-mc {
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  overflow: hidden;
+}
+
+.mcs-mc-sel {
+  border-color: rgba(21,101,192,0.4);
+  background: rgba(21,101,192,0.03);
+}
+
+.mcs-mc-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mcs-mc-date {
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mcs-mc-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text1);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcs-mc-body {
+  border-top: 1px solid var(--color-surface-border);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-bg1);
+}
+
+.mcs-mc-row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.mcs-mc-label {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  min-width: 58px;
+  font-size: 0.72rem;
+}
+
+.mcs-mc-val {
+  color: var(--color-text2);
+  word-break: break-all;
+}
+
 @media (max-width: 640px) {
   .mcs-tabs { gap: 4px; }
   .mcs-toolbar { gap: 6px; }
