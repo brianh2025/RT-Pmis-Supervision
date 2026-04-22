@@ -291,16 +291,25 @@ export function ProjectDashboard() {
       </div>
 
       {/* ── 工程進度 ── */}
-      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
+      <div className="stunning-card stunning-card-progress" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
         <div className="stunning-card-header">
           <div className="stunning-icon-box"><TrendingUp size={14} /></div>
           <h3 className="stunning-card-title">工程進度</h3>
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-            <span style={{ color: 'var(--color-text-muted)' }}>預定進度</span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text2)' }}>{stats.latestPlanned}%</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)', lineHeight: 1 }}>
+              {stats.latestActual}%
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+              {stats.latestPlanned > 0 && (
+                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                  {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+                </span>
+              )}
+              <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>預定 {stats.latestPlanned}%</span>
+            </div>
           </div>
           <div className="stunning-progress-wrap">
             <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
@@ -308,24 +317,11 @@ export function ProjectDashboard() {
               {stats.latestActual > 5 && `${stats.latestActual}%`}
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>實際進度</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-primary-light)' }}>
-                {stats.latestActual}%
-              </span>
-              {stats.latestPlanned > 0 && (
-                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                  {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
-                </span>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
       {/* ── 工程資訊 ── */}
-      <div className="stunning-card" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
+      <div className="stunning-card stunning-card-info" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
         <div className="stunning-card-header">
           <div className="stunning-icon-box"><Calendar size={14} /></div>
           <h3 className="stunning-card-title">工程資訊</h3>

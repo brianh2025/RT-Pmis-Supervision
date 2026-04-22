@@ -354,6 +354,54 @@
   animation: cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* 工程進度：英雄指標卡——深焦點背景 + 藍光邊框 */
+.stunning-card-progress {
+  background: rgba(6, 12, 28, 0.98);
+  border: 1px solid rgba(21, 101, 192, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(21, 101, 192, 0.12),
+    0 6px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.stunning-card-progress:hover {
+  border-color: rgba(21, 101, 192, 0.65);
+  box-shadow:
+    0 0 0 1px rgba(21, 101, 192, 0.2),
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    0 0 20px rgba(21, 101, 192, 0.12);
+}
+.stunning-card-progress .stunning-icon-box {
+  background: rgba(21, 101, 192, 0.22);
+  color: var(--color-primary-light);
+}
+
+/* 工程資訊：輕量參考卡——最中性、最輕 */
+.stunning-card-info {
+  background: var(--color-bg1);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+.stunning-card-info:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.stunning-card-info .stunning-icon-box {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
+}
+
+/* 亮色模式 */
+[data-theme="light"] .stunning-card-progress {
+  background: #f0f4ff;
+  border: 1px solid rgba(21, 101, 192, 0.3);
+  box-shadow: 0 4px 20px rgba(21, 101, 192, 0.1), 0 1px 4px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .stunning-card-info {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: none;
+}
+
 .stunning-card:hover {
   border-color: rgba(21,101,192,0.3);
   box-shadow: 0 4px 16px rgba(21,101,192,0.1);
