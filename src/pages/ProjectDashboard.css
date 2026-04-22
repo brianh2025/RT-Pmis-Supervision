@@ -395,7 +395,7 @@
 /* Progress bars */
 .stunning-progress-wrap {
   position: relative;
-  height: 8px;
+  height: 14px;
   background: var(--color-bg2);
   border-radius: 999px;
   overflow: hidden;
@@ -419,7 +419,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 4px;
-  font-size: 0.55rem;
+  font-size: 10px;
   color: white;
   font-weight: 700;
   transition: width 1s ease;
