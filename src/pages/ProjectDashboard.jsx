@@ -2,14 +2,14 @@
    ProjectDashboard.jsx — 專案儀表板
    Design: Bento Grid + Top Quick Nav (based on Manus_v1)
    ============================================================ */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, AlertCircle, Clock,
   BookOpen, Camera, Package,
   Shield, Archive, BarChart2,
-  Pencil, X,
+  Pencil, X, GripVertical,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -23,6 +23,8 @@ const SHORTCUTS = [
   { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#34d399' },
   { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#818cf8' },
 ];
+
+const DEFAULT_ORDER = ['shortcuts', 'tasks', 'progress', 'info'];
 
 export function ProjectDashboard() {
   const { id: projectId } = useParams();
@@ -46,6 +48,19 @@ export function ProjectDashboard() {
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
+  // ── 可拖曳區塊順序 ──
+  const orderKey = `dash-order-${projectId}`;
+  const [sectionOrder, setSectionOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`dash-order-${projectId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_ORDER;
+  });
+  const [draggingId, setDraggingId] = useState(null);
+  const dragRef = useRef(null);
+  const orderRef = useRef(sectionOrder);
+
   useEffect(() => {
     if (!projectId || !supabase) { setStatsLoading(false); return; }
 
@@ -62,7 +77,6 @@ export function ProjectDashboard() {
 
       const [logsRes, monthLogsRes, progressRes, subRes, tstRes, plnRes] = await Promise.all([
         supabase.from('daily_logs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        // 取本月至昨日的已填日期清單
         supabase.from('daily_logs').select('log_date').eq('project_id', projectId)
           .gte('log_date', thisMonthStart).lte('log_date', yesterdayStr),
         supabase.from('progress_records').select('planned_progress, actual_progress').eq('project_id', projectId).gt('actual_progress', 0).order('report_date', { ascending: false }).limit(1),
@@ -71,7 +85,6 @@ export function ProjectDashboard() {
         supabase.from('mcs_plan').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
       ]);
 
-      // 計算本月（至昨日）應填工作日，找出缺漏日期（排除週日）
       const filledSet = new Set((monthLogsRes.data || []).map(r => r.log_date));
       const missingDates = [];
       const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
@@ -89,7 +102,6 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result').eq('project_id', projectId),
-        // 日誌工項中含材料關鍵字 → 需回填管制
         supabase.from('daily_report_items').select('id', { count: 'exact', head: true }).eq('project_id', projectId)
           .or('item_name.ilike.%混凝土%,item_name.ilike.%鋼筋%,item_name.ilike.%瀝青%,item_name.ilike.%模板%,item_name.ilike.%地工織布%,item_name.ilike.%基樁%,item_name.ilike.%植筋%'),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
@@ -99,7 +111,6 @@ export function ProjectDashboard() {
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      // 日誌有材料工項 but 尚未回填 material_entries（status 判斷移至 tasks 陣列）
       const matUnregistered =
         (matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
 
@@ -206,40 +217,63 @@ export function ProjectDashboard() {
 
   const allDone = !statsLoading && tasks.length === 0;
 
-  return (
-    <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+  // ── 拖曳處理 ──
+  const handleDragStart = (id) => {
+    dragRef.current = id;
+    setDraggingId(id);
+  };
+  const handleDragOver = (e, overId) => {
+    e.preventDefault();
+    if (!dragRef.current || dragRef.current === overId) return;
+    setSectionOrder(prev => {
+      const arr = [...prev];
+      const from = arr.indexOf(dragRef.current);
+      const to = arr.indexOf(overId);
+      if (from === -1 || to === -1) return prev;
+      arr.splice(from, 1);
+      arr.splice(to, 0, dragRef.current);
+      orderRef.current = arr;
+      return arr;
+    });
+  };
+  const handleDragEnd = () => {
+    localStorage.setItem(orderKey, JSON.stringify(orderRef.current));
+    dragRef.current = null;
+    setDraggingId(null);
+  };
 
-      {/* ── 專案標頭 ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'nowrap' }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {project.name}
-          </h1>
-          {project.contractor && (
-            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-              承包商：{project.contractor}
-            </div>
-          )}
+  const Grip = ({ stopClick }) => (
+    <span
+      className="dash-drag-handle"
+      onClick={stopClick ? e => e.stopPropagation() : undefined}
+    >
+      <GripVertical size={14} />
+    </span>
+  );
+
+  const renderSection = (id) => {
+    if (id === 'shortcuts') return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2, marginBottom: 4 }}>
+          <Grip />
+          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>功能模組</span>
         </div>
-        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`} style={{ flexShrink: 0, marginTop: '2px' }}>
-          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
-        </span>
-      </div>
+        <div className="dash-sc-grid">
+          {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
+            <button key={path} className="dash-sc-card" style={{ '--btn-color': color }} onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+              <Icon size={28} style={{ color }} />
+              <div className="dash-sc-label">{label}</div>
+            </button>
+          ))}
+        </div>
+      </>
+    );
 
-      {/* ── 六大功能模組 ── */}
-      <div className="dash-sc-grid">
-        {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
-          <button key={path} className="dash-sc-card" style={{ '--btn-color': color }} onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-            <Icon size={28} style={{ color }} />
-            <div className="dash-sc-label">{label}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* ── 今日任務 ── */}
+    if (id === 'tasks') return (
       <div className="task-board">
         <div className="task-board-header">
-          <div className="task-board-title">
+          <Grip />
+          <div className="task-board-title" style={{ flex: 1 }}>
             {allDone
               ? <><CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />今日任務</>
               : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦任務</>
@@ -284,10 +318,12 @@ export function ProjectDashboard() {
           );
         })}
       </div>
+    );
 
-      {/* ── 工程進度 ── */}
+    if (id === 'progress') return (
       <div className="stunning-card stunning-card-progress" style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${projectId}/progress`)}>
         <div className="stunning-card-header">
+          <Grip stopClick />
           <div className="stunning-icon-box"><TrendingUp size={14} /></div>
           <h3 className="stunning-card-title">工程進度</h3>
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
@@ -297,7 +333,7 @@ export function ProjectDashboard() {
             <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
             <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }} />
             <span className="stunning-progress-label">
-              預定 {stats.latestPlanned}%　／　實際 {stats.latestActual}%
+              預定 {stats.latestPlanned}% / 實際 {stats.latestActual}%
             </span>
           </div>
           {stats.latestPlanned > 0 && (
@@ -309,10 +345,12 @@ export function ProjectDashboard() {
           )}
         </div>
       </div>
+    );
 
-      {/* ── 工程資訊 ── */}
+    if (id === 'info') return (
       <div className="stunning-card stunning-card-info" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
         <div className="stunning-card-header">
+          <Grip stopClick />
           <div className="stunning-icon-box"><Calendar size={14} /></div>
           <h3 className="stunning-card-title">工程資訊</h3>
           <button
@@ -342,6 +380,45 @@ export function ProjectDashboard() {
           </div>
         </div>
       </div>
+    );
+
+    return null;
+  };
+
+  return (
+    <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+      {/* ── 專案標頭 ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'nowrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {project.name}
+          </h1>
+          {project.contractor && (
+            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              承包商：{project.contractor}
+            </div>
+          )}
+        </div>
+        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`} style={{ flexShrink: 0, marginTop: '2px' }}>
+          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
+        </span>
+      </div>
+
+      {/* ── 可拖曳區塊 ── */}
+      {sectionOrder.map(id => (
+        <div
+          key={id}
+          draggable
+          onDragStart={() => handleDragStart(id)}
+          onDragOver={e => handleDragOver(e, id)}
+          onDrop={e => e.preventDefault()}
+          onDragEnd={handleDragEnd}
+          className={draggingId === id ? 'dash-section-dragging' : undefined}
+        >
+          {renderSection(id)}
+        </div>
+      ))}
 
       {/* ── 工程資訊 Modal ── */}
       {showProjectInfo && (
