@@ -93,7 +93,10 @@ function previewPhotoDoc(doc, projectName) {
   try {
     const parsed = JSON.parse(doc.remark);
     photos = parsed.photos || [];
-  } catch { return; }
+  } catch {
+    alert('此記錄的照片資料格式有誤，無法預覽。');
+    return;
+  }
   if (!photos.length) { alert('此記錄無照片資料'); return; }
 
   const pages = [];
@@ -106,9 +109,13 @@ function previewPhotoDoc(doc, projectName) {
     subtitle: '施工抽查紀錄',
   });
   const w = window.open('', '_blank', 'width=960,height=800');
+  if (!w) {
+    alert('預覽視窗被瀏覽器阻擋，請允許此網站開啟彈出視窗後再試。');
+    return;
+  }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>${PRINT_CSS}</style></head><body>${html}</body></html>`);
   w.document.close();
-  w.onload = () => { w.focus(); w.print(); };
+  w.focus();
 }
 
 const CATEGORY_TREE = [
@@ -358,16 +365,18 @@ export function Archive() {
                         try {
                           const parsed = JSON.parse(doc.remark);
                           if (parsed && typeof parsed === 'object') {
-                            // 照片記錄：顯示張數摘要而非原始 JSON
-                            if (parsed.count !== undefined) return null;
-                            return null; // 其他 JSON 物件不顯示
+                            if (parsed.count !== undefined)
+                              return <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>共 {parsed.count} 張照片</p>;
+                            return null;
                           }
                         } catch { /* 不是 JSON，繼續顯示文字 */ }
                         return <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.5 }}>{doc.remark}</p>;
                       })()}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
-                      {doc.category === 'photo' && doc.remark && (
+                      {doc.remark && (() => {
+                        try { const p = JSON.parse(doc.remark); return p?.photos?.length > 0; } catch { return false; }
+                      })() && (
                         <button
                           onClick={() => previewPhotoDoc(doc, project?.name)}
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: 'rgba(21,101,192,0.08)', border: '1px solid rgba(21,101,192,0.2)', borderRadius: '6px', fontSize: '11px', color: 'var(--color-primary-light)', cursor: 'pointer', transition: 'all 0.15s' }}
