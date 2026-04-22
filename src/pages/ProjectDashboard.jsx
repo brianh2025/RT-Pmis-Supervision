@@ -16,15 +16,13 @@ import { useProject } from '../hooks/useProject';
 import { EmergencyStopModal } from '../components/EmergencyStopModal';
 import './ProjectDashboard.css';
 
-const SHORTCUT_ROW1 = [
-  { label: '照片記錄', icon: Camera,     path: 'photos',   color: '#f472b6' },
-  { label: '日誌報表', icon: BookOpen,   path: 'journal',  color: '#60a5fa' },
-  { label: '進度管理', icon: TrendingUp, path: 'progress', color: 'var(--color-primary)' },
-];
-const SHORTCUT_ROW2 = [
-  { label: '品質管理', icon: Shield,    path: 'quality',   color: '#f472b6' },
-  { label: '歸檔管理', icon: Archive,   path: 'archive',   color: '#34d399' },
-  { label: '統計分析', icon: BarChart2, path: 'analytics', color: '#818cf8' },
+const SHORTCUTS = [
+  { label: '照片記錄', desc: '現場施工影像',   icon: Camera,        path: 'photos',     color: '#f472b6', statKey: null },
+  { label: '日誌報表', desc: '施工日誌與報表', icon: BookOpen,      path: 'journal',    color: '#60a5fa', statKey: 'pendingLogs',       statLabel: '天待補', statUrgent: true },
+  { label: '進度管理', desc: 'S曲線進度追蹤', icon: TrendingUp,    path: 'progress',   color: '#6366f1', statKey: 'latestActual',      statLabel: '% 實際', statUrgent: false },
+  { label: '品質管理', desc: '缺失改善追蹤',   icon: Shield,        path: 'quality',    color: '#fb923c', statKey: 'qualityOpen',       statLabel: '件待結案', statUrgent: true },
+  { label: '歸檔管理', desc: '核定文件總覽',   icon: Archive,       path: 'archive',    color: '#34d399', statKey: 'archiveCount',      statLabel: '份', statUrgent: false },
+  { label: '統計分析', desc: '工程數據圖表',   icon: BarChart2,     path: 'analytics',  color: '#818cf8', statKey: null },
 ];
 
 export function ProjectDashboard() {
@@ -338,14 +336,29 @@ export function ProjectDashboard() {
         })}
       </div>
 
-      {/* ── 捷徑區塊 A ── */}
-      <div className="dash-sc-strip">
-        {SHORTCUT_ROW1.map(({ icon: Icon, label, path, color }) => (
-          <button key={path} className="dash-sc-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-            <Icon size={20} style={{ color }} />
-            <span>{label}</span>
-          </button>
-        ))}
+      {/* ── 六大功能模組 ── */}
+      <div className="dash-sc-grid">
+        {SHORTCUTS.map(({ icon: Icon, label, desc, path, color, statKey, statLabel, statUrgent }) => {
+          const statVal = statKey ? stats[statKey] : null;
+          const showStat = statVal !== null && statVal !== undefined && statVal !== 0;
+          return (
+            <button key={path} className="dash-sc-card" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
+              <div className="dash-sc-icon-wrap" style={{ background: color + '20', borderColor: color + '40' }}>
+                <Icon size={22} style={{ color }} />
+                {showStat && statUrgent && (
+                  <span className="dash-sc-badge dash-sc-badge-urgent">{statVal}</span>
+                )}
+              </div>
+              <div className="dash-sc-label">{label}</div>
+              <div className="dash-sc-desc">{desc}</div>
+              {showStat && (
+                <div className={`dash-sc-stat ${statUrgent ? 'dash-sc-stat-urgent' : 'dash-sc-stat-ok'}`}>
+                  {statKey === 'latestActual' ? `${statVal}%` : statVal} {statLabel}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── 工程進度 ── */}
@@ -380,16 +393,6 @@ export function ProjectDashboard() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ── 捷徑區塊 B ── */}
-      <div className="dash-sc-strip">
-        {SHORTCUT_ROW2.map(({ icon: Icon, label, path, color }) => (
-          <button key={path} className="dash-sc-item" onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-            <Icon size={20} style={{ color }} />
-            <span>{label}</span>
-          </button>
-        ))}
       </div>
 
       {/* ── 工程資訊 ── */}
