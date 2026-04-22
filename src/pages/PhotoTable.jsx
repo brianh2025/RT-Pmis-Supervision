@@ -441,10 +441,9 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
   );
 }
 
-/* ── 雙頁籤列表 ── */
+/* ── 照片記錄列表 ── */
 function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx }) {
   const navigate = useNavigate();
-  const [tab,      setTab]      = useState('records');
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [selected, setSelected] = useState(new Set());
@@ -468,10 +467,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 
   const SOURCE_LABEL = { material_entries: '材料管制', construction_inspections: '施工抽查' };
 
-  const attached = records.filter(r => r.source_table || r.tags?.includes('日報已附註'));
   const unattached = records.filter(r => !r.source_table && !r.tags?.includes('日報已附註'));
-  const display = tab === 'records' ? records : attached;
-
   const selectableIds = unattached.map(r => r.id);
   const allSel  = selectableIds.length > 0 && selectableIds.every(id => selected.has(id));
   const someSel = selectableIds.some(id => selected.has(id));
@@ -484,8 +480,6 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
   function toggleOne(id) {
     setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   }
-
-  // attachToLog 已移除；照片透過 source_table/submission_id 連結至材料管制或施工抽查
 
   async function bulkDelete() {
     const ids = [...selected].filter(id => unattached.find(r => r.id === id));
@@ -504,7 +498,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 
   return (
     <div className="pt-step-list">
-      {/* 來源 breadcrumb（從材料/施工抽查跳轉時顯示） */}
+      {/* 來源 breadcrumb */}
       {srcCtx?.srcName && (
         <div className="pt-src-breadcrumb">
           <button className="pt-btn" onClick={() => navigate(-1)}><ArrowLeft size={12} />返回</button>
@@ -514,27 +508,19 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
           </span>
         </div>
       )}
-      {/* 頁籤列 */}
+
+      {/* 工具列 */}
       <div className="pt-db-tabs">
-        <button className={`pt-db-tab ${tab === 'records' ? 'active' : ''}`}
-          onClick={() => { setTab('records'); setSelected(new Set()); }}>
-          <Camera size={13} />照片記錄資料庫<span className="pt-tab-count">{records.length}</span>
+        <span className="pt-db-tab active" style={{ cursor: 'default' }}>
+          <Camera size={13} />照片記錄<span className="pt-tab-count">{records.length}</span>
+        </span>
+        <button className="pt-btn pt-btn-primary" style={{ marginLeft: 'auto' }} onClick={onNew}>
+          <Plus size={13} />新增照片記錄
         </button>
-        {!srcCtx && (
-          <button className={`pt-db-tab ${tab === 'report' ? 'active' : ''}`}
-            onClick={() => { setTab('report'); setSelected(new Set()); }}>
-            <FileText size={13} />已附記錄<span className="pt-tab-count">{attached.length}</span>
-          </button>
-        )}
-        {tab === 'records' && (
-          <button className="pt-btn pt-btn-primary" style={{ marginLeft: 'auto' }} onClick={onNew}>
-            <Plus size={13} />新增照片記錄
-          </button>
-        )}
       </div>
 
       {/* 批次刪除列 */}
-      {tab === 'records' && someSel && (
+      {someSel && (
         <div className="pt-bulk-bar">
           <span>已選 {selected.size} 筆</span>
           <button className="pt-btn pt-btn-danger" onClick={bulkDelete} disabled={busy}>
@@ -545,29 +531,26 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 
       {/* 表頭 */}
       <div className="pt-record-header">
-        {tab === 'records' && (
-          <span className="col-check">
-            <input type="checkbox" ref={selectAllRef} checked={allSel}
-              onChange={toggleAll} disabled={unattached.length === 0} />
-          </span>
-        )}
+        <span className="col-check">
+          <input type="checkbox" ref={selectAllRef} checked={allSel}
+            onChange={toggleAll} disabled={unattached.length === 0} />
+        </span>
         <span className="col-title">標題</span>
         <span className="col-date">查驗日期</span>
         <span className="col-docno">記錄編號</span>
         <span className="col-count">張數</span>
         <span className="col-status">狀態</span>
-        {tab === 'report' && <span className="col-withdraw">操作</span>}
       </div>
 
       {loading ? (
         <div className="pt-list-loading"><Loader2 size={14} className="animate-spin" />載入中…</div>
-      ) : display.length === 0 ? (
+      ) : records.length === 0 ? (
         <div className="pt-list-empty">
           <Camera size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
-          <div>{tab === 'records' ? '尚無照片記錄' : '尚無已附來源的記錄'}</div>
-          {tab === 'records' && <div style={{ fontSize: '0.72rem', marginTop: 4 }}>點擊「新增照片記錄」開始建立</div>}
+          <div>尚無照片記錄</div>
+          <div style={{ fontSize: '13px', marginTop: 4 }}>點擊「新增照片記錄」開始建立</div>
         </div>
-      ) : display.map(rec => {
+      ) : records.map(rec => {
         const isAttached = !!(rec.source_table || rec.tags?.includes('日報已附註'));
         const srcLabel = SOURCE_LABEL[rec.source_table] || (rec.tags?.includes('日報已附註') ? '日報' : null);
         const info = parseRemark(rec.remark);
@@ -575,32 +558,28 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
           <div key={rec.id}
             className={`pt-record-item ${isAttached ? 'locked' : ''} ${selected.has(rec.id) ? 'selected' : ''}`}
             onClick={() => onDetail(rec)}>
-            {tab === 'records' && (
-              <span className="col-check" onClick={e => e.stopPropagation()}>
-                <input type="checkbox" checked={selected.has(rec.id)} disabled={isAttached}
-                  onChange={() => !isAttached && toggleOne(rec.id)} />
-              </span>
-            )}
+            <span className="col-check" onClick={e => e.stopPropagation()}>
+              <input type="checkbox" checked={selected.has(rec.id)} disabled={isAttached}
+                onChange={() => !isAttached && toggleOne(rec.id)} />
+            </span>
             <div className="col-title pt-record-title">{rec.title}</div>
             <div className="col-date pt-record-meta">{toRocDate(rec.doc_date)}</div>
             <div className="col-docno pt-record-meta" style={{ fontFamily: 'monospace' }}>{rec.doc_no || '—'}</div>
             <div className="col-count pt-record-meta">{info.count ?? 0} 張</div>
-            <div className="col-status" onClick={e => e.stopPropagation()}>
+            <div className="col-status" style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
               {srcLabel
-                ? <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
+                ? <>
+                    <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
+                    <button className="pt-btn" style={{ padding: '2px 7px', fontSize: '13px' }}
+                      onClick={() => handleWithdraw(rec)}>
+                      <RotateCcw size={11} />抽回
+                    </button>
+                  </>
                 : <span className="pt-log-tag unlocked" style={{ opacity: 0.45, cursor: 'default' }}>
                     <FileText size={10} />未附來源
                   </span>
               }
             </div>
-            {tab === 'report' && (
-              <div className="col-withdraw" onClick={e => e.stopPropagation()}>
-                <button className="pt-btn" style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                  onClick={() => handleWithdraw(rec)}>
-                  <RotateCcw size={12} />抽回
-                </button>
-              </div>
-            )}
           </div>
         );
       })}
