@@ -348,14 +348,14 @@ export function ProjectDashboard() {
     );
 
     if (id === 'info') return (
-      <div className="stunning-card stunning-card-info" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setShowProjectInfo(true); }}>
+      <div className="stunning-card stunning-card-info" style={{ cursor: 'pointer' }} onClick={() => { setEditMode(false); const _sn = (project.supervisor_name || '').split('\n'); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', sup1: _sn[0] || '', sup2: _sn[1] || '' }); setShowProjectInfo(true); }}>
         <div className="stunning-card-header">
           <Grip stopClick />
           <div className="stunning-icon-box"><Calendar size={14} /></div>
           <h3 className="stunning-card-title">工程資訊</h3>
           <button
             className="proj-info-edit-btn"
-            onClick={e => { e.stopPropagation(); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', supervisor_name: project.supervisor_name || '' }); setEditMode(true); setShowProjectInfo(true); }}
+            onClick={e => { e.stopPropagation(); const _sn = (project.supervisor_name || '').split('\n'); setEditForm({ name: project.name || '', contractor: project.contractor || '', start_date: project.start_date || '', end_date: project.end_date || '', status: project.status || 'active', sup1: _sn[0] || '', sup2: _sn[1] || '' }); setEditMode(true); setShowProjectInfo(true); }}
             title="編輯工程資訊"
           >
             <Pencil size={12} />
@@ -397,6 +397,11 @@ export function ProjectDashboard() {
           {project.contractor && (
             <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
               承包商：{project.contractor}
+            </div>
+          )}
+          {project.supervisor_name && (
+            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
+              監造人員：{project.supervisor_name.split('\n').filter(Boolean).join('、')}
             </div>
           )}
         </div>
@@ -456,14 +461,9 @@ export function ProjectDashboard() {
                   </div>
                 ))}
                 <div className="proj-info-field">
-                  <label>監造人員</label>
-                  <textarea
-                    value={editForm.supervisor_name || ''}
-                    onChange={e => setEditForm(f => ({ ...f, supervisor_name: e.target.value }))}
-                    placeholder="每行一位監造人員姓名"
-                    rows={3}
-                    style={{ width: '100%', padding: '5px 8px', background: 'var(--color-bg1)', border: '1px solid var(--color-border)', borderRadius: 6, color: 'var(--color-text1)', fontSize: '0.82rem', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
-                  />
+                  <label>監造人員（最多 2 位）</label>
+                  <input type="text" placeholder="監造人員 1" value={editForm.sup1 || ''} onChange={e => setEditForm(f => ({ ...f, sup1: e.target.value }))} />
+                  <input type="text" placeholder="監造人員 2" value={editForm.sup2 || ''} onChange={e => setEditForm(f => ({ ...f, sup2: e.target.value }))} style={{ marginTop: 4 }} />
                 </div>
                 <div className="proj-info-field">
                   <label>狀態</label>
@@ -488,7 +488,7 @@ export function ProjectDashboard() {
                         start_date: editForm.start_date || null,
                         end_date: editForm.end_date || null,
                         status: editForm.status,
-                        supervisor_name: editForm.supervisor_name || null,
+                        supervisor_name: [editForm.sup1, editForm.sup2].map(s => (s || '').trim()).filter(Boolean).join('\n') || null,
                       }).eq('id', projectId);
                       setSaving(false);
                       setEditMode(false);
@@ -505,7 +505,7 @@ export function ProjectDashboard() {
                 {[
                   { label: '工程名稱', value: project.name },
                   { label: '承包商',   value: project.contractor },
-                  { label: '監造人員', value: project.supervisor_name },
+                  { label: '監造人員', value: project.supervisor_name ? project.supervisor_name.split('\n').filter(Boolean).join('、') : null },
                   { label: '開工日期', value: project.start_date },
                   { label: '完工日期', value: project.end_date },
                   { label: '狀態',     value: project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : '暫停' },
