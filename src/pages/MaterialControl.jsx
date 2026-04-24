@@ -96,9 +96,10 @@ function VerBadge({ val, color, onDblClick, onCycleColor }) {
 }
 
 /* ── 行動版材料進場卡片 ── */
-function MobileEntryCard({ row, photoCountMap, issueStatusMap, navigate, projectId, selected, onToggleSel }) {
+function MobileEntryCard({ row, photoCountMap, photoNavMap, issueStatusMap, navigate, projectId, selected, onToggleSel }) {
   const [expanded, setExpanded] = useState(false);
   const count = photoCountMap[row.id] || 0;
+  const nav = (photoNavMap || {})[row.id] || 'none';
   const cfg = RESULT_CFG[row.result];
   const issueStatus = issueStatusMap[row.id];
   const isVerified = issueStatus === 'verified';
@@ -109,7 +110,12 @@ function MobileEntryCard({ row, photoCountMap, issueStatusMap, navigate, project
           onClick={e => e.stopPropagation()} style={{ accentColor: 'var(--color-primary)', flexShrink: 0 }} />
         <span className="mcs-mc-date">{row.entry_date || '—'}</span>
         <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
-          onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${count > 0 ? 'open' : 'new'}`); }}>
+          onClick={e => {
+            e.stopPropagation();
+            const autoQ = nav === 'linked' ? 'open' : nav === 'date' ? 'date' : 'new';
+            const dateQ = nav === 'date' && row.entry_date ? `&src_date=${row.entry_date}` : '';
+            navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}${dateQ}`);
+          }}>
           <Camera size={11} />{count > 0 ? count : ''}
         </button>
         <span className="mcs-mc-name">{row.name || '—'}</span>
@@ -163,8 +169,9 @@ export function MaterialControl() {
   const [supervisorOptions, setSupervisorOptions] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
 
-  // 照片計數 & 缺失改善狀態 (僅 Tab 0 用)
+  // 照片計數 & 導航模式 & 缺失改善狀態 (僅 Tab 0 用)
   const [photoCountMap, setPhotoCountMap] = useState({});
+  const [photoNavMap,   setPhotoNavMap]   = useState({}); // 'linked' | 'date' | 'none'
   const [issueStatusMap, setIssueStatusMap] = useState({});
 
   // 試驗管制材料提示 toast
@@ -207,15 +214,33 @@ export function MaterialControl() {
     return data?.supervisor_name || '';
   }, [projectId]);
 
-  async function loadPhotoCountMap() {
-    if (!supabase) return {};
-    const { data } = await supabase.from('archive_docs').select('submission_id')
-      .eq('project_id', projectId).eq('source_table', 'material_entries');
-    const map = {};
-    for (const row of (data || [])) {
-      if (row.submission_id) map[row.submission_id] = (map[row.submission_id] || 0) + 1;
+  async function loadPhotoMaps(entries) {
+    if (!supabase) return { countMap: {}, navMap: {} };
+    const entryDates = [...new Set((entries || []).map(e => e.entry_date).filter(Boolean))];
+    const [{ data: linked }, { data: dated }] = await Promise.all([
+      supabase.from('archive_docs').select('submission_id')
+        .eq('project_id', projectId).eq('category', 'photo').eq('source_table', 'material_entries'),
+      entryDates.length > 0
+        ? supabase.from('archive_docs').select('doc_date')
+            .eq('project_id', projectId).eq('category', 'photo').in('doc_date', entryDates)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const linkedMap = {};
+    for (const r of (linked || [])) {
+      if (r.submission_id) linkedMap[r.submission_id] = (linkedMap[r.submission_id] || 0) + 1;
     }
-    return map;
+    const dateCountMap = {};
+    for (const r of (dated || [])) {
+      if (r.doc_date) dateCountMap[r.doc_date] = (dateCountMap[r.doc_date] || 0) + 1;
+    }
+    const countMap = {}, navMap = {};
+    for (const e of (entries || [])) {
+      const lc = linkedMap[e.id] || 0;
+      const dc = lc === 0 && e.entry_date ? (dateCountMap[e.entry_date] || 0) : 0;
+      countMap[e.id] = lc + dc;
+      navMap[e.id] = lc > 0 ? 'linked' : dc > 0 ? 'date' : 'none';
+    }
+    return { countMap, navMap };
   }
 
   async function loadIssueStatusMap() {
@@ -241,12 +266,14 @@ export function MaterialControl() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const [e, t, pc, is, sv] = await Promise.all([
-        loadEntries(), loadTst(), loadPhotoCountMap(), loadIssueStatusMap(), loadSupervisor(),
+      const [e, t, is, sv] = await Promise.all([
+        loadEntries(), loadTst(), loadIssueStatusMap(), loadSupervisor(),
       ]);
+      const { countMap, navMap } = await loadPhotoMaps(e);
       setEntries(e);
       setTstRows(t);
-      setPhotoCountMap(pc);
+      setPhotoCountMap(countMap);
+      setPhotoNavMap(navMap);
       setIssueStatusMap(is);
       setSupervisorOptions((sv || '').split('\n').map(s => s.trim()).filter(Boolean));
       setLoading(false);
@@ -466,11 +493,13 @@ export function MaterialControl() {
 
     if (col.photoLink) {
       const count = photoCountMap[row.id] || 0;
-      const autoQ = count > 0 ? 'open' : 'new';
+      const nav = photoNavMap[row.id] || 'none';
+      const autoQ = nav === 'linked' ? 'open' : nav === 'date' ? 'date' : 'new';
+      const dateQ = nav === 'date' && row.entry_date ? `&src_date=${row.entry_date}` : '';
       return (
         <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
           <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
-            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}`)}>
+            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}${dateQ}`)}>
             <Camera size={11} />
             {count > 0 ? count : ''}
           </button>
@@ -648,7 +677,7 @@ export function MaterialControl() {
               <div>尚無進場紀錄 — 點擊「新增」建立第一筆</div>
             </div>
           ) : rows.map(row => (
-            <MobileEntryCard key={row.id} row={row} photoCountMap={photoCountMap}
+            <MobileEntryCard key={row.id} row={row} photoCountMap={photoCountMap} photoNavMap={photoNavMap}
               issueStatusMap={issueStatusMap} navigate={navigate} projectId={projectId}
               selected={selected.has(row.id)} onToggleSel={togSel} />
           ))}

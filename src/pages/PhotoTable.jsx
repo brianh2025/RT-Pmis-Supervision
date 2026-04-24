@@ -442,7 +442,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
 }
 
 /* ── 照片記錄列表 ── */
-function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx, autoOpen }) {
+function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx, autoOpen, filterMode, srcDate }) {
   const navigate = useNavigate();
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -465,13 +465,15 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
       .select('id, title, doc_date, doc_no, remark, tags, created_at, source_table, submission_id')
       .eq('project_id', projectId).eq('category', 'photo')
       .order('doc_date', { ascending: false });
-    if (srcCtx?.srcTable && srcCtx?.srcId) {
+    if (filterMode === 'linked' && srcCtx?.srcTable && srcCtx?.srcId) {
       q = q.eq('source_table', srcCtx.srcTable).eq('submission_id', srcCtx.srcId);
+    } else if (filterMode === 'date' && srcDate) {
+      q = q.eq('doc_date', srcDate);
     }
     q.then(({ data }) => { setRecords(data || []); setLoading(false); });
   }
 
-  useEffect(() => { fetchRecords(); }, [projectId, srcCtx?.srcId]);
+  useEffect(() => { fetchRecords(); }, [projectId, srcCtx?.srcId, filterMode, srcDate]);
 
   /* auto=open：只有一筆時自動進入詳情 */
   useEffect(() => {
@@ -484,10 +486,15 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
   async function loadSrcRecordsFor(tableKey) {
     if (!tableKey || !supabase) { setAttachSrcRecs([]); return; }
     setAttachLoading(true);
-    const field = tableKey === 'material_entries' ? 'name' : 'work_item';
-    const { data: recs } = await supabase.from(tableKey).select(`id, ${field}`)
-      .eq('project_id', projectId).order('created_at', { ascending: false }).limit(50);
-    setAttachSrcRecs((recs || []).map(r => ({ id: r.id, label: r[field] || '（無名稱）' })));
+    const isMat = tableKey === 'material_entries';
+    const nameField = isMat ? 'name' : 'work_item';
+    const dateField = isMat ? 'entry_date' : 'inspect_date';
+    const { data: recs } = await supabase.from(tableKey).select(`id, ${dateField}, ${nameField}`)
+      .eq('project_id', projectId).order(dateField, { ascending: false }).order('created_at', { ascending: false }).limit(80);
+    setAttachSrcRecs((recs || []).map(r => ({
+      id: r.id,
+      label: `${r[dateField] || '—'} · ${r[nameField] || '（無名稱）'}`,
+    })));
     setAttachLoading(false);
   }
 
@@ -872,10 +879,15 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
   async function loadSrcRecords(tableKey) {
     if (!tableKey || !supabase) { setSrcRecords([]); return; }
     setSrcLoading(true);
-    const field = tableKey === 'material_entries' ? 'name' : 'work_item';
-    const { data: recs } = await supabase.from(tableKey).select(`id, ${field}`)
-      .eq('project_id', projectId).order('created_at', { ascending: false }).limit(50);
-    setSrcRecords((recs || []).map(r => ({ id: r.id, label: r[field] || '（無名稱）' })));
+    const isMat = tableKey === 'material_entries';
+    const nameField = isMat ? 'name' : 'work_item';
+    const dateField = isMat ? 'entry_date' : 'inspect_date';
+    const { data: recs } = await supabase.from(tableKey).select(`id, ${dateField}, ${nameField}`)
+      .eq('project_id', projectId).order(dateField, { ascending: false }).order('created_at', { ascending: false }).limit(80);
+    setSrcRecords((recs || []).map(r => ({
+      id: r.id,
+      label: `${r[dateField] || '—'} · ${r[nameField] || '（無名稱）'}`,
+    })));
     setSrcRecordId('');
     setSrcLoading(false);
   }
@@ -1042,6 +1054,8 @@ export function PhotoTable() {
     srcId:    searchParams.get('src_id')    || '',
     srcName:  searchParams.get('src_name')  || '',
   };
+  const srcDate = searchParams.get('src_date') || '';
+  const filterMode = autoParam === 'open' ? 'linked' : autoParam === 'date' ? 'date' : 'all';
 
   /* 自動產生流水號：YYYYMMDD-NNN */
   useEffect(() => {
@@ -1087,7 +1101,8 @@ export function PhotoTable() {
         <PhotoRecordDB key={refreshKey} projectId={projectId} projectName={project?.name}
           onNew={() => setView('upload')} onDetail={openDetail}
           srcCtx={srcCtx.srcTable ? srcCtx : null}
-          autoOpen={autoParam === 'open'} />
+          autoOpen={autoParam === 'open'}
+          filterMode={filterMode} srcDate={srcDate} />
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}
