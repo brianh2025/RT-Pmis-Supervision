@@ -13,10 +13,13 @@ function toIsoDate(dateStr) {
 }
 
 export function EditProjectModal({ project, onClose, onSuccess }) {
+  const _sn = (project.supervisor_name || '').split('\n');
   const [form, setForm] = useState({
     name:           project.name           || '',
     location:       project.location       || '',
     contractor:     project.contractor     || '',
+    sup1:           _sn[0]                 || '',
+    sup2:           _sn[1]                 || '',
     status:         project.status         || 'active',
     start_date:     toIsoDate(project.start_date || ''),
     end_date:       toIsoDate(project.end_date   || ''),
@@ -47,6 +50,7 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
       name:            form.name.trim(),
       location:        form.location.trim()        || null,
       contractor:      form.contractor.trim()      || null,
+      supervisor_name: [form.sup1, form.sup2].map(s => (s || '').trim()).filter(Boolean).join('\n') || null,
       status:          form.status,
       start_date:      form.start_date             || null,
       end_date:        form.end_date               || null,
@@ -102,6 +106,17 @@ export function EditProjectModal({ project, onClose, onSuccess }) {
             <div className="form-group">
               <label className="form-label"><span>承包商</span><span className="en">CONTRACTOR</span></label>
               <input name="contractor" className="form-input" value={form.contractor} onChange={handleChange} placeholder="例：大成營造有限公司" />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label"><span>監造人員 1</span><span className="en">SUPERVISOR 1</span></label>
+              <input name="sup1" className="form-input" value={form.sup1} onChange={handleChange} placeholder="例：陳大明" />
+            </div>
+            <div className="form-group">
+              <label className="form-label"><span>監造人員 2</span><span className="en">SUPERVISOR 2</span></label>
+              <input name="sup2" className="form-input" value={form.sup2} onChange={handleChange} placeholder="例：林小芳" />
             </div>
           </div>
 
