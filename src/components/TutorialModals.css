@@ -1,0 +1,266 @@
+/* ── TutorialModals ── */
+
+.tut-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: tutFadeIn 0.18s ease;
+}
+
+@keyframes tutFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tut-modal {
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  width: 100%;
+  animation: tutSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tutSlideUp {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.tut-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.13s, color 0.13s;
+}
+.tut-close-btn:hover { background: var(--color-surface-hover); color: var(--color-text1); }
+
+/* ══════════════════════════════
+   歡迎 Modal
+   ══════════════════════════════ */
+.tut-welcome { max-width: 580px; }
+
+.tut-welcome-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tut-welcome-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(21, 101, 192, 0.14);
+  color: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tut-welcome-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text1);
+  line-height: 1.3;
+}
+
+.tut-welcome-subtitle {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.tut-welcome-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tut-welcome-intro {
+  font-size: 0.77rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.tut-feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.tut-feature-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 9px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: border-color 0.14s, background 0.14s;
+}
+.tut-feature-card:hover {
+  border-color: rgba(21, 101, 192, 0.3);
+  background: var(--color-surface-hover);
+}
+
+.tut-feature-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: rgba(21, 101, 192, 0.11);
+  color: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tut-feature-label {
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: var(--color-text1);
+}
+
+.tut-feature-desc {
+  font-size: 0.67rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+.tut-welcome-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tut-tip {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.5;
+}
+
+.tut-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.13s;
+}
+.tut-start-btn:hover { opacity: 0.88; }
+
+/* ══════════════════════════════
+   頁面說明 Modal
+   ══════════════════════════════ */
+.tut-help { max-width: 460px; }
+
+.tut-help-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tut-help-title {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text1);
+}
+
+.tut-help-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.tut-help-section-heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-primary-light);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 8px;
+}
+
+.tut-help-list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tut-help-list li {
+  font-size: 0.78rem;
+  color: var(--color-text2);
+  line-height: 1.6;
+}
+
+/* ── Topbar 說明按鈕 ── */
+.pl-topbar-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+  white-space: nowrap;
+}
+.pl-topbar-help-btn:hover {
+  background: rgba(21, 101, 192, 0.08);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-light);
+}
+
+/* ── 行動版 ── */
+@media (max-width: 520px) {
+  .tut-feature-grid { grid-template-columns: 1fr; }
+  .tut-welcome { max-width: 100%; }
+  .tut-tip { display: none; }
+}

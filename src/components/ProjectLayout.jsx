@@ -6,6 +6,8 @@ import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { HelpModal } from './TutorialModals';
+import { HELP_CONTENT } from '../config/helpContent';
 import './ProjectLayout.css';
 
 export function ProjectLayout() {
@@ -18,6 +20,7 @@ export function ProjectLayout() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { project } = useProject(projectId);
   const [time, setTime] = useState(new Date());
+  const [showHelp, setShowHelp] = useState(false);
   const contentRef = useRef(null);
   useAutoHideScrollbar(contentRef);
 
@@ -44,18 +47,14 @@ export function ProjectLayout() {
   let backInfo = null;
 
   if (relPath === 'dashboard') {
-    // 專案儀表板 → 返回工程總覽
-    backInfo = {
-      label: '工程總覽',
-      onClick: () => navigate('/dashboard'),
-    };
+    backInfo = { label: '工程總覽', onClick: () => navigate('/dashboard') };
   } else if (relPath !== '') {
-    // diary / submission / quality / archive / analytics → 返回專案儀表板
-    backInfo = {
-      label: '專案儀表板',
-      onClick: () => navigate(`/projects/${projectId}/dashboard`),
-    };
+    backInfo = { label: '專案儀表板', onClick: () => navigate(`/projects/${projectId}/dashboard`) };
   }
+
+  // ── 依路由取說明內容 ──────────────────────────────────
+  const helpKey = relPath === 'dashboard' ? 'project-dashboard' : relPath.split('/')[0];
+  const helpContent = HELP_CONTENT[helpKey] || null;
 
   return (
     <div className="project-layout-container sidebar-right">
@@ -84,12 +83,17 @@ export function ProjectLayout() {
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
           pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : null}
+          onHelp={helpContent ? () => setShowHelp(true) : undefined}
         />
         
         <main ref={contentRef} className="pl-content-area custom-scrollbar">
           <Outlet />
         </main>
       </div>
+
+      {showHelp && helpContent && (
+        <HelpModal content={helpContent} onClose={() => setShowHelp(false)} />
+      )}
     </div>
   );
 }

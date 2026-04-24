@@ -11,11 +11,13 @@ import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { ReportReminderBanner } from '../components/ReportReminderBanner';
 import { CardContextMenu } from '../components/CardContextMenu';
+import { WelcomeModal, HelpModal } from '../components/TutorialModals';
+import { HELP_CONTENT } from '../config/helpContent';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
-  TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2,
+  TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -220,6 +222,8 @@ export function Dashboard() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
+  const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
   const [alerts,       setAlerts]       = useState([]);
   const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
@@ -543,7 +547,7 @@ export function Dashboard() {
 
       <div className="pl-main-wrapper">
         {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} />
+        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
@@ -584,6 +588,10 @@ export function Dashboard() {
                   <button className="btn-dash-action btn-dash-export" onClick={handleExport}>
                     <Download size={13} />
                     <span>匯出清單</span>
+                  </button>
+                  <button className="btn-dash-action" onClick={() => setShowTutorial(true)} title="系統使用說明">
+                    <HelpCircle size={13} />
+                    <span>說明</span>
                   </button>
                 </div>
               </div>
@@ -672,6 +680,9 @@ export function Dashboard() {
           )}
         </main>
       </div>
+
+      {showTutorial && <WelcomeModal onClose={() => setShowTutorial(false)} />}
+      {showDashHelp && <HelpModal content={HELP_CONTENT.dashboard} onClose={() => setShowDashHelp(false)} />}
 
       {/* 右鍵選單 */}
       {contextMenu && (
