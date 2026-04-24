@@ -136,6 +136,7 @@ function DiaryJournalInner() {
   const [showInspModal,    setShowInspModal]    = useState(false);
   const [inspEditing,      setInspEditing]      = useState(null);
   const [inspPrefill,      setInspPrefill]      = useState('');
+  const [genAllBusy,       setGenAllBusy]       = useState(false);
 
   // ── 施工日誌內嵌模式 ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState('summary'); // 'summary' | 'view' | 'form'
@@ -340,6 +341,28 @@ function DiaryJournalInner() {
     setRefreshKey(k => k + 1);
   };
 
+  const handleGenAllInsp = async (pendingItems) => {
+    if (!pendingItems.length || !selectedKey) return;
+    setGenAllBusy(true);
+    try {
+      const inserts = pendingItems.map(wi => ({
+        project_id: projectId,
+        inspect_date: selectedKey,
+        work_item: wi.item_name,
+        inspect_type: '施工抽查',
+        result: '合格',
+        inspector: '',
+      }));
+      await supabase.from('construction_inspections').insert(inserts);
+      const { data } = await supabase.from('construction_inspections')
+        .select('*').eq('project_id', projectId).eq('inspect_date', selectedKey)
+        .order('created_at', { ascending: true });
+      setInspections(data || []);
+    } finally {
+      setGenAllBusy(false);
+    }
+  };
+
   // ── 施工日誌：檢視模式 ─────────────────────────────────────
   if (viewMode === 'view' && diaryReport) {
     return (
@@ -375,6 +398,8 @@ function DiaryJournalInner() {
   const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
   const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems);
+  const pendingInspItems = meaningfulItems.filter(wi => !inspections.some(ins => ins.work_item === wi.item_name));
+  const uninspectedCount = pendingInspItems.length;
 
   // ── 日曆 ────────────────────────────────────────────────────
   const calendarEl = (
@@ -570,6 +595,9 @@ function DiaryJournalInner() {
               {inspections.filter(i => i.result === '不合格').length > 0 &&
                 ` · 不合格 ${inspections.filter(i => i.result === '不合格').length}`}
             </span>
+            {uninspectedCount > 0 && meaningfulItems.length > 0 && (
+              <span className="dj-uninsp-badge">⚠️ {uninspectedCount} 項待查驗</span>
+            )}
             <button
               className="dj-insp-add-btn"
               onClick={() => handleOpenInspModal('')}
@@ -624,25 +652,32 @@ function DiaryJournalInner() {
           )}
 
           {/* 未抽查的工項（從廠商同步的工項中過濾已抽查過的） */}
-          {meaningfulItems.filter(wi =>
-            !inspections.some(ins => ins.work_item === wi.item_name)
-          ).length > 0 && (
+          {pendingInspItems.length > 0 && (
             <div className="dj-insp-pending">
               <div className="dj-insp-pending-title">待抽查工項</div>
               <div className="dj-insp-pending-list">
-                {meaningfulItems
-                  .filter(wi => !inspections.some(ins => ins.work_item === wi.item_name))
-                  .map((wi, i) => (
-                    <button
-                      key={i}
-                      className="dj-insp-pending-chip"
-                      onClick={() => handleOpenInspModal(wi.item_name)}
-                      title={`對「${wi.item_name}」新增抽查`}
-                    >
-                      <Plus size={10} /> {wi.item_name}
-                    </button>
-                  ))}
+                {pendingInspItems.map((wi, i) => (
+                  <button
+                    key={i}
+                    className="dj-insp-pending-chip"
+                    onClick={() => handleOpenInspModal(wi.item_name)}
+                    title={`對「${wi.item_name}」新增抽查`}
+                  >
+                    <Plus size={10} /> {wi.item_name}
+                  </button>
+                ))}
               </div>
+              <button
+                className="dj-insp-genall-btn"
+                onClick={() => handleGenAllInsp(pendingInspItems)}
+                disabled={genAllBusy}
+                title="批次建立所有待抽查工項（預設合格，可事後修改）"
+              >
+                {genAllBusy
+                  ? <Loader2 size={11} className="animate-spin" />
+                  : <ClipboardCheck size={11} />}
+                一鍵建立 {pendingInspItems.length} 筆抽查（預設合格）
+              </button>
             </div>
           )}
 

@@ -339,7 +339,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
           {SUBTITLE_OPTIONS.map(opt => (
             <button key={opt}
               className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
-              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+              style={{ padding: '4px 10px', fontSize: '13px' }}
               onClick={() => setSubtitle(opt)}>
               {opt}
             </button>
@@ -406,7 +406,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
                     </div>
                 }
                 {!locked && (
-                  <button className="pt-btn" style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                  <button className="pt-btn" style={{ fontSize: '13px', padding: '2px 8px' }}
                     onClick={() => triggerReplace(i)}>
                     <RefreshCw size={11} />更換
                   </button>
@@ -414,20 +414,20 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
               </div>
               <div className="pt-detail-photo-fields" style={{ flex: 1 }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.68rem' }}>拍攝位置</label>
+                  <label className="form-label" style={{ fontSize: '13px' }}>拍攝位置</label>
                   <input className="form-input" value={p.location || ''} disabled={locked}
-                    onChange={e => updatePhoto(i, 'location', e.target.value)} style={{ marginTop: 2, fontSize: '0.75rem' }} />
+                    onChange={e => updatePhoto(i, 'location', e.target.value)} style={{ marginTop: 2, fontSize: '13px' }} />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.68rem' }}>日期</label>
+                  <label className="form-label" style={{ fontSize: '13px' }}>日期</label>
                   <input className="form-input" type="date" value={p.date || ''} disabled={locked}
-                    onChange={e => updatePhoto(i, 'date', e.target.value)} style={{ marginTop: 2, fontSize: '0.75rem' }} />
+                    onChange={e => updatePhoto(i, 'date', e.target.value)} style={{ marginTop: 2, fontSize: '13px' }} />
                 </div>
                 <div style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label" style={{ fontSize: '0.68rem' }}>說明</label>
+                  <label className="form-label" style={{ fontSize: '13px' }}>說明</label>
                   <textarea className="form-input" value={p.description || ''} disabled={locked}
                     onChange={e => updatePhoto(i, 'description', e.target.value)}
-                    rows={2} style={{ marginTop: 2, fontSize: '0.75rem', resize: 'none' }} />
+                    rows={2} style={{ marginTop: 2, fontSize: '13px', resize: 'none' }} />
                 </div>
               </div>
             </div>
@@ -442,13 +442,21 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
 }
 
 /* ── 照片記錄列表 ── */
-function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx }) {
+function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx, autoOpen }) {
   const navigate = useNavigate();
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [selected, setSelected] = useState(new Set());
   const [busy,     setBusy]     = useState(false);
   const selectAllRef = useRef(null);
+  const autoOpenDone = useRef(false);
+
+  /* inline 指附狀態 */
+  const [attachingId,    setAttachingId]    = useState(null);
+  const [attachType,     setAttachType]     = useState('');
+  const [attachSrcRecs,  setAttachSrcRecs]  = useState([]);
+  const [attachLoading,  setAttachLoading]  = useState(false);
+  const [attachRecordId, setAttachRecordId] = useState('');
 
   function fetchRecords() {
     if (!projectId || !supabase) { setLoading(false); return; }
@@ -464,6 +472,35 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
   }
 
   useEffect(() => { fetchRecords(); }, [projectId, srcCtx?.srcId]);
+
+  /* auto=open：只有一筆時自動進入詳情 */
+  useEffect(() => {
+    if (!autoOpenDone.current && autoOpen && !loading && records.length === 1) {
+      autoOpenDone.current = true;
+      onDetail(records[0]);
+    }
+  }, [records, loading, autoOpen]);
+
+  async function loadSrcRecordsFor(tableKey) {
+    if (!tableKey || !supabase) { setAttachSrcRecs([]); return; }
+    setAttachLoading(true);
+    const field = tableKey === 'material_entries' ? 'name' : 'work_item';
+    const { data: recs } = await supabase.from(tableKey).select(`id, ${field}`)
+      .eq('project_id', projectId).order('created_at', { ascending: false }).limit(50);
+    setAttachSrcRecs((recs || []).map(r => ({ id: r.id, label: r[field] || '（無名稱）' })));
+    setAttachLoading(false);
+  }
+
+  async function handleAttach(rec) {
+    const srcTagMap = { material_entries: '材料管制已附', construction_inspections: '施工抽查已附' };
+    const newTags = [...(rec.tags || []), srcTagMap[attachType] || '已附記錄'];
+    const { error } = await supabase.from('archive_docs').update({
+      source_table: attachType,
+      submission_id: attachRecordId,
+      tags: newTags,
+    }).eq('id', rec.id);
+    if (!error) { setAttachingId(null); fetchRecords(); }
+  }
 
   const SOURCE_LABEL = { material_entries: '材料管制', construction_inspections: '施工抽查' };
 
@@ -536,11 +573,11 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
             <input type="checkbox" ref={selectAllRef} checked={allSel}
               onChange={toggleAll} disabled={unattached.length === 0} />
           </span>
+          <span className="col-status">狀態</span>
           <span className="col-title">標題</span>
           <span className="col-date">查驗日期</span>
           <span className="col-docno">記錄編號</span>
           <span className="col-count">張數</span>
-          <span className="col-status">狀態</span>
         </div>
 
       {loading ? (
@@ -563,24 +600,50 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
               <input type="checkbox" checked={selected.has(rec.id)} disabled={isAttached}
                 onChange={() => !isAttached && toggleOne(rec.id)} />
             </span>
+            <div className="col-status" onClick={e => e.stopPropagation()}>
+              {srcLabel ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
+                  <button className="pt-btn" style={{ padding: '2px 7px', fontSize: '13px' }}
+                    onClick={() => handleWithdraw(rec)}><RotateCcw size={11} />抽回</button>
+                </div>
+              ) : attachingId === rec.id ? (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select value={attachType}
+                    style={{ padding: '2px 5px', fontSize: '13px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text1)' }}
+                    onChange={e => { setAttachType(e.target.value); setAttachRecordId(''); loadSrcRecordsFor(e.target.value); }}>
+                    <option value="">指附…</option>
+                    <option value="material_entries">材料管制</option>
+                    <option value="construction_inspections">施工抽查</option>
+                  </select>
+                  {attachType && (
+                    attachLoading ? <Loader2 size={12} className="animate-spin" />
+                    : <select value={attachRecordId}
+                        style={{ padding: '2px 5px', fontSize: '13px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text1)', maxWidth: 110 }}
+                        onChange={e => setAttachRecordId(e.target.value)}>
+                        <option value="">選記錄…</option>
+                        {attachSrcRecs.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                      </select>
+                  )}
+                  {attachType && attachRecordId && (
+                    <button className="pt-btn pt-btn-primary" style={{ padding: '2px 7px', fontSize: '13px' }}
+                      onClick={() => handleAttach(rec)}><Check size={11} /></button>
+                  )}
+                  <button className="pt-btn" style={{ padding: '2px 7px', fontSize: '13px' }}
+                    onClick={() => setAttachingId(null)}><X size={11} /></button>
+                </div>
+              ) : (
+                <span className="pt-log-tag unlocked"
+                  title="點擊指定附入來源"
+                  onClick={() => { setAttachingId(rec.id); setAttachType(''); setAttachSrcRecs([]); setAttachRecordId(''); }}>
+                  <FileText size={10} />未附來源
+                </span>
+              )}
+            </div>
             <div className="col-title pt-record-title">{rec.title}</div>
             <div className="col-date pt-record-meta">{toRocDate(rec.doc_date)}</div>
-            <div className="col-docno pt-record-meta" style={{ fontFamily: 'monospace' }}>{rec.doc_no || '—'}</div>
+            <div className="col-docno pt-record-meta">{rec.doc_no || '—'}</div>
             <div className="col-count pt-record-meta">{info.count ?? 0} 張</div>
-            <div className="col-status" style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
-              {srcLabel
-                ? <>
-                    <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
-                    <button className="pt-btn" style={{ padding: '2px 7px', fontSize: '13px' }}
-                      onClick={() => handleWithdraw(rec)}>
-                      <RotateCcw size={11} />抽回
-                    </button>
-                  </>
-                : <span className="pt-log-tag unlocked" style={{ opacity: 0.45, cursor: 'default' }}>
-                    <FileText size={10} />未附來源
-                  </span>
-              }
-            </div>
           </div>
         );
       })}
@@ -678,7 +741,7 @@ function StepUpload({ onPhotosReady, onBack }) {
               <button className="pt-thumb-remove" onClick={() => setItems(prev => prev.filter(x => x.id !== item.id))}>
                 <X size={11} />
               </button>
-              <div style={{ position: 'absolute', bottom: 2, left: 3, fontSize: '0.6rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '1px 4px', borderRadius: 3 }}>
+              <div style={{ position: 'absolute', bottom: 2, left: 3, fontSize: '13px', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 5px', borderRadius: 4 }}>
                 #{i + 1}
               </div>
               {item.exifDate && (
@@ -730,8 +793,8 @@ function StepEntry({ photos, onComplete, onBack }) {
   return (
     <div className="pt-step-entry">
       <div className="pt-entry-header">
-        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text1)' }}>填寫照片資料</span>
-        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{index + 1} / {photos.length}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text1)' }}>填寫照片資料</span>
+        <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{index + 1} / {photos.length}</span>
       </div>
       <div className="pt-entry-body">
         <div className="pt-entry-preview">
@@ -742,7 +805,7 @@ function StepEntry({ photos, onComplete, onBack }) {
           <div>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               拍攝日期
-              {cur.exifDate && <span style={{ fontSize: '0.65rem', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}><Zap size={10} />EXIF 自動帶入</span>}
+              {cur.exifDate && <span style={{ fontSize: '13px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}><Zap size={10} />EXIF 自動帶入</span>}
             </label>
             <input className="form-input" type="date" value={curD.date} onChange={e => update('date', e.target.value)} style={{ marginTop: 4 }} />
           </div>
@@ -875,7 +938,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
     <div className="pt-step-report">
       <div className="pt-report-toolbar no-print">
         <button className="pt-btn" onClick={onBack}><RotateCcw size={13} />返回編輯</button>
-        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
           共 {photos.length} 張 / {pages.length} 頁
         </span>
         {/* 副標題選擇 */}
@@ -883,7 +946,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
           {SUBTITLE_OPTIONS.map(opt => (
             <button key={opt}
               className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
-              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+              style={{ padding: '4px 10px', fontSize: '13px' }}
               onClick={() => setSubtitle(opt)}>
               {opt}
             </button>
@@ -892,20 +955,20 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* 附入來源 */}
           {srcCtx?.srcName ? (
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: '13px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
               <Link2 size={11} />附入：{decodeURIComponent(srcCtx.srcName)}
             </span>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <select value={srcTypeChoice} onChange={e => handleSrcTypeChange(e.target.value)}
-                style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '0.72rem', color: 'var(--color-text1)' }}>
+                style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '13px', color: 'var(--color-text1)' }}>
                 {SOURCE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               {srcTypeChoice && (
                 srcLoading
                   ? <Loader2 size={12} className="animate-spin" />
                   : <select value={srcRecordId} onChange={e => setSrcRecordId(e.target.value)}
-                      style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '0.72rem', color: 'var(--color-text1)', maxWidth: 160 }}>
+                      style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '13px', color: 'var(--color-text1)', maxWidth: 160 }}>
                       <option value="">選擇記錄…</option>
                       {srcRecords.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </select>
@@ -965,7 +1028,8 @@ export function PhotoTable() {
   const { id: projectId } = useParams();
   const { project }       = useProject(projectId);
   const [searchParams]    = useSearchParams();
-  const [view,        setView]        = useState('list');
+  const autoParam = searchParams.get('auto') || '';
+  const [view,        setView]        = useState(autoParam === 'new' ? 'upload' : 'list');
   const [detailRec,   setDetailRec]   = useState(null);
   const [photos,      setPhotos]      = useState([]);
   const [photoData,   setPhotoData]   = useState([]);
@@ -1022,7 +1086,8 @@ export function PhotoTable() {
       {view === 'list' && (
         <PhotoRecordDB key={refreshKey} projectId={projectId} projectName={project?.name}
           onNew={() => setView('upload')} onDetail={openDetail}
-          srcCtx={srcCtx.srcTable ? srcCtx : null} />
+          srcCtx={srcCtx.srcTable ? srcCtx : null}
+          autoOpen={autoParam === 'open'} />
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}

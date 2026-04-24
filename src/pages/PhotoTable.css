@@ -121,9 +121,8 @@
 }
 
 .pt-record-meta {
-  font-size: 0.7rem;
+  font-size: 13px;
   color: var(--color-text-muted);
-  font-family: monospace;
   white-space: nowrap;
 }
 
@@ -135,7 +134,7 @@
   gap: 4px;
   padding: 3px 8px;
   border-radius: 5px;
-  font-size: 0.68rem;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--color-border);
@@ -176,7 +175,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.78rem;
+  font-size: 13px;
   font-weight: 600;
   color: #6366f1;
 }
@@ -283,7 +282,7 @@
 
 .pt-modal-photos { display: flex; flex-direction: column; gap: 8px; }
 .pt-modal-photos-title {
-  font-size: 0.72rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-muted);
   padding-top: 4px;
@@ -300,11 +299,11 @@
   border-radius: 7px;
 }
 .pt-modal-photo-num {
-  font-size: 0.68rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-muted);
   padding-top: 6px;
-  width: 22px;
+  width: 24px;
   flex-shrink: 0;
 }
 .pt-modal-photo-fields {
@@ -313,7 +312,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
-.pt-modal-photo-fields .form-input { font-size: 0.75rem; }
+.pt-modal-photo-fields .form-input { font-size: 13px; }
 
 .pt-modal-footer {
   display: flex;
@@ -353,7 +352,7 @@
   gap: 5px;
   padding: 6px 14px;
   border-radius: 7px 7px 0 0;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
   border: 1px solid transparent;
   border-bottom: none;
@@ -375,12 +374,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
   background: var(--color-border);
-  font-size: 0.62rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-muted);
 }
@@ -397,14 +396,14 @@
   padding: 6px 14px;
   background: rgba(21,101,192,0.06);
   border-bottom: 1px solid var(--color-border);
-  font-size: 0.75rem;
+  font-size: 13px;
   color: var(--color-text2);
 }
 
 /* ── 表格：subgrid 自動對齊各欄寬度 ── */
 .pt-record-table {
   display: grid;
-  grid-template-columns: 28px 1fr max-content max-content max-content max-content;
+  grid-template-columns: 28px 120px 1fr 84px 88px 64px;
   column-gap: 10px;
 }
 .col-check  { display: flex; align-items: center; justify-content: center; width: auto; }
@@ -424,7 +423,7 @@
   padding: 5px 14px;
   background: var(--color-bg2);
   border-bottom: 1px solid var(--color-border);
-  font-size: 0.67rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
@@ -445,7 +444,7 @@
 .pt-record-item.selected{ background: rgba(21,101,192,0.06); }
 
 .pt-record-title {
-  font-size: 0.78rem;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text1);
   white-space: nowrap;
@@ -496,7 +495,7 @@
 }
 
 .pt-print-upload-note {
-  font-size: 0.72rem;
+  font-size: 13px;
   color: var(--color-warning);
   line-height: 1.5;
 }
@@ -521,9 +520,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 0.72rem;
+  font-size: 13px;
   font-weight: 700;
 }
 .pt-detail-badge.locked {
@@ -559,7 +558,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text2);
   padding-bottom: 8px;
@@ -567,7 +566,7 @@
 }
 
 .pt-detail-note {
-  font-size: 0.65rem;
+  font-size: 13px;
   font-weight: 400;
   color: var(--color-text-muted);
   margin-left: 4px;
@@ -583,11 +582,11 @@
   border-radius: 8px;
 }
 .pt-detail-photo-num {
-  font-size: 0.68rem;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-muted);
   padding-top: 6px;
-  width: 22px;
+  width: 26px;
   flex-shrink: 0;
 }
 .pt-detail-photo-fields {
@@ -617,7 +616,7 @@
   border: 2px dashed var(--color-border);
   background: transparent;
   color: var(--color-text2);
-  font-size: 0.78rem;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -631,10 +630,16 @@
 
 /* ── 步驟一：上傳 ── */
 .pt-step-upload {
-  padding: 20px;
+  padding: 20px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.pt-upload-sources {
+  padding: 16px;
+  background: var(--color-bg2);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
 }
 
 .pt-upload-zone {
@@ -692,11 +697,11 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   background: rgba(16,185,129,0.85);
   color: #fff;
-  font-size: 0.62rem;
+  font-size: 13px;
   font-weight: 700;
   pointer-events: none;
 }

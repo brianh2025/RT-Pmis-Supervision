@@ -108,8 +108,8 @@ function MobileEntryCard({ row, photoCountMap, issueStatusMap, navigate, project
         <input type="checkbox" checked={selected} onChange={() => onToggleSel(row.id)}
           onClick={e => e.stopPropagation()} style={{ accentColor: 'var(--color-primary)', flexShrink: 0 }} />
         <span className="mcs-mc-date">{row.entry_date || '—'}</span>
-        <button className="mcs-photo-btn" title="照片記錄"
-          onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}`); }}>
+        <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
+          onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${count > 0 ? 'open' : 'new'}`); }}>
           <Camera size={11} />{count > 0 ? count : ''}
         </button>
         <span className="mcs-mc-name">{row.name || '—'}</span>
@@ -368,6 +368,18 @@ export function MaterialControl() {
         ? { ...r, a_date: entry.entry_date || today, cum_qty: entry.qty || r.cum_qty }
         : r
       ));
+      if (window.confirm(`同時建立「${entry.name}」的材料抽查記錄？`)) {
+        await supabase.from('construction_inspections').insert({
+          project_id: projectId,
+          created_by: user?.id,
+          inspect_date: entry.entry_date || today,
+          work_item: entry.name,
+          location: entry.spec || '',
+          inspect_type: '材料抽查',
+          result: '',
+          inspector: '',
+        });
+      }
     } else {
       const name4 = tstToast.entry.name.trim().slice(0, 4);
       const newRow = {
@@ -454,10 +466,11 @@ export function MaterialControl() {
 
     if (col.photoLink) {
       const count = photoCountMap[row.id] || 0;
+      const autoQ = count > 0 ? 'open' : 'new';
       return (
         <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
-          <button className="mcs-photo-btn" title="點擊查看/上傳照片記錄"
-            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}`)}>
+          <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
+            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}`)}>
             <Camera size={11} />
             {count > 0 ? count : ''}
           </button>
