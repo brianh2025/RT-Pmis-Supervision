@@ -570,11 +570,6 @@ export function Dashboard() {
                   <span className="dash-title-accent" />
                   <div>
                     <h1 className="dash-title">雲林縣工程監造</h1>
-                    {showWelcome && (
-                      <span className="welcome-msg-inline animate-fade-out">
-                        歡迎進行監造作業。
-                      </span>
-                    )}
                   </div>
                   <button className="btn-dash-help-inline" onClick={() => setShowTutorial(true)} title="系統使用說明">
                     <HelpCircle size={14} />
@@ -621,15 +616,22 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 跨工程待辦彙總 */}
-            <AlertsPanel alerts={alerts} navigate={navigate} />
-
-            {/* Banner */}
-            {projects.length > 0 && (
-              <div style={{ marginBottom: 6 }}>
-                <ReportReminderBanner projectId={projects[0]?.id} />
+            {/* 整合：歡迎詞 + 提前預警 */}
+            {(showWelcome || projects.length > 0) && (
+              <div className="dash-info-strip">
+                {showWelcome && (
+                  <span className="welcome-msg-inline animate-fade-out">
+                    歡迎進行監造作業。
+                  </span>
+                )}
+                {projects.length > 0 && (
+                  <ReportReminderBanner projectId={projects[0]?.id} />
+                )}
               </div>
             )}
+
+            {/* 跨工程待辦彙總 */}
+            <AlertsPanel alerts={alerts} navigate={navigate} />
 
             {/* 工程列表標題 + 篩選標籤 + 計數（同一列） */}
             <div className="dash-list-header">
