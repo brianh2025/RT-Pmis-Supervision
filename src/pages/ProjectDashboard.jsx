@@ -8,7 +8,7 @@ import {
   TrendingUp, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, AlertCircle, Clock,
   BookOpen, Camera, Package,
-  Shield, Archive, BarChart2,
+  Shield, ShieldCheck, Archive, BarChart2,
   Pencil, X, GripVertical, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -114,6 +114,9 @@ export function ProjectDashboard() {
       const matUnregistered =
         (matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
 
+      const constrUnInspected =
+        (matEntryRes.count || 0) > 0 && inspData.length === 0 ? 1 : 0;
+
       setStats({
         totalLogs: logsRes.count || 0,
         thisMonthLogs: (monthLogsRes.data || []).length,
@@ -133,6 +136,7 @@ export function ProjectDashboard() {
         inspPending,
         inspFail,
         matUnregistered,
+        constrUnInspected,
       });
       setStatsLoading(false);
     }
@@ -212,6 +216,12 @@ export function ProjectDashboard() {
       title: '材料進場管制尚未回填',
       desc: '廠商日誌已有記錄，請至材料管制頁回填進場資料',
       path: 'material', action: '前往回填',
+    },
+    stats.constrUnInspected > 0 && project?.status === 'active' && {
+      id: 'constr-uninspected', level: 'warning', icon: ShieldCheck,
+      title: '施工項目尚未執行抽查',
+      desc: '日誌已有施工記錄，但尚無任何施工抽查記錄',
+      path: 'quality', action: '前往抽查',
     },
   ].filter(Boolean);
 
