@@ -744,3 +744,123 @@
   .archive-grid { grid-template-columns: 108px 1fr; gap: 10px; }
   .archive-doc-list { gap: 10px; }
 }
+
+/* ── 施工抽查單列印 ── */
+.insp-print-overlay {
+  position: fixed;
+  inset: 0;
+  background: #f0f0f0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.insp-print-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.insp-print-page {
+  width: 21cm;
+  min-height: 29.7cm;
+  margin: 24px auto;
+  background: #fff;
+  padding: 2cm 2.2cm;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  color: #111;
+  font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+}
+
+.insp-pt-header-tbl,
+.insp-pt-body-tbl,
+.insp-pt-sign-tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.insp-pt-header-tbl { margin-bottom: 0; }
+.insp-pt-body-tbl   { margin-bottom: 0; }
+.insp-pt-sign-tbl   { margin-top: 40px; }
+
+.insp-pt-header-tbl td,
+.insp-pt-body-tbl td,
+.insp-pt-sign-tbl td {
+  border: 1px solid #999;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.insp-pt-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 12px !important;
+  border-bottom: 2px solid #333 !important;
+}
+
+.insp-pt-label {
+  background: #f5f5f5;
+  font-weight: 600;
+  width: 100px;
+  white-space: nowrap;
+  color: #333;
+}
+
+.insp-pt-val { color: #111; }
+
+.insp-pt-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.insp-pt-remark { min-height: 48px; vertical-align: top; }
+
+.insp-pt-sign-label {
+  background: #f5f5f5;
+  font-weight: 600;
+  width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  color: #333;
+}
+
+.insp-pt-sign-field { height: 48px; width: 180px; }
+
+.insp-pt-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+}
+
+@media print {
+  .insp-print-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body > * { visibility: hidden !important; }
+
+  .insp-print-overlay,
+  .insp-print-overlay * { visibility: visible !important; }
+
+  .insp-print-toolbar { display: none !important; }
+
+  .insp-print-page {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1.5cm 2cm !important;
+    box-shadow: none !important;
+  }
+}
