@@ -454,6 +454,19 @@
 }
 .pt-record-title:hover { color: var(--color-primary-light); }
 
+.pt-category-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--color-primary-light, #1565c0);
+  color: #fff;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 .pt-record-meta {
   font-size: 0.7rem;
   color: var(--color-text-muted);

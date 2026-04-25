@@ -66,7 +66,7 @@ export function ReportReminderBanner({ projectId }) {
       </div>
       <div className="banner-content">
         <span className="banner-label">
-          {isUrgent ? '⚠️ 緊急提醒 URGENT' : '📋 提前預警 ADVISORY'}
+          {isUrgent ? '⚠️ 緊急提醒' : '📋 提前預警'}
         </span>
         <span className="banner-message">{banner.message}</span>
       </div>

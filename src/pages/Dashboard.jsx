@@ -18,6 +18,7 @@ import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
+  GripHorizontal, LogOut,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -233,6 +234,15 @@ export function Dashboard() {
   });
   const [dragOverId, setDragOverId] = useState(null);
   const dragSrcId = useRef(null);
+  const [showNewMenu, setShowNewMenu] = useState(false);
+  const newMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!showNewMenu) return;
+    const handler = (e) => { if (newMenuRef.current && !newMenuRef.current.contains(e.target)) setShowNewMenu(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showNewMenu]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -478,23 +488,26 @@ export function Dashboard() {
             <div className="card-title-compact">{p.name}</div>
           </div>
           <div className="card-progress-row">
-          <div className="layered-progress-bar">
-            <div className="bar-planned" style={{ width: `${planned}%` }} />
-            <div className="bar-actual" style={{
-              width: `${prog}%`,
-              background: isBehind(p) ? 'var(--color-danger)' :
-                          (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
-            }} />
-          </div>
-            <div className="card-pct-block">
-              <span className="card-pct-num" style={{
-                color: isBehind(p) ? 'var(--color-danger)' :
-                       (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : 'var(--color-primary-light)'
-              }}>{prog}%</span>
-              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                {diff >= 0 ? '+' : ''}{diff}%
-              </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ marginLeft: 0 }}>
+                  {diff >= 0 ? '+' : ''}{diff}%
+                </span>
+              </div>
+              <div className="layered-progress-bar">
+                <div className="bar-planned" style={{ width: `${planned}%` }} />
+                <div className="bar-actual" style={{
+                  width: `${prog}%`,
+                  background: isBehind(p) ? 'var(--color-danger)' :
+                              (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
+                }} />
+              </div>
             </div>
+            <span className="card-pct-num" style={{
+              color: isBehind(p) ? 'var(--color-danger)' :
+                     (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : 'var(--color-primary-light)',
+              flexShrink: 0,
+            }}>{prog}%</span>
           </div>
           <div className="card-bottom-row">
             <span className={`card-status-chip ${isBehind(p) ? 'chip-behind' : p.status === 'completed' ? 'chip-done' : p.status === 'accepted' ? 'chip-accepted' : p.status === 'pending' ? 'chip-pending' : p.status === 'suspended' ? 'chip-paused' : 'chip-active'}`}>
@@ -553,7 +566,7 @@ export function Dashboard() {
           <div className="dash-main">
               {/* 標題列：左（標題）/ 中（搜尋）/ 右（按鈕） */}
               <div className="dash-page-header">
-                <div className="dash-title-block">
+                <div className="dash-title-block" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="dash-title-accent" />
                   <div>
                     <h1 className="dash-title">雲林縣工程監造</h1>
@@ -563,6 +576,9 @@ export function Dashboard() {
                       </span>
                     )}
                   </div>
+                  <button className="btn-dash-help-inline" onClick={() => setShowTutorial(true)} title="系統使用說明">
+                    <HelpCircle size={14} />
+                  </button>
                 </div>
 
                 {/* 搜尋列（header 中央） */}
@@ -577,21 +593,30 @@ export function Dashboard() {
                 </div>
 
                 <div className="dash-table-actions">
-                  <button className="btn-dash-action" onClick={() => setShowAddModal(true)}>
-                    <PlusCircle size={13} />
-                    <span>新增工程</span>
-                  </button>
-                  <button className="btn-dash-action btn-dash-excel" onClick={() => setShowExcelModal(true)}>
-                    <FileSpreadsheet size={13} />
-                    <span>Excel 匯入</span>
-                  </button>
+                  <div className="btn-dash-split-wrap" ref={newMenuRef}>
+                    <div className="btn-dash-split">
+                      <button className="btn-dash-action btn-dash-split-main" onClick={() => setShowAddModal(true)}>
+                        <PlusCircle size={13} /><span>新增工程</span>
+                      </button>
+                      <button className="btn-dash-action btn-dash-split-arrow" onClick={() => setShowNewMenu(v => !v)} title="更多選項">▾</button>
+                    </div>
+                    {showNewMenu && (
+                      <div className="btn-dash-dropdown">
+                        <button onClick={() => { setShowAddModal(true); setShowNewMenu(false); }}>
+                          <PlusCircle size={12} />手動新增工程
+                        </button>
+                        <button onClick={() => { setShowExcelModal(true); setShowNewMenu(false); }}>
+                          <FileSpreadsheet size={12} />Excel 批次匯入
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <button className="btn-dash-action btn-dash-export" onClick={handleExport}>
                     <Download size={13} />
                     <span>匯出清單</span>
                   </button>
-                  <button className="btn-dash-action" onClick={() => setShowTutorial(true)} title="系統使用說明">
-                    <HelpCircle size={13} />
-                    <span>說明</span>
+                  <button className="btn-dash-signout" onClick={handleSignOut}>
+                    <LogOut size={13} /><span>登出</span>
                   </button>
                 </div>
               </div>
@@ -639,7 +664,7 @@ export function Dashboard() {
             {starredProjects.length > 0 && statusFilter !== 'starred' && (
               <div className="dash-section-starred">
                 <div className="dash-section-label starred-label">
-                  <span>⭐ 我的最愛</span>
+                  <span>⭐ 常用</span>
                 </div>
                 <div className="dash-project-grid">
                   {starredProjects.map((p, index) => renderCard(p, index))}
@@ -647,15 +672,20 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* 主清單 */}
+            {/* 我的最愛 / 全部工程 分隔線 */}
             {starredProjects.length > 0 && statusFilter !== 'starred' && regularProjects.length > 0 && (
-              <div className="dash-section-label regular-label">
-                <span>全部工程</span>
-              </div>
+              <div className="dash-section-divider" />
             )}
+
+            {/* 主清單 */}
             <div className="dash-project-grid">
+              {projects.length > 1 && (
+                <div className="dash-drag-hint" style={{ gridColumn: '1 / -1' }}>
+                  <GripHorizontal size={11} /> 可拖曳調整工程順序
+                </div>
+              )}
               {filteredProjects.length === 0 && (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.82rem', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-surface-border)' }}>
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.82rem', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-surface-border)', gridColumn: '1 / -1' }}>
                   此分類目前無工程
                 </div>
               )}

@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
-  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2,
+  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle,
 } from 'lucide-react';
 import * as exifr from 'exifr';
 import { supabase } from '../lib/supabaseClient';
@@ -371,7 +371,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
               <div>
-                <label className="form-label">查驗日期</label>
+                <label className="form-label">紀錄日期</label>
                 <input className="form-input" type="date" value={docDate} disabled={locked}
                   onChange={e => setDocDate(e.target.value)} style={{ marginTop: 4 }} />
               </div>
@@ -462,7 +462,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
     if (!projectId || !supabase) { setLoading(false); return; }
     setLoading(true);
     let q = supabase.from('archive_docs')
-      .select('id, title, doc_date, doc_no, remark, tags, created_at, source_table, submission_id')
+      .select('id, title, doc_date, doc_no, remark, tags, created_at, source_table, submission_id, photo_category')
       .eq('project_id', projectId).eq('category', 'photo')
       .order('doc_date', { ascending: false });
     if (filterMode === 'linked' && srcCtx?.srcTable && srcCtx?.srcId) {
@@ -558,6 +558,10 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
         <span className="pt-db-tab active" style={{ cursor: 'default' }}>
           <Camera size={13} />照片記錄<span className="pt-tab-count">{records.length}</span>
         </span>
+        <button style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', background:'none', border:'1px solid var(--color-border)', color:'var(--color-text-muted)', cursor:'pointer', marginLeft:4, flexShrink:0 }}
+          title="照片記錄說明" onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'photos' }))}>
+          <HelpCircle size={14} />
+        </button>
         <button className="pt-btn pt-btn-primary" style={{ marginLeft: 'auto' }} onClick={onNew}>
           <Plus size={13} />新增照片記錄
         </button>
@@ -582,7 +586,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
           </span>
           <span className="col-status">狀態</span>
           <span className="col-title">標題</span>
-          <span className="col-date">查驗日期</span>
+          <span className="col-date">紀錄日期</span>
           <span className="col-docno">記錄編號</span>
           <span className="col-count">張數</span>
         </div>
@@ -643,11 +647,14 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
                 <span className="pt-log-tag unlocked"
                   title="點擊指定附入來源"
                   onClick={() => { setAttachingId(rec.id); setAttachType(''); setAttachSrcRecs([]); setAttachRecordId(''); }}>
-                  <FileText size={10} />未附來源
+                  <FileText size={10} />指附日誌
                 </span>
               )}
             </div>
-            <div className="col-title pt-record-title">{rec.title}</div>
+            <div className="col-title pt-record-title">
+              {rec.photo_category && <span className="pt-category-badge">{rec.photo_category}</span>}
+              {rec.title}
+            </div>
             <div className="col-date pt-record-meta">{toRocDate(rec.doc_date)}</div>
             <div className="col-docno pt-record-meta">{rec.doc_no || '—'}</div>
             <div className="col-count pt-record-meta">{info.count ?? 0} 張</div>
@@ -774,8 +781,11 @@ function StepUpload({ onPhotosReady, onBack }) {
 }
 
 /* ── 填資料 ── */
+const PHOTO_CATEGORIES = ['材料進場', '施工抽查', '查驗記錄', '會勘紀錄', '其他'];
+
 function StepEntry({ photos, onComplete, onBack }) {
   const [index, setIndex] = useState(0);
+  const [photoCategory, setPhotoCategory] = useState('');
   const [data, setData] = useState(() => photos.map(p => ({
     date: p.exifDate || todayISO(), location: '', description: '', gps: p.exifGps || '',
   })));
@@ -810,6 +820,13 @@ function StepEntry({ photos, onComplete, onBack }) {
         </div>
         <div className="pt-entry-fields">
           <div>
+            <label className="form-label">類別</label>
+            <select className="form-input" value={photoCategory} onChange={e => setPhotoCategory(e.target.value)} style={{ marginTop: 4 }}>
+              <option value="">請選擇類別</option>
+              {PHOTO_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               拍攝日期
               {cur.exifDate && <span style={{ fontSize: '13px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}><Zap size={10} />EXIF 自動帶入</span>}
@@ -839,7 +856,7 @@ function StepEntry({ photos, onComplete, onBack }) {
           <button className="pt-btn" disabled={index === 0} onClick={() => setIndex(i => i - 1)}><ChevronLeft size={14} />上一張</button>
           {index < photos.length - 1
             ? <button className="pt-btn pt-btn-primary" onClick={goNext}>下一張<ChevronRight size={14} /></button>
-            : <button className="pt-btn pt-btn-primary" onClick={() => onComplete(data)}><Check size={14} />產生報告</button>
+            : <button className="pt-btn pt-btn-primary" onClick={() => onComplete(data, photoCategory)}><Check size={14} />產生報告</button>
           }
         </div>
       </div>
@@ -861,7 +878,7 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 /* ── 報告預覽 ── */
-function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved, srcCtx }) {
+function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved, srcCtx, photoCategory }) {
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [subtitle,       setSubtitle]       = useState(SUBTITLE_OPTIONS[0]);
@@ -938,6 +955,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
         tags,
         source_table: effectiveSrcTable || null,
         submission_id: effectiveSrcId || null,
+        photo_category: photoCategory || null,
       });
       if (error) throw error;
       setSaved(true);
@@ -1043,11 +1061,12 @@ export function PhotoTable() {
   const autoParam = searchParams.get('auto') || '';
   const [view,        setView]        = useState(autoParam === 'new' ? 'upload' : 'list');
   const [detailRec,   setDetailRec]   = useState(null);
-  const [photos,      setPhotos]      = useState([]);
-  const [photoData,   setPhotoData]   = useState([]);
-  const [reportNo,    setReportNo]    = useState('');
-  const [batchTitle,  setBatchTitle]  = useState('');
-  const [refreshKey,  setRefreshKey]  = useState(0);
+  const [photos,        setPhotos]        = useState([]);
+  const [photoData,     setPhotoData]     = useState([]);
+  const [photoCategory, setPhotoCategory] = useState('');
+  const [reportNo,      setReportNo]      = useState('');
+  const [batchTitle,    setBatchTitle]    = useState('');
+  const [refreshKey,    setRefreshKey]    = useState(0);
 
   const srcCtx = {
     srcTable: searchParams.get('src_table') || '',
@@ -1057,11 +1076,15 @@ export function PhotoTable() {
   const srcDate = searchParams.get('src_date') || '';
   const filterMode = autoParam === 'open' ? 'linked' : autoParam === 'date' ? 'date' : 'all';
 
-  /* 自動產生流水號：YYYYMMDD-NNN */
+  /* 自動產生流水號：民國 YYY/MM/DD-NNN */
   useEffect(() => {
     if (view !== 'report' || reportNo || !projectId) return;
     const date = photoData[0]?.date || todayISO();
-    const prefix = date.replace(/-/g, '') + '-';
+    const dt = new Date(date + 'T00:00:00');
+    const roc = dt.getFullYear() - 1911;
+    const mm  = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd  = String(dt.getDate()).padStart(2, '0');
+    const prefix = `${roc}/${mm}/${dd}-`;
     supabase.from('archive_docs')
       .select('doc_no')
       .eq('project_id', projectId)
@@ -1080,7 +1103,7 @@ export function PhotoTable() {
   function openDetail(rec) { setDetailRec(rec); setView('detail'); }
   function refresh() { setRefreshKey(k => k + 1); }
   function handleSaved() {
-    setPhotos([]); setPhotoData([]); setReportNo(''); setBatchTitle('');
+    setPhotos([]); setPhotoData([]); setPhotoCategory(''); setReportNo(''); setBatchTitle('');
     setView('list'); refresh();
   }
 
@@ -1116,13 +1139,13 @@ export function PhotoTable() {
         <StepUpload onPhotosReady={ps => { setPhotos(ps); setView('entry'); }} onBack={() => setView('list')} />
       )}
       {view === 'entry' && (
-        <StepEntry photos={photos} onComplete={data => { setPhotoData(data); setView('report'); }} onBack={() => setView('upload')} />
+        <StepEntry photos={photos} onComplete={(data, cat) => { setPhotoData(data); setPhotoCategory(cat); setView('report'); }} onBack={() => setView('upload')} />
       )}
       {view === 'report' && (
         <StepReport photos={photos} data={photoData} projectName={project?.name}
           batchTitle={batchTitle} reportNo={reportNo} setReportNo={setReportNo}
           projectId={projectId} onBack={() => setView('entry')} onSaved={handleSaved}
-          srcCtx={srcCtx.srcTable ? srcCtx : null} />
+          srcCtx={srcCtx.srcTable ? srcCtx : null} photoCategory={photoCategory} />
       )}
     </div>
   );

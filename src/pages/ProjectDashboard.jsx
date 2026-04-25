@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle2, ChevronRight, AlertCircle, Clock,
   BookOpen, Camera, Package,
   Shield, Archive, BarChart2,
-  Pencil, X, GripVertical,
+  Pencil, X, GripVertical, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
@@ -254,9 +254,8 @@ export function ProjectDashboard() {
   const renderSection = (id) => {
     if (id === 'shortcuts') return (
       <>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2, marginBottom: 4 }}>
+        <div style={{ paddingLeft: 2, marginBottom: 4 }}>
           <Grip />
-          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>功能模組</span>
         </div>
         <div className="dash-sc-grid">
           {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
@@ -273,12 +272,6 @@ export function ProjectDashboard() {
       <div className="task-board">
         <div className="task-board-header">
           <Grip />
-          <div className="task-board-title" style={{ flex: 1 }}>
-            {allDone
-              ? <><CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />今日任務</>
-              : <><AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />待辦任務</>
-            }
-          </div>
           {!allDone && (
             <span className="task-board-count">{statsLoading ? '載入中…' : `${tasks.length} 項待處理`}</span>
           )}
@@ -328,7 +321,14 @@ export function ProjectDashboard() {
           <h3 className="stunning-card-title">工程進度</h3>
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {stats.latestPlanned > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+              </span>
+            </div>
+          )}
           <div className="stunning-progress-wrap">
             <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
             <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }} />
@@ -336,13 +336,6 @@ export function ProjectDashboard() {
               預定 {stats.latestPlanned}% / 實際 {stats.latestActual}%
             </span>
           </div>
-          {stats.latestPlanned > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
-              </span>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -389,25 +382,31 @@ export function ProjectDashboard() {
     <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
 
       {/* ── 專案標頭 ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'nowrap' }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 14px', minWidth: 0, flex: 1 }}>
+          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
             {project.name}
           </h1>
           {project.contractor && (
-            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+            <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
               承包商：{project.contractor}
-            </div>
+            </span>
           )}
           {project.supervisor_name && (
-            <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
-              監造人員：{project.supervisor_name.split('\n').filter(Boolean).join('、')}
-            </div>
+            <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+              監造：{project.supervisor_name.split('\n').filter(Boolean).join('、')}
+            </span>
           )}
         </div>
-        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`} style={{ flexShrink: 0, marginTop: '2px' }}>
-          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
+            {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
+          </span>
+          <button style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', background:'none', border:'1px solid var(--color-border)', color:'var(--color-text-muted)', cursor:'pointer' }}
+            onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'dashboard' }))} title="說明">
+            <HelpCircle size={14} />
+          </button>
+        </div>
       </div>
 
       {/* ── 可拖曳區塊 ── */}

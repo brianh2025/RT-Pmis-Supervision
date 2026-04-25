@@ -1377,8 +1377,9 @@
 .dash-project-card-compact.status-pending   { background: var(--color-bg2); filter: saturate(0.5); opacity: 0.85; }
 
 .dash-project-card-compact:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(21,101,192,0.14);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(21,101,192,0.18);
+  border-color: var(--color-primary-light);
 }
 .dash-project-card-compact.status-behind:hover   { box-shadow: 0 6px 20px rgba(239,68,68,0.18); }
 .dash-project-card-compact.status-suspended:hover{ box-shadow: 0 6px 20px rgba(245,158,11,0.18); }
@@ -1574,7 +1575,7 @@
     align-items: flex-start !important;
   }
   .dash-page-header .dash-search-row {
-    order: 10;
+    order: -1;
     max-width: 100%;
     width: 100%;
     flex: unset;
@@ -1586,6 +1587,14 @@
     margin-bottom: 4px;
     padding: 8px 14px;
   }
+}
+
+/* 我的最愛 / 全部工程 分隔線（凸線效果） */
+.dash-section-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: linear-gradient(to right, transparent, var(--color-border), transparent);
+  box-shadow: 0 1px 0 var(--color-surface);
 }
 
 /* 我的最愛分區標籤 */
@@ -1664,6 +1673,57 @@
   flex-shrink: 0;
 }
 
+/* 新增工程 split button */
+.btn-dash-split-wrap { position: relative; display: flex; }
+.btn-dash-split { display: flex; }
+.btn-dash-split-main { border-radius: 6px 0 0 6px !important; }
+.btn-dash-split-arrow {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 7px !important;
+  border-left: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 0 6px 6px 0 !important;
+  font-size: 10px;
+}
+.btn-dash-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 200;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  min-width: 160px; overflow: hidden;
+}
+.btn-dash-dropdown button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 14px; background: none; border: none;
+  font-size: 13px; color: var(--color-text1); cursor: pointer; text-align: left;
+}
+.btn-dash-dropdown button:hover { background: var(--color-surface-hover); }
+
+/* 說明按鈕（標題區內嵌小圓鈕） */
+.btn-dash-help-inline {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: none; border: 1px solid var(--color-border);
+  color: var(--color-text-muted); cursor: pointer;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.btn-dash-help-inline:hover { background: var(--color-surface-hover); color: var(--color-primary); border-color: var(--color-primary); }
+
+/* 登出按鈕（header 中） */
+.btn-dash-signout {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 6px;
+  background: none; border: 1px solid var(--color-border);
+  font-size: 13px; color: var(--color-text-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-dash-signout:hover { background: rgba(239,68,68,0.1); border-color: var(--color-danger); color: var(--color-danger); }
+
+/* 拖曳提示 */
+.dash-drag-hint {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 13px; color: var(--color-text-muted);
+  margin-bottom: 4px; user-select: none;
+}
+
 /* ═══════════════════════════════════════════════════
    工程列表標題：與卡片內文對齊
    卡片內文起始位置 = 左色條 4px + body padding-left 10px = 14px
@@ -1719,7 +1779,7 @@
 }
 .dash-list-title-text {
   font-size: 0.88rem;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-text-main);
   letter-spacing: 0.03em;
 }
@@ -1736,9 +1796,9 @@
   align-items: center;
   gap: 4px;
   padding: 3px 9px 5px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-bottom: 2px solid transparent;
-  background: none;
+  background: var(--color-bg2);
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-text-muted);
@@ -2101,7 +2161,7 @@
 }
 .alert-msg {
   font-size: 0.72rem;
-  color: var(--color-text2);
+  color: var(--color-text1);
   flex: 1;
 }
 .alert-arrow {
