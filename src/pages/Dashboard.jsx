@@ -691,7 +691,20 @@ export function Dashboard() {
             )}
 
             {/* 主清單 */}
-            <div className="dash-project-grid">
+            <div className="dash-project-grid"
+              onDragOver={e => e.preventDefault()}
+              onDrop={async e => {
+                e.preventDefault();
+                const srcId = dragSrcId.current;
+                if (!srcId) return;
+                const p = projects.find(proj => proj.id === srcId);
+                if (p && p.is_starred) {
+                  await supabase.from('projects').update({ is_starred: false }).eq('id', p.id);
+                  refresh?.();
+                }
+                dragSrcId.current = null;
+                setDragOverId(null);
+              }}>
               {projects.length > 1 && (
                 <div className="dash-drag-hint" style={{ gridColumn: '1 / -1' }}>
                   <GripHorizontal size={11} /> 可拖曳調整工程順序
