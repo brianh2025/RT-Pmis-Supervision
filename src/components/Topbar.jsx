@@ -26,12 +26,13 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
         )}
       </div>
 
+      {pageLabel && (
+        <div className="pl-topbar-center">
+          <span className="pl-topbar-page-label">{pageLabel}</span>
+        </div>
+      )}
+
       <div className="pl-topbar-right">
-        {pageLabel && (
-          <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>
-            {pageLabel}
-          </span>
-        )}
         {onHelp && (
           <button className="pl-topbar-help-btn" onClick={onHelp} title="使用說明">
             <HelpCircle size={14} />

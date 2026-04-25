@@ -330,6 +330,7 @@
 
 .pl-topbar {
   height: 40px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -417,6 +418,22 @@
   gap: 12px;
   flex: 1;
   min-width: 0;
+}
+
+.pl-topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.pl-topbar-page-label {
+  font-size: 15px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--color-text1);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .pl-topbar-right {
