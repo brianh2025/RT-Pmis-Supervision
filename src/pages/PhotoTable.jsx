@@ -787,6 +787,39 @@ async function toBase64(src, blob) {
   });
 }
 
+function parseWhiteboardText(text) {
+  const result = { work_item: null, location: null, date: null, description: null, category: null };
+
+  const get = (patterns) => {
+    for (const p of patterns) {
+      const m = text.match(new RegExp(`(?:${p})[：:﹕]\\s*([^\\n\\r]+)`));
+      if (m) return m[1].trim();
+    }
+    return null;
+  };
+
+  result.work_item  = get(['工程項目', '工項', '項目']);
+  result.location   = get(['施工部位', '部位', '位置', '施工位置', '施工區域']);
+  result.description = get(['施工說明', '說明', '備註', '工作說明', '抽查說明']);
+
+  // 日期：民國年 or 西元年
+  const rocM = text.match(/(?:日期|施工日期|檢驗日期)[：:﹕]?\s*(\d{2,3})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+  if (rocM) {
+    const y = parseInt(rocM[1]) < 1000 ? parseInt(rocM[1]) + 1911 : parseInt(rocM[1]);
+    result.date = `${y}-${String(rocM[2]).padStart(2,'0')}-${String(rocM[3]).padStart(2,'0')}`;
+  } else {
+    const wM = text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (wM) result.date = `${wM[1]}-${String(wM[2]).padStart(2,'0')}-${String(wM[3]).padStart(2,'0')}`;
+  }
+
+  // 類別關鍵詞比對
+  for (const cat of ['材料進場', '施工抽查', '查驗記錄', '會勘紀錄']) {
+    if (text.includes(cat)) { result.category = cat; break; }
+  }
+
+  return result;
+}
+
 function StepEntry({ photos, onComplete, onBack }) {
   const [index, setIndex] = useState(0);
   const [photoCategory, setPhotoCategory] = useState('');
@@ -804,12 +837,23 @@ function StepEntry({ photos, onComplete, onBack }) {
     setScanMsg('');
     try {
       const cur = photos[index];
-      const { base64, mime } = await toBase64(cur.src, cur.blob);
-      const { data: result, error } = await supabase.functions.invoke('whiteboard-ocr', {
-        body: { imageBase64: base64, mimeType: mime },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
+      const { base64 } = await toBase64(cur.src, cur.blob);
+
+      const res = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${GAPI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION' }] }],
+          }),
+        }
+      );
+      const json = await res.json();
+      const fullText = json.responses?.[0]?.fullTextAnnotation?.text || '';
+      if (!fullText) { setScanMsg('未偵測到文字'); return; }
+
+      const result = parseWhiteboardText(fullText);
       setData(prev => prev.map((d, i) => {
         if (i !== index) return d;
         const desc = result.work_item && !result.description
@@ -824,11 +868,9 @@ function StepEntry({ photos, onComplete, onBack }) {
           date: result.date || d.date,
         };
       }));
-      if (result?.category && PHOTO_CATEGORIES.includes(result.category)) {
-        setPhotoCategory(result.category);
-      }
+      if (result.category && PHOTO_CATEGORIES.includes(result.category)) setPhotoCategory(result.category);
       const hits = [result.work_item, result.location, result.date].filter(Boolean).length;
-      setScanMsg(hits > 0 ? `識別完成，填入 ${hits} 項資訊` : '未偵測到白板文字');
+      setScanMsg(hits > 0 ? `識別完成，填入 ${hits} 項資訊` : '未偵測到白板欄位');
     } catch {
       setScanMsg('識別失敗，請手動填寫');
     } finally {
