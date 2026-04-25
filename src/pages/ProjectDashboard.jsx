@@ -45,6 +45,7 @@ export function ProjectDashboard() {
     archiveCount: 0,
     inspTotal: 0, inspPending: 0, inspFail: 0,
     matUnregistered: 0,
+    constrUnInspected: 0, constrUninspectedItems: [],
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -101,8 +102,8 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('construction_inspections').select('result').eq('project_id', projectId),
-        supabase.from('daily_report_items').select('id', { count: 'exact', head: true }).eq('project_id', projectId)
+        supabase.from('construction_inspections').select('result, work_item').eq('project_id', projectId),
+        supabase.from('daily_report_items').select('item_name').eq('project_id', projectId)
           .or('item_name.ilike.%混凝土%,item_name.ilike.%鋼筋%,item_name.ilike.%瀝青%,item_name.ilike.%模板%,item_name.ilike.%地工織布%,item_name.ilike.%基樁%,item_name.ilike.%植筋%'),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
       ]);
@@ -111,11 +112,16 @@ export function ProjectDashboard() {
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
+      const matEntryData = matEntryRes.data || [];
       const matUnregistered =
-        (matEntryRes.count || 0) > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
+        matEntryData.length > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
 
-      const constrUnInspected =
-        (matEntryRes.count || 0) > 0 && inspData.length === 0 ? 1 : 0;
+      const inspectedItems = new Set(inspData.map(r => r.work_item).filter(Boolean));
+      const dailyItems = [...new Set(matEntryData.map(r => r.item_name).filter(Boolean))];
+      const constrUninspectedItems = dailyItems.filter(
+        name => ![...inspectedItems].some(w => w.includes(name.split(/[\s,，-]/)[0]) || name.includes(w))
+      );
+      const constrUnInspected = constrUninspectedItems.length > 0 ? 1 : 0;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -137,6 +143,7 @@ export function ProjectDashboard() {
         inspFail,
         matUnregistered,
         constrUnInspected,
+        constrUninspectedItems,
       });
       setStatsLoading(false);
     }
@@ -219,8 +226,9 @@ export function ProjectDashboard() {
     },
     stats.constrUnInspected > 0 && project?.status === 'active' && {
       id: 'constr-uninspected', level: 'warning', icon: ShieldCheck,
-      title: '施工項目尚未執行抽查',
-      desc: '日誌已有施工記錄，但尚無任何施工抽查記錄',
+      title: `施工項目未查驗 ${stats.constrUninspectedItems.length} 項`,
+      desc: '以下施工工項在日誌中有記錄，但尚未執行施工抽查',
+      chips: stats.constrUninspectedItems,
       path: 'quality', action: '前往抽查',
     },
   ].filter(Boolean);
@@ -312,6 +320,13 @@ export function ProjectDashboard() {
                       const [, m, day] = d.split('-');
                       return <span key={d} className="task-missing-date-chip">{+m}/{+day}</span>;
                     })}
+                  </div>
+                )}
+                {task.chips?.length > 0 && (
+                  <div className="task-missing-dates">
+                    {task.chips.map(c => (
+                      <span key={c} className="task-missing-date-chip">{c}</span>
+                    ))}
                   </div>
                 )}
               </div>
