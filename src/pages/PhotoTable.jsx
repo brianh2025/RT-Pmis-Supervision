@@ -542,6 +542,22 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 
   return (
     <div className="pt-step-list">
+      {/* 頂列：頁面標題 + 說明按鈕（最頂，永遠在最上方） */}
+      <div className="pt-page-titlebar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Camera size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+          <span className="pt-page-title">照片記錄</span>
+          <span className="pt-tab-count">{records.length}</span>
+          <button className="pt-help-btn"
+            title="照片記錄說明" onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'photos' }))}>
+            <HelpCircle size={14} />
+          </button>
+        </div>
+        <button className="pt-btn pt-btn-primary" onClick={onNew}>
+          <Plus size={13} />新增照片記錄
+        </button>
+      </div>
+
       {/* 來源 breadcrumb */}
       {srcCtx?.srcName && (
         <div className="pt-src-breadcrumb">
@@ -552,20 +568,6 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
           </span>
         </div>
       )}
-
-      {/* 工具列 */}
-      <div className="pt-db-tabs">
-        <span className="pt-db-tab active" style={{ cursor: 'default' }}>
-          <Camera size={13} />照片記錄<span className="pt-tab-count">{records.length}</span>
-        </span>
-        <button style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', background:'none', border:'1px solid var(--color-border)', color:'var(--color-text-muted)', cursor:'pointer', marginLeft:4, flexShrink:0 }}
-          title="照片記錄說明" onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'photos' }))}>
-          <HelpCircle size={14} />
-        </button>
-        <button className="pt-btn pt-btn-primary" style={{ marginLeft: 'auto' }} onClick={onNew}>
-          <Plus size={13} />新增照片記錄
-        </button>
-      </div>
 
       {/* 批次刪除列 */}
       {someSel && (
