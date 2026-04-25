@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
-  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle,
+  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine,
 } from 'lucide-react';
 import * as exifr from 'exifr';
 import { supabase } from '../lib/supabaseClient';
@@ -777,14 +777,64 @@ function StepUpload({ onPhotosReady, onBack }) {
 /* ── 填資料 ── */
 const PHOTO_CATEGORIES = ['材料進場', '施工抽查', '查驗記錄', '會勘紀錄', '其他'];
 
+async function toBase64(src, blob) {
+  const target = blob || await fetch(src).then(r => r.blob());
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res({ base64: reader.result.split(',')[1], mime: target.type || 'image/jpeg' });
+    reader.onerror = rej;
+    reader.readAsDataURL(target);
+  });
+}
+
 function StepEntry({ photos, onComplete, onBack }) {
   const [index, setIndex] = useState(0);
   const [photoCategory, setPhotoCategory] = useState('');
   const [data, setData] = useState(() => photos.map(p => ({
     date: p.exifDate || todayISO(), location: '', description: '', gps: p.exifGps || '',
   })));
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState('');
 
   function update(f, v) { setData(prev => prev.map((d, i) => i === index ? { ...d, [f]: v } : d)); }
+
+  async function recognizeWhiteboard() {
+    if (scanning) return;
+    setScanning(true);
+    setScanMsg('');
+    try {
+      const cur = photos[index];
+      const { base64, mime } = await toBase64(cur.src, cur.blob);
+      const { data: result, error } = await supabase.functions.invoke('whiteboard-ocr', {
+        body: { imageBase64: base64, mimeType: mime },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      setData(prev => prev.map((d, i) => {
+        if (i !== index) return d;
+        const desc = result.work_item && !result.description
+          ? result.work_item
+          : result.work_item && result.description
+          ? `${result.work_item} — ${result.description}`
+          : result.description || d.description;
+        return {
+          ...d,
+          location: result.location || d.location,
+          description: desc || d.description,
+          date: result.date || d.date,
+        };
+      }));
+      if (result?.category && PHOTO_CATEGORIES.includes(result.category)) {
+        setPhotoCategory(result.category);
+      }
+      const hits = [result.work_item, result.location, result.date].filter(Boolean).length;
+      setScanMsg(hits > 0 ? `識別完成，填入 ${hits} 項資訊` : '未偵測到白板文字');
+    } catch {
+      setScanMsg('識別失敗，請手動填寫');
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // 前往下一張時，若下一張位置/說明為空，自動帶入當前值（暫存）
   function goNext() {
@@ -811,6 +861,13 @@ function StepEntry({ photos, onComplete, onBack }) {
         <div className="pt-entry-preview">
           <img src={cur.src} alt="" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 6 }}
             onError={e => { e.target.style.opacity = 0.2; }} />
+          <div className="pt-scan-bar">
+            <button className="pt-scan-btn" onClick={recognizeWhiteboard} disabled={scanning}>
+              {scanning ? <Loader2 size={12} className="animate-spin" /> : <ScanLine size={12} />}
+              {scanning ? '識別中…' : '識別白板'}
+            </button>
+            {scanMsg && <span className="pt-scan-msg">{scanMsg}</span>}
+          </div>
         </div>
         <div className="pt-entry-fields">
           <div>
