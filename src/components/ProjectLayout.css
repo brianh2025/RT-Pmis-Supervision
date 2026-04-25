@@ -430,7 +430,7 @@
 .pl-topbar-page-label {
   font-size: 15px;
   font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text1);
   letter-spacing: 0.06em;
   white-space: nowrap;
