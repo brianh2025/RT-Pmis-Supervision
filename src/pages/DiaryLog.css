@@ -1,0 +1,11 @@
+/* ─── Diary Log Page (B-version calendar style) ──────────────────────────────────── */
+
+.hide-on-mobile {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none;
+  }
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RT-PMIS 前後端流程關係圖 (Flow Map) - 全中文專業版</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; color: #333; }
+        h1 { text-align: center; color: #2c3e50; font-size: 24px;}
+        h3 { text-align: center; color: #6c757d; font-weight: normal; margin-top: -10px; margin-bottom: 25px; font-size: 16px;}
+        .legend { display: flex; justify-content: center; gap: 8px; font-weight: bold; margin-bottom: 20px; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+        .legend span { padding: 4px 8px; border-radius: 5px; color: white; font-size: 0.85em; }
+        .gold { background-color: #ffc107; color: #000;}
+        .blue { background-color: #17a2b8; }
+        .red { background-color: #dc3545; }
+        
+        .container { 
+            width: 100%; background: white; padding: 20px; border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: auto; min-height: 80vh;
+        }
+        .mermaid svg {
+            min-width: 1800px !important; height: auto !important; max-width: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>RT-PMIS 系統架構資料流向圖 (全中文專業版)</h1>
+    <h3>呈現展示層、網路中介層及後端資料層之資料寫入狀態與通訊異常分析</h3>
+    
+    <div class="legend">
+        <span class="blue">🟦 正常傳輸 (成功寫入資料庫)</span>
+        <span class="gold">⭐ 後端排程執行 (越過前端直接建檔)</span>
+        <span class="red">🔴 資料持久化失敗 / 例外未處置 (本地資料孤島)</span>
+    </div>
+
+    <div class="container">
+        <div class="mermaid">
+            %%{init: {'theme': 'base', 'flowchart': {'rankSpacing': 120, 'nodeSpacing': 40, 'curve': 'linear'}}}%%
+            flowchart LR
+                classDef fe fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#0d47a1,font-weight:bold,font-size:14px;
+                classDef js fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100,font-weight:bold,font-size:14px;
+                classDef edge fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#4a148c,font-weight:bold,font-size:14px;
+                classDef be fill:#e8f5e9,stroke:#43a047,stroke-width:3px,color:#1b5e20,font-weight:bold,font-size:14px;
+                classDef bug fill:#ffebee,stroke:#e53935,stroke-width:3px,stroke-dasharray: 5 5,color:#b71c1c,font-weight:bold,font-size:14px;
+
+                subgraph SG1 ["展示層 (前端操作介面)"]
+                    direction TB
+                    DashUI["專案儀表板 (ProjectDashboard)"]:::fe
+                    FormUI["日誌表單 (DailyReportForm)"]:::fe
+                    PdfUI["PDF解析模組 (DiaryImportModal)"]:::fe
+                    ExcelUI["排程同步模組 (DriveSyncModal)"]:::fe
+                    QualUI["品質與材料管制模組"]:::fe
+                end
+
+                subgraph SG2 ["中介與快取層 (網路通訊)"]
+                    direction TB
+                    API_READ["資料庫讀取 API"]:::js
+                    API_WRITE["資料庫寫入 API"]:::bug
+                    EdgeFunc["Deno 邊緣運算函式"]:::edge
+                    LocalCache["本地端瀏覽器快取"]:::bug
+                    PDFWorker["PDF 離線解析器"]:::js
+                end
+
+                subgraph SG3 ["資料層 (雲端後端資料庫)"]
+                    direction TB
+                    DB_LOG[("每日備忘庫 (daily_logs)")]:::be
+                    DB_PROG[("進度庫 (progress_records)")]:::be
+                    DB_ITEM[("施作明細庫 (daily_report_items)")]:::be
+                    DB_INSP[("品質抽查庫 (construction_inspections)")]:::be
+                    DB_ISSUE[("缺失改善庫 (quality_issues)")]:::be
+                    DB_MAT[("材料進場庫 (material_entries)")]:::be
+                    DB_TEST[("試驗庫 (mcs_test)")]:::be
+                end
+
+                %% ================= 流程 =================
+                DashUI -->|"發送讀取請求"| API_READ
+                API_READ -->|"提取數值"| DB_ITEM
+                API_READ -->|"提取數值"| DB_MAT
+                API_READ -->|"提取數值"| DB_ISSUE
+
+                ExcelUI -->|"遠端程序呼叫"| EdgeFunc
+                EdgeFunc -->|"⭐ 後端批次建立紀錄"| DB_PROG
+
+                PdfUI -->|"載入檔案串流"| PDFWorker
+                PDFWorker -->|"提取特徵資料"| API_WRITE
+                API_WRITE -->|"✔ 成功寫入庫"| DB_LOG
+                API_WRITE -.->|"❌ API 呼叫遺漏：實際進度"| DB_PROG
+                API_WRITE -.->|"❌ API 呼叫遺漏：工項明細"| DB_ITEM
+
+                FormUI -->|"觸發存檔作業"| API_WRITE
+                API_WRITE -->|"✔ 成功寫入庫"| DB_ITEM
+                
+                FormUI -.->|"🔴 資料持久化失敗：遭截斷於本地快取中"| LocalCache
+                LocalCache -.->|"❌ 未發起同步：抽查單"| DB_INSP
+                LocalCache -.->|"❌ 未發起同步：品質試驗"| DB_TEST
+                LocalCache -.->|"❌ 未發起同步：基本備忘"| DB_LOG
+
+                QualUI -->|"觸發存檔作業"| API_WRITE
+                API_WRITE -->|"寫入單據"| DB_INSP
+                API_WRITE -->|"寫入單據"| DB_ISSUE
+                API_WRITE -.->|"🔴 例外未處置：當網路異常時發生靜默失效"| QualUI
+        </div>
+    </div>
+
+    <script>mermaid.initialize({startOnLoad:true});</script>
+</body>
+</html>

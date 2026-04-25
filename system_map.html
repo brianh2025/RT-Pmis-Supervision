@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RT-PMIS 系統狀態脈絡圖 (Signal Wall)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        h1 { text-align: center; color: #2c3e50; }
+        .legend { display: flex; justify-content: center; gap: 20px; font-weight: bold; margin-bottom: 20px; }
+        .legend span { padding: 5px 10px; border-radius: 5px; color: white; }
+        .green { background-color: #28a745; }
+        .yellow { background-color: #ffc107; color: #333 !important; }
+        .red { background-color: #dc3545; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .mermaid { display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <h1>RT-PMIS 系統狀態號誌圖</h1>
+    
+    <div class="legend">
+        <span class="green">🟢 綠色：安全 / 正常寫入</span>
+        <span class="yellow">🟡 黃色：輕微風險 / 上游資料斷鏈</span>
+        <span class="red">🔴 紅色：資料遺失 / 無聲報錯 / 效能癱瘓</span>
+    </div>
+
+    <div class="container">
+        <div class="mermaid">
+            graph TD
+                classDef healthy fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+                classDef buggy fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+                classDef warning fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+                classDef external fill:#f8f9fa,stroke:#6c757d,stroke-width:1px,color:#383d41;
+                
+                subgraph ClientUI [前端表單介面]
+                    DF["🔴 DailyReportForm<br>施工日誌與各種表單"]:::buggy
+                    DJ["🔴 DiaryJournal<br>日誌總覽與背景同步"]:::buggy
+                    DM["🔴 DiaryImportModal<br>PDF 檔案解析與匯入"]:::buggy
+                    PM["🟡 ProgressManagement<br>首頁進度與 S 曲線"]:::warning
+                    QM["🔴 Quality / Material<br>品質抽查與送審介面"]:::buggy
+                    IQM["🟢 InspectionQuickModal<br>首頁快速新增抽查"]:::healthy
+                end
+                
+                subgraph BrowserStorage [本機暫存]
+                    LS[("🔴 Browser LocalStorage<br>(幽靈資料黑洞)")]:::buggy
+                end
+
+                subgraph BackendEdge [雲端邊緣運算]
+                    EF["🔴 sync-diary<br>無差別批量同步"]:::buggy
+                end
+
+                subgraph Database [Supabase 核心資料庫]
+                    DB_LOG[("🟡 daily_logs<br>日誌本體")]:::warning
+                    DB_PROG[("🔴 progress_records<br>工程進度數字")]:::buggy
+                    DB_ITEM[("🟡 daily_report_items<br>當日工項數量")]:::warning
+                    DB_INSP[("🔴 construction_inspections<br>抽查表與結果")]:::buggy
+                    DB_TEST[("🔴 mcs_test<br>品質材料試驗")]:::buggy
+                    DB_DOC[("🔴 archive_docs<br>公文與文件庫")]:::buggy
+                end
+
+                subgraph ExternalSources [外部儲存來源]
+                    GDRIVE(["☁️ Google Drive<br>上百份歷史 Excel"]):::external
+                    PDF(["📄 本機待匯入 PDF<br>含有數位簽章"]):::external
+                end
+
+                DF -->|"❌ 絕大部分資料轉存本機黑洞"| LS
+                DF -->|"✅ 數量仍能勉強寫入"| DB_ITEM
+
+                DJ -->|"🔴 啟動百日無差別迴圈"| EF
+                EF -->|"🔴 瘋狂請求舊檔引發 Timeout"| GDRIVE
+                EF -->|"🔴 暴力強制覆蓋，摧毀手改進度"| DB_PROG
+                
+                PDF -->|"匯入"| DM
+                DM -.->|"🔴 (漏寫斷鏈) 無法聯動儀表板進度"| DB_PROG
+                DM -.->|"🔴 (漏寫斷鏈) 無法聯動材料檢驗"| DB_ITEM
+                DM -->|"✅ 勉強寫入"| DB_LOG
+
+                QM -->|"🔴 無聲報錯失效 Swallow Error"| DB_INSP
+                QM -->|"🔴 無聲報錯失效 Swallow Error"| DB_TEST
+
+                IQM -->|"🟢 捕捉錯誤且安全寫入"| DB_INSP
+        </div>
+    </div>
+
+    <script>mermaid.initialize({startOnLoad:true});</script>
+</body>
+</html>

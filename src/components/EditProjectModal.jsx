@@ -1,0 +1,211 @@
+import React, { useState } from 'react';
+import { X, Save, Pencil, Lock, Unlock, ExternalLink } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import './Modal.css';
+
+function toIsoDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const y = parseInt(parts[0]);
+  if (y < 200) return `${y + 1911}-${parts[1]}-${parts[2]}`;
+  return dateStr;
+}
+
+export function EditProjectModal({ project, onClose, onSuccess }) {
+  const _sn = (project.supervisor_name || '').split('\n');
+  const [form, setForm] = useState({
+    name:           project.name           || '',
+    location:       project.location       || '',
+    contractor:     project.contractor     || '',
+    sup1:           _sn[0]                 || '',
+    sup2:           _sn[1]                 || '',
+    status:         project.status         || 'active',
+    start_date:     toIsoDate(project.start_date || ''),
+    end_date:       toIsoDate(project.end_date   || ''),
+    budget:         project.budget != null ? String(project.budget) : '',
+    drive_folder_id: project.drive_folder_id || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+  const [driveLocked, setDriveLocked] = useState(!!project.drive_folder_id);
+  const [driveOpen, setDriveOpen] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'budget') {
+      setForm(prev => ({ ...prev, budget: value.replace(/[^0-9]/g, '') }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { setError('工程名稱為必填欄位。'); return; }
+    setSaving(true);
+    setError('');
+
+    const payload = {
+      name:            form.name.trim(),
+      location:        form.location.trim()        || null,
+      contractor:      form.contractor.trim()      || null,
+      supervisor_name: [form.sup1, form.sup2].map(s => (s || '').trim()).filter(Boolean).join('\n') || null,
+      status:          form.status,
+      start_date:      form.start_date             || null,
+      end_date:        form.end_date               || null,
+      budget:          form.budget ? parseFloat(form.budget) : null,
+      drive_folder_id: form.drive_folder_id.trim() || null,
+    };
+
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update(payload)
+      .eq('id', project.id);
+
+    if (updateError) {
+      setError(`儲存失敗：${updateError.message}`);
+      setSaving(false);
+    } else {
+      onSuccess?.();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-panel animate-slide-up">
+        {/* Header */}
+        <div className="modal-header">
+          <div className="modal-title-group">
+            <Pencil size={18} className="modal-icon" />
+            <div>
+              <h2 className="modal-title">編輯工程資料</h2>
+              <p className="modal-subtitle">EDIT PROJECT</p>
+            </div>
+          </div>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label className="form-label"><span>工程名稱</span><span className="en">PROJECT NAME *</span></label>
+              <input name="name" className="form-input" value={form.name} onChange={handleChange} placeholder="例：虎尾鎮排水整治工程" required />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label"><span>施工地點</span><span className="en">LOCATION</span></label>
+              <input name="location" className="form-input" value={form.location} onChange={handleChange} placeholder="例：虎尾鎮光復路沿線" />
+            </div>
+            <div className="form-group">
+              <label className="form-label"><span>承包商</span><span className="en">CONTRACTOR</span></label>
+              <input name="contractor" className="form-input" value={form.contractor} onChange={handleChange} placeholder="例：大成營造有限公司" />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label"><span>監造人員 1</span><span className="en">SUPERVISOR 1</span></label>
+              <input name="sup1" className="form-input" value={form.sup1} onChange={handleChange} placeholder="例：陳大明" />
+            </div>
+            <div className="form-group">
+              <label className="form-label"><span>監造人員 2</span><span className="en">SUPERVISOR 2</span></label>
+              <input name="sup2" className="form-input" value={form.sup2} onChange={handleChange} placeholder="例：林小芳" />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label"><span>開工日期</span><span className="en">START DATE</span></label>
+              <input type="date" name="start_date" className="form-input" value={form.start_date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label className="form-label"><span>預計完工</span><span className="en">END DATE</span></label>
+              <input type="date" name="end_date" className="form-input" value={form.end_date} onChange={handleChange} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label"><span>預算（元）</span><span className="en">BUDGET (NTD)</span></label>
+              <input type="text" inputMode="numeric" name="budget" className="form-input" value={form.budget ?? ''} onChange={handleChange} placeholder="例：52,000,000" />
+            </div>
+            <div className="form-group">
+              <label className="form-label"><span>狀態</span><span className="en">STATUS</span></label>
+              <select name="status" className="form-input" value={form.status} onChange={handleChange}>
+                <option value="pending">未發包</option>
+                <option value="active">執行中</option>
+                <option value="completed">已完工</option>
+                <option value="accepted">已竣工</option>
+                <option value="suspended">暫停</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group full-width">
+              <button type="button" onClick={() => setDriveOpen(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+                <span style={{ transform: driveOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s', display: 'inline-block' }}>▶</span>
+                Google Drive 工程資料夾 ID
+                {form.drive_folder_id.trim() && <span style={{ color: 'var(--color-primary)', fontSize: '0.68rem' }}>（已設定）</span>}
+              </button>
+              {driveOpen && (
+                <>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
+                    <input
+                      name="drive_folder_id"
+                      className="form-input"
+                      value={form.drive_folder_id}
+                      onChange={handleChange}
+                      readOnly={driveLocked}
+                      placeholder="貼上 Google Drive 工程資料夾網址中的 ID（1ABC…）"
+                      style={driveLocked ? { background: 'var(--color-bg2)', cursor: 'default' } : {}}
+                    />
+                    <button
+                      type="button"
+                      title={driveLocked ? '解鎖 Drive ID' : '鎖定 Drive ID（防誤改）'}
+                      disabled={!form.drive_folder_id.trim()}
+                      onClick={() => setDriveLocked(v => !v)}
+                      style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', cursor: form.drive_folder_id.trim() ? 'pointer' : 'not-allowed', color: driveLocked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
+                    >
+                      {driveLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                    </button>
+                    <a
+                      href={form.drive_folder_id.trim() ? `https://drive.google.com/drive/folders/${form.drive_folder_id.trim()}` : undefined}
+                      target="_blank" rel="noopener noreferrer"
+                      title="前往 Google Drive 資料夾"
+                      aria-disabled={!form.drive_folder_id.trim()}
+                      style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', display: 'flex', alignItems: 'center', color: form.drive_folder_id.trim() ? '#2563eb' : 'var(--color-text-muted)', pointerEvents: form.drive_folder_id.trim() ? 'auto' : 'none', opacity: form.drive_folder_id.trim() ? 1 : 0.4 }}
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    用於廠商施工日誌 Excel 自動同步。從 Drive 資料夾網址複製 ID：drive.google.com/drive/folders/<strong>此處</strong>
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <div className="modal-actions">
+            <button type="button" className="btn-modal-cancel" onClick={onClose}>取消</button>
+            <button type="submit" className="btn-modal-save" disabled={saving}>
+              <Save size={15} />
+              {saving ? '儲存中...' : '儲存變更'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
