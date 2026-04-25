@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -331,12 +332,27 @@ export function Dashboard() {
   const handleDataAdded = () => refresh?.();
 
   /* ── 匯出案件清單 ── */
-  const handleExport = () => {
-    const rows = projects.map(p => ({
+  const handleExport = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('工程清單');
+    ws.columns = [
+      { header: '工程名稱', key: '工程名稱', width: 30 },
+      { header: '施工地點', key: '施工地點', width: 20 },
+      { header: '承包商',   key: '承包商',   width: 20 },
+      { header: '狀態',     key: '狀態',     width: 10 },
+      { header: '開工日期', key: '開工日期', width: 14 },
+      { header: '預計完工', key: '預計完工', width: 14 },
+      { header: '預算元',   key: '預算元',   width: 14 },
+      { header: '計畫進度', key: '計畫進度', width: 10 },
+      { header: '實際進度', key: '實際進度', width: 10 },
+      { header: '備註',     key: '備註',     width: 30 },
+    ];
+    const statusLabel = { active:'執行中', completed:'已完工', accepted:'已竣工', suspended:'暫停', pending:'未發包' };
+    projects.forEach(p => ws.addRow({
       工程名稱: p.name || '',
       施工地點: p.location || '',
       承包商:   p.contractor || '',
-      狀態:     ({ active:'執行中', completed:'已完工', accepted:'已竣工', suspended:'暫停', pending:'未發包' }[p.status] || p.status),
+      狀態:     statusLabel[p.status] || p.status,
       開工日期: p.start_date || '',
       預計完工: p.end_date || '',
       預算元:   p.budget ?? '',
@@ -344,10 +360,8 @@ export function Dashboard() {
       實際進度: p.latest_progress?.actual_progress  ?? '',
       備註:     p.notes || '',
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '工程清單');
-    XLSX.writeFile(wb, `PMIS工程清單_${new Date().toISOString().slice(0,10)}.xlsx`);
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), `PMIS工程清單_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
   /* ── 拖曳排序 ── */

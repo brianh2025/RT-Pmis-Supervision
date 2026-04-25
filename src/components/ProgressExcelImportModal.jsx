@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, CheckCircle2, AlertTriangle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
 
@@ -12,17 +12,23 @@ function parseNum(v) {
 function parseDate(raw) {
   if (!raw) return null;
   if (raw instanceof Date) return raw.toISOString().split('T')[0];
-  if (typeof raw === 'number') {
-    // Excel serial date
-    const d = XLSX.SSF.parse_date_code(raw);
-    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-  }
   let s = String(raw).trim().replace(/[年/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
   const roc = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})/);
   if (roc && parseInt(roc[1]) < 1911)
     s = `${parseInt(roc[1])+1911}-${roc[2].padStart(2,'0')}-${roc[3].padStart(2,'0')}`;
   const d = new Date(s);
   return isNaN(d) ? null : d.toISOString().split('T')[0];
+}
+
+function getCellValue(cell) {
+  const val = cell.value;
+  if (val === null || val === undefined) return '';
+  if (val instanceof Date) return val;
+  if (typeof val === 'object') {
+    if (val.richText) return val.richText.map(r => r.text).join('');
+    if (val.result !== undefined) return val.result;
+  }
+  return val;
 }
 
 export function ProgressExcelImportModal({ projectId, onClose, onSuccess }) {
@@ -32,41 +38,52 @@ export function ProgressExcelImportModal({ projectId, onClose, onSuccess }) {
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const ws = wb.worksheets[0];
 
-        const parsed = [];
-        const errs = [];
-        raw.forEach((row, i) => {
-          const keys = Object.keys(row);
-          const dateKey = keys.find(k => /日期|date/i.test(k));
-          const planKey = keys.find(k => /預定|planned/i.test(k));
-          const actualKey = keys.find(k => /實際|actual/i.test(k));
-          const noteKey = keys.find(k => /備|note/i.test(k));
+      // 第一列為標題
+      const headers = [];
+      ws.getRow(1).eachCell((cell, colNum) => {
+        headers[colNum - 1] = String(getCellValue(cell) ?? '').trim();
+      });
 
-          const d = parseDate(row[dateKey]);
-          const p = parseNum(row[planKey]);
-          const a = parseNum(row[actualKey]);
+      const parsed = [];
+      const errs = [];
 
-          if (!d) { errs.push(`第 ${i+2} 列：無法辨識日期`); return; }
-          if (p === null || a === null) { errs.push(`第 ${i+2} 列 (${d})：進度欄位無效`); return; }
-          parsed.push({ report_date: d, planned_progress: p, actual_progress: a, notes: noteKey ? String(row[noteKey]) : null });
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return;
+        const rowObj = {};
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          const h = headers[colNum - 1];
+          if (h) rowObj[h] = getCellValue(cell);
         });
 
-        setErrors(errs);
-        setRows(parsed);
-      } catch (err) {
-        setErrors([`讀取失敗：${err.message}`]);
-      }
-    };
-    reader.readAsArrayBuffer(file);
+        const keys = Object.keys(rowObj);
+        const dateKey   = keys.find(k => /日期|date/i.test(k));
+        const planKey   = keys.find(k => /預定|planned/i.test(k));
+        const actualKey = keys.find(k => /實際|actual/i.test(k));
+        const noteKey   = keys.find(k => /備|note/i.test(k));
+
+        const d = parseDate(rowObj[dateKey]);
+        const p = parseNum(rowObj[planKey]);
+        const a = parseNum(rowObj[actualKey]);
+
+        if (!d) { errs.push(`第 ${rowNum} 列：無法辨識日期`); return; }
+        if (p === null || a === null) { errs.push(`第 ${rowNum} 列 (${d})：進度欄位無效`); return; }
+        parsed.push({ report_date: d, planned_progress: p, actual_progress: a, notes: noteKey ? String(rowObj[noteKey]) : null });
+      });
+
+      setErrors(errs);
+      setRows(parsed);
+    } catch (err) {
+      setErrors([`讀取失敗：${err.message}`]);
+    }
   };
 
   const handleImport = async () => {
