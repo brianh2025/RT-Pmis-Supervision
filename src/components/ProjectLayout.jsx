@@ -82,7 +82,7 @@ export function ProjectLayout() {
         <Topbar
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
-          pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : null}
+          pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : relPath === 'photos' ? '照片記錄' : null}
           onHelp={helpContent ? () => setShowHelp(true) : undefined}
         />
         

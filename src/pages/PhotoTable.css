@@ -336,29 +336,14 @@
   box-shadow: 0 16px 48px rgba(0,0,0,0.4);
 }
 
-/* ── 頂列標題（最頂，取代 tab 樣式） ── */
-.pt-page-titlebar {
+/* ── 新增按鈕列（標題已移至 Topbar） ── */
+.pt-new-btn-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   padding: 8px 14px;
   background: var(--color-bg2);
   border-bottom: 1px solid var(--color-border);
 }
-.pt-page-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--color-text1);
-}
-.pt-help-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%;
-  background: none; border: 1px solid var(--color-border);
-  color: var(--color-text-muted); cursor: pointer;
-  flex-shrink: 0; transition: all 0.15s;
-}
-.pt-help-btn:hover { background: var(--color-surface-hover); color: var(--color-primary); border-color: var(--color-primary); }
 
 /* ── 雙頁籤 ── */
 .pt-db-tabs {

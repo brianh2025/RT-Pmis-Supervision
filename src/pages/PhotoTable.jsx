@@ -542,20 +542,12 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 
   return (
     <div className="pt-step-list">
-      {/* 頂列：頁面標題 + 說明按鈕（最頂，永遠在最上方） */}
-      <div className="pt-page-titlebar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Camera size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-          <span className="pt-page-title">照片記錄</span>
-          <span className="pt-tab-count">{records.length}</span>
-          <button className="pt-help-btn"
-            title="照片記錄說明" onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'photos' }))}>
-            <HelpCircle size={14} />
-          </button>
-        </div>
+      {/* 新增按鈕列（標題已移至 Topbar pageLabel） */}
+      <div className="pt-new-btn-bar">
         <button className="pt-btn pt-btn-primary" onClick={onNew}>
           <Plus size={13} />新增照片記錄
         </button>
+        <span className="pt-tab-count" style={{ marginLeft: 8 }}>{records.length}</span>
       </div>
 
       {/* 來源 breadcrumb */}
