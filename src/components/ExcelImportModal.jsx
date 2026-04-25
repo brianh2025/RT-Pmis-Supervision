@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import './Modal.css';
 
-/** Expected Excel column headers → DB field mapping */
 const COLUMN_MAP = {
   '工程名稱': 'name',
   '施工地點': 'location',
@@ -23,15 +23,21 @@ const STATUS_MAP = {
   '暫停': 'suspended', '暫停中': 'suspended', 'suspended': 'suspended',
 };
 
+function getCellValue(cell) {
+  const val = cell.value;
+  if (val === null || val === undefined) return '';
+  if (val instanceof Date) return val;
+  if (typeof val === 'object') {
+    if (val.richText) return val.richText.map(r => r.text).join('');
+    if (val.result !== undefined) return val.result;
+    if (val.text !== undefined) return val.text;
+  }
+  return val;
+}
+
 function parseExcelDate(val) {
   if (!val) return null;
   if (val instanceof Date) return val.toISOString().split('T')[0];
-  if (typeof val === 'number') {
-    // Excel serial date
-    const d = XLSX.SSF.parse_date_code(val);
-    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-  }
-  // String: try to normalize
   const s = String(val).trim().replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '');
   const d = new Date(s);
   return isNaN(d) ? null : d.toISOString().split('T')[0];
@@ -46,51 +52,56 @@ export function ExcelImportModal({ onClose, onSuccess }) {
   const [fileName, setFileName] = useState('');
   const fileRef = useRef(null);
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target.result);
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-      const parsed = [];
-      const errs = [];
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const ws = wb.worksheets[0];
 
-      raw.forEach((rowRaw, idx) => {
-        const row = {};
-        Object.entries(rowRaw).forEach(([key, val]) => {
-          const trimmedKey = key.trim();
-          const dbField = COLUMN_MAP[trimmedKey];
-          if (dbField) {
-            row[dbField] = (trimmedKey === '預算萬元' && val) ? parseFloat(val) * 10000 : val;
-          }
-        });
+    const headers = [];
+    ws.getRow(1).eachCell((cell, colNum) => {
+      headers[colNum] = String(getCellValue(cell) ?? '').trim();
+    });
 
-        if (!row.name || !String(row.name).trim()) {
-          errs.push(`第 ${idx + 2} 行：「工程名稱」為空，已略過`);
-          return;
+    const parsed = [];
+    const errs = [];
+
+    ws.eachRow((row, rowNum) => {
+      if (rowNum === 1) return;
+      const rowObj = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        const headerName = headers[colNum];
+        if (!headerName) return;
+        const dbField = COLUMN_MAP[headerName];
+        if (dbField) {
+          const val = getCellValue(cell);
+          rowObj[dbField] = (headerName === '預算萬元' && val) ? parseFloat(val) * 10000 : val;
         }
-
-        parsed.push({
-          name:        String(row.name).trim(),
-          location:    row.location  ? String(row.location).trim()  : null,
-          contractor:  row.contractor ? String(row.contractor).trim() : null,
-          status:      STATUS_MAP[String(row.status || '').trim()] ?? 'active',
-          start_date:  parseExcelDate(row.start_date),
-          end_date:    parseExcelDate(row.end_date),
-          budget:      row.budget ? parseFloat(row.budget) : null,
-          created_by:  user?.id ?? null,
-        });
       });
 
-      setRows(parsed);
-      setErrors(errs);
-    };
-    reader.readAsArrayBuffer(file);
+      if (!rowObj.name || !String(rowObj.name).trim()) {
+        errs.push(`第 ${rowNum} 行：「工程名稱」為空，已略過`);
+        return;
+      }
+
+      parsed.push({
+        name:       String(rowObj.name).trim(),
+        location:   rowObj.location   ? String(rowObj.location).trim()   : null,
+        contractor: rowObj.contractor ? String(rowObj.contractor).trim() : null,
+        status:     STATUS_MAP[String(rowObj.status || '').trim()] ?? 'active',
+        start_date: parseExcelDate(rowObj.start_date),
+        end_date:   parseExcelDate(rowObj.end_date),
+        budget:     rowObj.budget ? parseFloat(rowObj.budget) : null,
+        created_by: user?.id ?? null,
+      });
+    });
+
+    setRows(parsed);
+    setErrors(errs);
   };
 
   const handleImport = async () => {
@@ -106,28 +117,34 @@ export function ExcelImportModal({ onClose, onSuccess }) {
     }
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        工程名稱: '虎尾鎮排水整治工程',
-        施工地點: '虎尾鎮光復路沿線',
-        承包商:   '中興土木工程公司',
-        狀態:     '執行中',
-        開工日期: '2025-10-15',
-        預計完工: '2026-08-31',
-        預算元: 52000000,
-      },
+  const downloadTemplate = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('工程清單');
+    ws.columns = [
+      { header: '工程名稱', key: '工程名稱', width: 30 },
+      { header: '施工地點', key: '施工地點', width: 20 },
+      { header: '承包商',   key: '承包商',   width: 20 },
+      { header: '狀態',     key: '狀態',     width: 10 },
+      { header: '開工日期', key: '開工日期', width: 14 },
+      { header: '預計完工', key: '預計完工', width: 14 },
+      { header: '預算萬元', key: '預算萬元', width: 12 },
     ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '工程清單');
-    XLSX.writeFile(wb, 'PMIS工程匯入範本.xlsx');
+    ws.addRow({
+      工程名稱: '虎尾鎮排水整治工程',
+      施工地點: '虎尾鎮光復路沿線',
+      承包商:   '中興土木工程公司',
+      狀態:     '執行中',
+      開工日期: '2025-10-15',
+      預計完工: '2026-08-31',
+      預算萬元: 5200,
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), 'PMIS工程匯入範本.xlsx');
   };
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-panel animate-slide-up" style={{ maxWidth: '680px' }}>
-        {/* Header */}
         <div className="modal-header">
           <div className="modal-title-group">
             <FileSpreadsheet size={18} className="modal-icon" />
@@ -147,7 +164,6 @@ export function ExcelImportModal({ onClose, onSuccess }) {
             </div>
           ) : (
             <>
-              {/* Upload Area */}
               <div
                 className="upload-zone"
                 onClick={() => fileRef.current?.click()}
@@ -170,7 +186,6 @@ export function ExcelImportModal({ onClose, onSuccess }) {
                 ⬇ 下載 Excel 範本
               </button>
 
-              {/* Preview */}
               {rows.length > 0 && (
                 <>
                   <p className="preview-count">
@@ -204,7 +219,6 @@ export function ExcelImportModal({ onClose, onSuccess }) {
                 </>
               )}
 
-              {/* Errors */}
               {errors.length > 0 && (
                 <div className="import-errors">
                   <AlertTriangle size={14} /> {errors.join(' ∣ ')}
