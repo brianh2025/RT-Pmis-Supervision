@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Plus, Upload, Download, Edit, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ProgressFormModal } from '../components/ProgressFormModal';
 import { ProgressExcelImportModal } from '../components/ProgressExcelImportModal';
@@ -69,39 +70,53 @@ export function ProgressManagement() {
     fetchScheduleItems();
   };
 
-  const exportProgress = () => {
+  const exportProgress = async () => {
     if (!records.length) return;
-    const data = records.map(r => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('歷史進度紀錄');
+    ws.columns = [
+      { header: '報告日期',    key: '報告日期',    width: 14 },
+      { header: '預定進度(%)', key: '預定進度(%)', width: 12 },
+      { header: '實際進度(%)', key: '實際進度(%)', width: 12 },
+      { header: '差異(%)',     key: '差異(%)',     width: 10 },
+      { header: '備註',        key: '備註',        width: 30 },
+    ];
+    records.forEach(r => {
       const planned = calcPlanned(r.report_date);
-      return {
-        '報告日期': r.report_date,
+      ws.addRow({
+        '報告日期':    r.report_date,
         '預定進度(%)': planned !== null ? parseFloat(planned.toFixed(2)) : '',
         '實際進度(%)': r.actual_progress,
-        '差異(%)': planned !== null ? (r.actual_progress - planned).toFixed(2) : '',
-        '備註': r.notes || '',
-      };
+        '差異(%)':     planned !== null ? parseFloat((r.actual_progress - planned).toFixed(2)) : '',
+        '備註':        r.notes || '',
+      });
     });
-    const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 30 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '歷史進度紀錄');
-    XLSX.writeFile(wb, `進度紀錄_${id?.slice(0,8)}.xlsx`);
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), `進度紀錄_${id?.slice(0,8)}.xlsx`);
   };
 
-  const exportSchedule = () => {
+  const exportSchedule = async () => {
     if (!scheduleItems.length) return;
-    const data = scheduleItems.map(r => ({
-      '工項名稱': r.item_name,
-      '開始日期': r.start_date,
-      '結束日期': r.end_date,
-      '工期(天)': (r.start_date && r.end_date) ? Math.round((new Date(r.end_date) - new Date(r.start_date)) / 86400000) + 1 : '',
-      '權重(%)': r.weight,
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '工程計畫進度表');
-    XLSX.writeFile(wb, `計畫進度表_${id?.slice(0,8)}.xlsx`);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('工程計畫進度表');
+    ws.columns = [
+      { header: '工項名稱', key: '工項名稱', width: 20 },
+      { header: '開始日期', key: '開始日期', width: 14 },
+      { header: '結束日期', key: '結束日期', width: 14 },
+      { header: '工期(天)', key: '工期(天)', width: 10 },
+      { header: '權重(%)',  key: '權重(%)',  width: 10 },
+    ];
+    scheduleItems.forEach(r => {
+      ws.addRow({
+        '工項名稱': r.item_name,
+        '開始日期': r.start_date,
+        '結束日期': r.end_date,
+        '工期(天)': (r.start_date && r.end_date) ? Math.round((new Date(r.end_date) - new Date(r.start_date)) / 86400000) + 1 : '',
+        '權重(%)':  r.weight,
+      });
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), `計畫進度表_${id?.slice(0,8)}.xlsx`);
   };
 
   // 從 schedule_items 推算任意日期的預定進度（線性插值，跳過無日期的工項）

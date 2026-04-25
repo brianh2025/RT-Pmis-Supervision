@@ -31,11 +31,12 @@ GitHub 帳號：brianh2025，repo 為 public。
 - 每季：Supabase SQL 健檢 + 程式碼安全稽核
 - 發版前：完整清單
 
-## 建置基準（2026-04-06 更新）
-- JS 主 chunk: ~208 KB（gzip ~66 KB）— 已啟用 React.lazy code splitting
+## 建置基準（2026-04-25 更新）
+- JS 主 chunk: ~224 KB（gzip ~72 KB）— 已啟用 React.lazy code splitting
+- ExcelJS chunk: ~933 KB（gzip ~258 KB）— xlsx 替換為 exceljs 後新增
 - CSS bundle: ~117 KB（gzip ~20 KB）
-- 建置時間: ~4 s
-- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告）
+- 建置時間: ~3 s
+- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告與 hooks 警告）
 
 ## 已知技術債
-- `xlsx` 套件有 Prototype Pollution（high）漏洞，官方無修復版。前端使用風險較低，但應評估替換為 `xlsx-js-style` 或 `exceljs`。
+（無 xlsx CVE，已於 2026-04-25 完成 exceljs 遷移）

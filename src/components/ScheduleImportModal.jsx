@@ -1,16 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, CheckCircle2, AlertTriangle, Download, ArrowLeft } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
 
 function parseDate(raw) {
   if (!raw) return null;
   if (raw instanceof Date) return raw.toISOString().split('T')[0];
-  if (typeof raw === 'number') {
-    const d = XLSX.SSF.parse_date_code(raw);
-    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-  }
   let s = String(raw).trim().replace(/[年/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
   const roc = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})/);
   if (roc && parseInt(roc[1]) < 1911)
@@ -24,21 +21,24 @@ function parseWeight(v) {
   return isNaN(n) ? null : n;
 }
 
-// 將合併儲存格的值填入整個合併區域（XLSX 只保留左上角值）
-function expandMerges(ws) {
-  const merges = ws['!merges'] || [];
-  merges.forEach(({ s, e }) => {
-    const originAddr = XLSX.utils.encode_cell({ r: s.r, c: s.c });
-    const originCell = ws[originAddr];
-    for (let r = s.r; r <= e.r; r++) {
-      for (let c = s.c; c <= e.c; c++) {
-        if (r === s.r && c === s.c) continue;
-        const addr = XLSX.utils.encode_cell({ r, c });
-        if (originCell) ws[addr] = { ...originCell };
-      }
-    }
-  });
-  return ws;
+function getCellValue(cell) {
+  const val = cell.value;
+  if (val === null || val === undefined) return '';
+  if (val instanceof Date) return val;
+  if (typeof val === 'object') {
+    if (val.richText) return val.richText.map(r => r.text).join('');
+    if (val.result !== undefined) return val.result;
+    if (val.text !== undefined) return val.text;
+  }
+  return val;
+}
+
+function parseCellRef(ref) {
+  const m = String(ref).toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if (!m) return null;
+  let c = 0;
+  for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
+  return { r: parseInt(m[2]), c };
 }
 
 function autoGuess(headers, dataRows) {
@@ -49,34 +49,38 @@ function autoGuess(headers, dataRows) {
     const byVal = headers.findIndex((_, i) => valueTest(first[i]));
     return byVal !== -1 ? byVal : null;
   };
-  // byName 找到欄位後，確認第一筆資料確實是文字，否則改用 byVal（避免序號欄共用合併表頭）
   const nameByName = headers.findIndex(h => /名稱|工項|項目|item|name/i.test(String(h)));
   const nameByVal  = headers.findIndex((_, i) => { const v = first[i]; return typeof v === 'string' && String(v).trim().length > 1; });
   const nameIdx = (nameByName !== -1 && typeof first[nameByName] === 'string' && String(first[nameByName]).trim().length > 1)
     ? nameByName
     : (nameByVal !== -1 ? nameByVal : (nameByName !== -1 ? nameByName : null));
   return {
-    name:   nameIdx !== null ? [nameIdx] : [],  // name 為陣列
+    name:   nameIdx !== null ? [nameIdx] : [],
     start:  guess([/開始|start|開工/i],            v => !!parseDate(v)),
     end:    guess([/結束|end|完工|竣工/i],          v => !!parseDate(v)),
     weight: guess([/權重|比重|佔比|weight/i, /%/],  v => parseWeight(v) !== null && parseWeight(v) >= 0),
   };
 }
 
-function downloadTemplate() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['工項名稱','開始日期','結束日期','權重(%)'],
-    ['假設工程','113-01-01','113-02-28',5.0],
-    ['土方開挖','113-02-01','113-04-30',15.0],
-    ['基礎工程','113-04-01','113-07-31',20.0],
-    ['結構體','113-06-01','113-12-31',35.0],
-    ['裝修工程','113-11-01','114-02-28',20.0],
-    ['竣工驗收','114-02-01','114-03-31',5.0],
-  ]);
-  ws['!cols'] = [{ wch: 20 },{ wch: 14 },{ wch: 14 },{ wch: 10 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '計畫進度表');
-  XLSX.writeFile(wb, '工程計畫進度表範本.xlsx');
+async function downloadTemplate() {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('計畫進度表');
+  ws.columns = [
+    { header: '工項名稱', key: 'name',   width: 20 },
+    { header: '開始日期', key: 'start',  width: 14 },
+    { header: '結束日期', key: 'end',    width: 14 },
+    { header: '權重(%)',  key: 'weight', width: 10 },
+  ];
+  [
+    { name: '假設工程', start: '113-01-01', end: '113-02-28', weight: 5.0  },
+    { name: '土方開挖', start: '113-02-01', end: '113-04-30', weight: 15.0 },
+    { name: '基礎工程', start: '113-04-01', end: '113-07-31', weight: 20.0 },
+    { name: '結構體',   start: '113-06-01', end: '113-12-31', weight: 35.0 },
+    { name: '裝修工程', start: '113-11-01', end: '114-02-28', weight: 20.0 },
+    { name: '竣工驗收', start: '114-02-01', end: '114-03-31', weight: 5.0  },
+  ].forEach(r => ws.addRow(r));
+  const buf = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buf]), '工程計畫進度表範本.xlsx');
 }
 
 const FIELDS = [
@@ -101,30 +105,54 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
   const [selectedSheet, setSelectedSheet] = useState('');
   const [rawHeaders, setRawHeaders] = useState([]);
   const [rawData, setRawData]       = useState([]);
-  const [colMap, setColMap]         = useState({ name: [], start: null, end: null, weight: null }); // name 為陣列（多欄）
+  const [colMap, setColMap]         = useState({ name: [], start: null, end: null, weight: null });
   const [rows, setRows]             = useState([]);
   const [errors, setErrors]         = useState([]);
   const [importing, setImporting]   = useState(false);
   const [done, setDone]             = useState(false);
 
-  // 從指定 sheet 讀取 headers + data，進入 mapping 步驟
   const loadSheet = (wb, sheetName) => {
-    // 先記錄垂直合併的延伸列（非第一列），避免工項名稱跨列合併產生重複資料
-    const rawWs = wb.Sheets[sheetName];
-    const vertCont = new Set();
-    (rawWs['!merges'] || []).forEach(({ s, e }) => {
-      if (e.r > s.r) {
-        for (let r = s.r + 1; r <= e.r; r++) vertCont.add(r);
+    const ws = wb.getWorksheet(sheetName);
+    if (!ws) return;
+
+    // 建立合併格覆寫表（讓延伸格使用主格值），並收集垂直延伸列
+    const cellOverrides = new Map();
+    const vertContinueRows = new Set();
+    (ws.model?.merges || []).forEach(mergeStr => {
+      const parts = String(mergeStr).split(':');
+      if (parts.length !== 2) return;
+      const start = parseCellRef(parts[0]);
+      const end   = parseCellRef(parts[1]);
+      if (!start || !end) return;
+      const masterVal = getCellValue(ws.getCell(start.r, start.c));
+      for (let r = start.r; r <= end.r; r++) {
+        for (let c = start.c; c <= end.c; c++) {
+          if (r === start.r && c === start.c) continue;
+          cellOverrides.set(`${r},${c}`, masterVal);
+          if (r > start.r) vertContinueRows.add(r);
+        }
       }
     });
 
-    const ws = expandMerges(rawWs);
-    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    const hIdx = allRows.findIndex(r => r.some(c => String(c).trim() !== ''));
+    // 讀取所有非空列，建立 0-based cell arrays
+    const allRows = [];
+    ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+      const cells = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        const key = `${rowNum},${colNum}`;
+        cells[colNum - 1] = cellOverrides.has(key) ? cellOverrides.get(key) : getCellValue(cell);
+      });
+      allRows.push({ rowNum, cells });
+    });
+
+    const hIdx = allRows.findIndex(r => r.cells.some(c => String(c ?? '').trim() !== ''));
     if (hIdx === -1) { setErrors([`工作表「${sheetName}」是空的`]); return; }
-    const headers  = allRows[hIdx].map((h, i) => String(h).trim() || `欄 ${i + 1}`);
+
+    const headers  = allRows[hIdx].cells.map((h, i) => String(h ?? '').trim() || `欄 ${i + 1}`);
     const dataRows = allRows.slice(hIdx + 1)
-      .filter((r, i) => r.some(c => String(c).trim() !== '') && !vertCont.has(hIdx + 1 + i));
+      .filter(r => r.cells.some(c => String(c ?? '').trim() !== '') && !vertContinueRows.has(r.rowNum))
+      .map(r => r.cells);
+
     setRawHeaders(headers);
     setRawData(dataRows);
     setColMap(autoGuess(headers, dataRows));
@@ -132,31 +160,27 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
     setStep('mapping');
   };
 
-  // ── Step 1: 讀取檔案 ────────────────────────────────────────────────────────
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true });
-        setWorkbook(wb);
-        setSheetNames(wb.SheetNames);
-        setErrors([]);
-        if (wb.SheetNames.length === 1) {
-          // 單一工作表，直接進 mapping
-          setSelectedSheet(wb.SheetNames[0]);
-          loadSheet(wb, wb.SheetNames[0]);
-        } else {
-          // 多個工作表，先讓使用者選
-          setSelectedSheet('');
-          setStep('sheet');
-        }
-      } catch (err) {
-        setErrors([`讀取失敗：${err.message}`]);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      setWorkbook(wb);
+      const names = wb.worksheets.map(ws => ws.name);
+      setSheetNames(names);
+      setErrors([]);
+      if (names.length === 1) {
+        setSelectedSheet(names[0]);
+        loadSheet(wb, names[0]);
+      } else {
+        setSelectedSheet('');
+        setStep('sheet');
       }
-    };
-    reader.readAsArrayBuffer(file);
+    } catch (err) {
+      setErrors([`讀取失敗：${err.message}`]);
+    }
   };
 
   const handleDrop = (e) => {
@@ -165,7 +189,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
     if (file) handleFile({ target: { files: [file] } });
   };
 
-  // ── Step 2 → 3: 解析 ────────────────────────────────────────────────────────
   const handleParse = () => {
     const parsed = [];
     const errs = [];
@@ -191,7 +214,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
     setStep('preview');
   };
 
-  // ── Step 3: 寫入 DB ──────────────────────────────────────────────────────────
   const handleImport = async () => {
     if (!rows.length) return;
     setImporting(true);
@@ -211,7 +233,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
   const totalWeight = rows.reduce((s, r) => s + r.weight, 0);
   const weightOk    = Math.abs(totalWeight - 100) < 0.01;
 
-  // ── 步驟指示器 ───────────────────────────────────────────────────────────────
   const stepLabels = sheetNames.length > 1 ? ['上傳', '選擇工作表', '欄位對應', '預覽確認'] : ['上傳', '欄位對應', '預覽確認'];
   const stepIdx    = step === 'upload' ? 0 : step === 'sheet' ? 1 : sheetNames.length > 1 ? (step === 'mapping' ? 2 : 3) : (step === 'mapping' ? 1 : 2);
 
@@ -219,7 +240,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-panel" style={{ maxWidth: '680px' }}>
 
-        {/* Header */}
         <div className="modal-header">
           <div className="modal-title-group">
             <div>
@@ -227,7 +247,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
               <p className="modal-subtitle">EXCEL IMPORT · SCHEDULE ITEMS</p>
             </div>
           </div>
-          {/* 步驟指示器 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '12px' }}>
             {stepLabels.map((label, idx) => (
               <React.Fragment key={idx}>
@@ -245,7 +264,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
           <button className="modal-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Body */}
         <div className="modal-body">
           {done ? (
             <div className="import-success">
@@ -254,7 +272,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
             </div>
 
           ) : step === 'upload' ? (
-            /* ── Step 1: 上傳 ── */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="upload-zone" onClick={() => fileRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
                 <Upload size={28} className="upload-icon" />
@@ -262,7 +279,7 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
                 <p className="upload-hint">支援 .xlsx / .xls / .xlsm｜任何欄位格式皆可，下一步手動對應</p>
                 <input type="file" accept=".xlsx,.xls,.xlsm" ref={fileRef} style={{ display: 'none' }} onChange={handleFile} />
               </div>
-              <button className="btn-template" onClick={downloadTemplate}>
+              <button className="btn-template" onClick={() => downloadTemplate()}>
                 <Download size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
                 下載標準範本
               </button>
@@ -277,7 +294,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
             </div>
 
           ) : step === 'sheet' ? (
-            /* ── Step 1.5: 選擇工作表 ── */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
                 此 Excel 含 <strong>{sheetNames.length}</strong> 個工作表，請選擇包含進度資料的工作表：
@@ -301,16 +317,12 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
             </div>
 
           ) : step === 'mapping' ? (
-            /* ── Step 2: 欄位對應 ── */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
                 偵測到 <strong>{rawHeaders.length}</strong> 欄、<strong>{rawData.length}</strong> 列資料。請確認或調整欄位對應：
               </p>
 
-              {/* 對應選擇器 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-
-                {/* 工項名稱：checkbox 多選 */}
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text2)', marginBottom: '6px' }}>
                     工項名稱 <span style={{ color: '#ef4444' }}>*</span>
@@ -352,7 +364,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
                   )}
                 </div>
 
-                {/* 其他欄位：select 單選 */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                   {FIELDS.filter(f => f.key !== 'name').map(f => (
                     <div key={f.key}>
@@ -376,7 +387,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
                 </div>
               </div>
 
-              {/* 原始資料預覽 */}
               <div>
                 <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '6px' }}>資料預覽（前 5 列）：</div>
                 <div className="preview-table-wrapper" style={{ maxHeight: '180px' }}>
@@ -401,7 +411,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
             </div>
 
           ) : (
-            /* ── Step 3: 預覽確認 ── */
             <>
               <p style={{ fontSize: '13px', color: 'var(--color-text2)', marginBottom: '10px' }}>
                 成功解析 <strong>{rows.length}</strong> 項
@@ -451,7 +460,6 @@ export function ScheduleImportModal({ projectId, onClose, onSuccess }) {
           )}
         </div>
 
-        {/* Actions */}
         {!done && (
           <div className="modal-actions">
             {step === 'upload' && (
