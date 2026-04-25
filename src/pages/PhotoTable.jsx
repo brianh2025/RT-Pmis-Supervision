@@ -613,10 +613,10 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
             </span>
             <div className="col-status" onClick={e => e.stopPropagation()}>
               {srcLabel ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
                   <span className="pt-log-tag attached"><Link2 size={10} />已附{srcLabel}</span>
-                  <button className="pt-btn" style={{ padding: '2px 7px', fontSize: '13px' }}
-                    onClick={() => handleWithdraw(rec)}><RotateCcw size={11} />抽回</button>
+                  <button className="pt-btn" style={{ padding: '1px 6px', fontSize: '12px' }}
+                    onClick={() => handleWithdraw(rec)}><RotateCcw size={10} />抽回</button>
                 </div>
               ) : attachingId === rec.id ? (
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>

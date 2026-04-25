@@ -411,9 +411,9 @@
 .col-date,
 .col-docno,
 .col-count,
-.col-status,
 .col-actions,
 .col-withdraw { white-space: nowrap; width: auto; }
+.col-status { width: auto; }
 
 .pt-record-header {
   grid-column: 1 / -1;
