@@ -412,7 +412,7 @@ export function Dashboard() {
 
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
-    ...(starredCount > 0 ? [{ key: 'starred', label: '我的最愛', count: starredCount, color: '#f59e0b' }] : []),
+    ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
     ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
     { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
     { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
@@ -661,8 +661,21 @@ export function Dashboard() {
             </div>
 
             {/* 我的最愛置頂區（有收藏才顯示） */}
-            {starredProjects.length > 0 && statusFilter !== 'starred' && (
-              <div className="dash-section-starred">
+            {statusFilter !== 'starred' && (
+              <div className="dash-section-starred"
+                onDragOver={e => e.preventDefault()}
+                onDrop={async e => {
+                  e.preventDefault();
+                  const srcId = dragSrcId.current;
+                  if (!srcId) return;
+                  const p = projects.find(proj => proj.id === srcId);
+                  if (p && !p.is_starred) {
+                    await supabase.from('projects').update({ is_starred: true }).eq('id', p.id);
+                    refresh?.();
+                  }
+                  dragSrcId.current = null;
+                  setDragOverId(null);
+                }}>
                 <div className="dash-section-label starred-label">
                   <span>⭐ 常用</span>
                 </div>
