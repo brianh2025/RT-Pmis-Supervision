@@ -383,10 +383,17 @@ export function ProjectDashboard() {
 
       {/* ── 專案標頭 ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+        {/* 左：名稱＋說明按鈕（貼合）＋承包商＋監造（同行 flex-wrap，維持 B1） */}
         <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 14px', minWidth: 0, flex: 1 }}>
-          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
-            {project.name}
-          </h1>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
+              {project.name}
+            </h1>
+            <button style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', background:'none', border:'1px solid var(--color-border)', color:'var(--color-text-muted)', cursor:'pointer', flexShrink:0 }}
+              onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'dashboard' }))} title="說明">
+              <HelpCircle size={14} />
+            </button>
+          </span>
           {project.contractor && (
             <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
               承包商：{project.contractor}
@@ -398,15 +405,10 @@ export function ProjectDashboard() {
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
-            {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
-          </span>
-          <button style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', background:'none', border:'1px solid var(--color-border)', color:'var(--color-text-muted)', cursor:'pointer' }}
-            onClick={() => window.dispatchEvent(new CustomEvent('pmis-help', { detail: 'dashboard' }))} title="說明">
-            <HelpCircle size={14} />
-          </button>
-        </div>
+        {/* 右：狀態 badge */}
+        <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`} style={{ flexShrink: 0 }}>
+          {project.status === 'active' ? '執行中' : project.status === 'completed' ? '已完工' : project.status === 'accepted' ? '已竣工' : project.status === 'pending' ? '未發包' : '暫停'}
+        </span>
       </div>
 
       {/* ── 可拖曳區塊 ── */}
