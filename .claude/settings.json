@@ -9,7 +9,11 @@
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__supabase__execute_sql",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.\\(jsx|js|sql|json\\)$\")",
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ]
   }
 }
