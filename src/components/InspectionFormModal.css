@@ -123,7 +123,7 @@
   text-align: center; font-weight: var(--fw-semi); font-size: var(--fs-xs);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  width: 48px;
+  width: 48px; word-break: break-all; overflow: hidden;
 }
 .ifm-item-name { font-size: var(--fs-xs); color: var(--color-text-main); }
 .ifm-key-star { color: var(--color-danger); margin-right: 2px; }
