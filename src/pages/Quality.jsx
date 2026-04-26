@@ -4,7 +4,8 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText } from 'lucide-react';
+import InspectionFormModal from '../components/InspectionFormModal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -106,6 +107,7 @@ export function Quality() {
   const navigate = useNavigate();
   const { project } = useProject(projectId);
   const [printRow, setPrintRow] = useState(null);
+  const [formRow,  setFormRow]  = useState(null);
   const [tab, setTab] = useState(0);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
@@ -490,6 +492,11 @@ export function Quality() {
               <Plus size={12} /> 新增{tab === 0 ? '檢驗' : '缺失'}
             </button>
           )}
+          {tab === 0 && (
+            <button className="mcs-btn mcs-btn-add" onClick={() => setFormRow({})}>
+              <FileText size={12} /> 新增抽查單
+            </button>
+          )}
         </div>
       </div>
 
@@ -649,6 +656,9 @@ export function Quality() {
                         <EditableCell id={row.id} field="remark" table="construction_inspections" val={row.remark} />
                       </td>
                       <td style={{ padding: '2px 4px', textAlign: 'center' }}>
+                        <button className="mcs-photo-btn" title="填寫標準抽查單" onClick={() => setFormRow(row)}>
+                          <FileText size={11} />
+                        </button>
                         <button className="mcs-photo-btn" title="列印抽查單" onClick={() => setPrintRow(row)}>
                           <Printer size={11} />
                         </button>
@@ -955,6 +965,15 @@ export function Quality() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 填寫標準工項抽查單 */}
+      {formRow !== null && (
+        <InspectionFormModal
+          inspection={formRow}
+          project={project}
+          onClose={() => setFormRow(null)}
+        />
       )}
 
       {/* 列印：施工抽查記錄表 */}
