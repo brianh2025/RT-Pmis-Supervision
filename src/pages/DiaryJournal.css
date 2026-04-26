@@ -352,6 +352,12 @@
   border: 1px solid var(--color-border);
   font-size: 0.76rem;
 }
+.dj-insp-type-tag {
+  padding: 1px 5px; border-radius: 4px; flex-shrink: 0;
+  font-size: 0.65rem; font-weight: 700;
+  background: rgba(37,99,235,0.1); color: var(--color-primary);
+  border: 1px solid rgba(37,99,235,0.2);
+}
 .dj-insp-result-dot {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 50%;

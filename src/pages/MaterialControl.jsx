@@ -395,15 +395,15 @@ export function MaterialControl() {
         ? { ...r, a_date: entry.entry_date || today, cum_qty: entry.qty || r.cum_qty }
         : r
       ));
-      if (window.confirm(`同時建立「${entry.name}」的材料抽查記錄？`)) {
+      if (window.confirm(`同時建立「${entry.name}」的查驗記錄？`)) {
         await supabase.from('construction_inspections').insert({
           project_id: projectId,
           created_by: user?.id,
           inspect_date: entry.entry_date || today,
           work_item: entry.name,
           location: entry.spec || '',
-          inspect_type: '材料抽查',
-          result: '',
+          inspect_type: '查驗',
+          result: '合格',
           inspector: '',
         });
       }
