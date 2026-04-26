@@ -96,7 +96,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
         ${td1}
         <td class="item-cell">${it.key ? '★' : ''}${it.name}</td>
         <td class="std-cell">${it.standard}</td>
-        <td class="actual-cell">${(res.actual || '').replace(/\n/g, '<br>')}</td>
+        <td class="actual-cell">${(res.actual || it.standard).replace(/\n/g, '<br>')}</td>
         <td class="result-cell">${sym}</td>
       </tr>`;
     }).join('');
@@ -113,7 +113,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <html><head><meta charset="utf-8">
 <title>${template.label}施工抽查紀錄表</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
   body { font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; margin:1.5cm; font-size:11pt; color:#000; }
   .title-row { position:relative; text-align:center; margin-bottom:6px; }
@@ -121,10 +121,10 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .title-row .serial { position:absolute; top:2px; right:0; font-size:10pt; }
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
-  .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; }
+  .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
   .phase-cell { text-align:center; font-weight:bold; writing-mode:vertical-rl; background:#f5f5f5; }
   .std-cell { font-size:10pt; }
-  .actual-cell { font-size:10pt; }
+  .actual-cell { font-size:10pt; font-family:'Ma Shan Zheng','標楷體','DFKai-SB',cursive; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
@@ -135,7 +135,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <body>
 <div class="title-row">
   <h2>${template.label}施工抽查紀錄表</h2>
-  <span class="serial">編號：${template.code}-01-</span>
+  <span class="serial">編號：${template.code}-01-　　　</span>
 </div>
 <table>
   <colgroup>
