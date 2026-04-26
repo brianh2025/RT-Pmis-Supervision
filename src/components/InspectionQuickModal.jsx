@@ -21,7 +21,7 @@ export function InspectionQuickModal({ projectId, inspectDate, existing, onClose
   const { user } = useAuth();
   const [workItem,    setWorkItem]    = useState(existing?.work_item   || '');
   const [location,    setLocation]    = useState(existing?.location    || '');
-  const [inspectType, setInspectType] = useState(existing?.inspect_type || '施工抽查');
+  const [inspectType, setInspectType] = useState(existing?.inspect_type || '查驗');
   const [inspector,   setInspector]   = useState(existing?.inspector   || user?.email?.split('@')[0] || '');
   const [result,      setResult]      = useState(existing?.result      || '合格');
   const [remark,      setRemark]      = useState(existing?.remark      || '');
@@ -110,7 +110,7 @@ export function InspectionQuickModal({ projectId, inspectDate, existing, onClose
           <div>
             <label className="form-label">檢驗類別</label>
             <div style={{ display: 'flex', gap: '6px', marginTop: 6 }}>
-              {['施工抽查', '材料抽查', '進度查核'].map(t => (
+              {['自主檢查', '查驗', '督導', '查核'].map(t => (
                 <button
                   key={t}
                   onClick={() => setInspectType(t)}

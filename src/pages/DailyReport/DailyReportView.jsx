@@ -27,11 +27,12 @@ export function DailyReportView({ report, onBack, onEdit, supervision = false })
 
     const tabs = [
         { key: "progress", label: "工程進度" },
-        { key: "qty",      label: "數量計算" },
-        { key: "inspect",  label: "施工抽查" },
+        { key: "qty",      label: "施工工項" },
+        { key: "mat",      label: "材料進場" },
+        { key: "inspect",  label: "查驗記錄" },
         { key: "quality",  label: "品質試驗" },
         { key: "docs",     label: "文件管理" },
-        ...(supervision ? [{ key: "chk", label: "抽查驗" }] : []),
+        ...(supervision ? [{ key: "chk", label: "督導查核" }] : []),
     ];
 
     return (
@@ -144,23 +145,63 @@ export function DailyReportView({ report, onBack, onEdit, supervision = false })
                 </Card>
             )}
 
-            {tab === 'inspect' && (
+            {tab === 'mat' && (
                 <Card mb={0} p="12px 14px">
-                    <SH icon={I.shield} title="施工抽查" />
-                    {report.inspections.length === 0
-                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>無抽查紀錄</div>
-                        : report.inspections.map((ins, i) => (
+                    <SH icon={I.doc} title="材料進場" />
+                    {(report.materialRecords || []).length === 0
+                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>無材料進場記錄</div>
+                        : (report.materialRecords || []).map((m, i) => (
                             <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.68rem', color: C.textMuted, marginRight: 7 }}>{ins.no}</span>
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.item}</span>
-                                    </div>
-                                    <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : 'danger'} />
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{m.name}</span>
+                                    {m.qty && <span style={{ fontSize: '0.78rem', color: C.textMid }}>{m.qty}</span>}
                                 </div>
-                                {ins.note && <div style={{ fontSize: '0.73rem', color: C.textMid }}>📌 {ins.note}</div>}
+                                <div style={{ display: 'flex', gap: 12, fontSize: '0.7rem', color: C.textMuted }}>
+                                    {m.spec && <span>規格：{m.spec}</span>}
+                                    {m.vendor && <span>廠商：{m.vendor}</span>}
+                                    {m.inspector && <span>查驗：{m.inspector}</span>}
+                                </div>
                             </div>
                         ))
+                    }
+                </Card>
+            )}
+
+            {tab === 'inspect' && (
+                <Card mb={0} p="12px 14px">
+                    <SH icon={I.shield} title="查驗記錄" />
+                    {(report.inspRecords || []).length === 0 && report.inspections.length === 0
+                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>無查驗紀錄</div>
+                        : <>
+                            {(report.inspRecords || []).map((ins, i) => (
+                                <div key={ins.id || i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(37,99,235,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(37,99,235,0.2)' }}>{ins.inspect_type || '查驗'}</span>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.work_item}</span>
+                                        </div>
+                                        <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : ins.result === '不合格' ? 'danger' : 'warn'} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12, fontSize: '0.7rem', color: C.textMuted }}>
+                                        {ins.location && <span>位置：{ins.location}</span>}
+                                        {ins.inspector && <span>人員：{ins.inspector}</span>}
+                                    </div>
+                                    {ins.remark && <div style={{ fontSize: '0.73rem', color: C.textMid, marginTop: 4 }}>📌 {ins.remark}</div>}
+                                </div>
+                            ))}
+                            {report.inspections.length > 0 && (report.inspRecords || []).length === 0 && report.inspections.map((ins, i) => (
+                                <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', color: C.textMuted, marginRight: 7 }}>{ins.no}</span>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.item}</span>
+                                        </div>
+                                        <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : 'danger'} />
+                                    </div>
+                                    {ins.note && <div style={{ fontSize: '0.73rem', color: C.textMid }}>📌 {ins.note}</div>}
+                                </div>
+                            ))}
+                          </>
                     }
                 </Card>
             )}
@@ -218,46 +259,35 @@ export function DailyReportView({ report, onBack, onEdit, supervision = false })
                 </>
             )}
 
-            {tab === 'chk' && (
+            {tab === 'chk' && (() => {
+                const supRecords = (report.inspRecords || []).filter(r =>
+                    r.inspect_type === '督導' || r.inspect_type === '查核'
+                );
+                return (
                 <Card mb={0} p="12px 14px">
-                    <SH icon={I.shield} title="抽查驗" />
-                    {(report.inspections?.length > 0 || report.qualityTests?.length > 0) ? (
-                        <>
-                            {report.inspections?.map((ins, i) => (
-                                <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.68rem', color: C.textMuted, marginRight: 7 }}>{ins.no}</span>
-                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.item}</span>
-                                        </div>
-                                        <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : 'danger'} />
+                    <SH icon={I.shield} title="督導查核" />
+                    {supRecords.length === 0
+                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無督導或查核記錄</div>
+                        : supRecords.map((ins, i) => (
+                            <div key={ins.id || i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>{ins.inspect_type}</span>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{ins.work_item}</span>
                                     </div>
-                                    {ins.note && <div style={{ fontSize: '0.73rem', color: C.textMid }}>📌 {ins.note}</div>}
+                                    <Badge label={ins.result} variant={ins.result === '合格' ? 'success' : ins.result === '不合格' ? 'danger' : 'warn'} />
                                 </div>
-                            ))}
-                            {report.qualityTests?.map((qt, i) => (
-                                <div key={i} style={{ marginBottom: 8, background: 'var(--color-bg2)', borderRadius: 8, padding: '9px 12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{qt.material}</span>
-                                        <Badge label={qt.result} variant={qt.result === '合格' ? 'success' : 'danger'} />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: qt.note ? 5 : 0 }}>
-                                        {[['契約數量', fmtNum(qt.contractQty)], ['已作數量', fmtNum(qt.doneQty)], ['試驗項目', qt.testItem]].map(([k, v]) => (
-                                            <div key={k}>
-                                                <div style={{ fontSize: '0.6rem', color: C.textMuted }}>{k}</div>
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: C.text }}>{v}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {qt.note && <div style={{ fontSize: '0.7rem', color: C.textMid }}>📌 {qt.note}</div>}
+                                <div style={{ display: 'flex', gap: 12, fontSize: '0.7rem', color: C.textMuted }}>
+                                    {ins.location && <span>位置：{ins.location}</span>}
+                                    {ins.inspector && <span>人員：{ins.inspector}</span>}
                                 </div>
-                            ))}
-                        </>
-                    ) : (
-                        <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>尚無抽查驗紀錄</div>
-                    )}
+                                {ins.remark && <div style={{ fontSize: '0.73rem', color: C.textMid, marginTop: 4 }}>📌 {ins.remark}</div>}
+                            </div>
+                        ))
+                    }
                 </Card>
-            )}
+                );
+            })()}
         </div>
     );
 }

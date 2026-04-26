@@ -7,7 +7,7 @@ export const DailyReportContext = createContext();
 // ---------------------------------------------------------------------------
 // Build a DailyReportForm-compatible report object from DB records
 // ---------------------------------------------------------------------------
-function buildReport(date, log, items, progressRec) {
+function buildReport(date, log, items, progressRec, inspRecords, materialRecords) {
     // progress priority: progress_records > daily_logs > 0
     const planned = progressRec?.planned_progress ?? log?.planned_progress ?? 0;
     const actual  = progressRec?.actual_progress  ?? log?.actual_progress  ?? 0;
@@ -64,6 +64,8 @@ function buildReport(date, log, items, progressRec) {
         qualityTests: fd.qualityTests || [],
         documents: fd.documents || [],
         specialNote: fd.specialNote || '',
+        inspRecords: inspRecords || [],
+        materialRecords: materialRecords || [],
     };
 }
 
@@ -79,7 +81,7 @@ export function DailyReportProvider({ children, projectId }) {
             setLoading(true);
             try {
                 // Parallel fetch all relevant tables
-                const [{ data: logsData }, { data: dbItems }, { data: progressData }] = await Promise.all([
+                const [{ data: logsData }, { data: dbItems }, { data: progressData }, { data: inspData }, { data: matData }] = await Promise.all([
                     supabase.from('daily_logs')
                         .select('*')
                         .eq('project_id', projectId)
@@ -91,6 +93,14 @@ export function DailyReportProvider({ children, projectId }) {
                     supabase.from('progress_records')
                         .select('report_date, planned_progress, actual_progress')
                         .eq('project_id', projectId),
+                    supabase.from('construction_inspections')
+                        .select('*')
+                        .eq('project_id', projectId)
+                        .order('inspect_date', { ascending: true }),
+                    supabase.from('material_entries')
+                        .select('*')
+                        .eq('project_id', projectId)
+                        .order('entry_date', { ascending: true }),
                 ]);
 
                 // Group items by date
@@ -103,6 +113,20 @@ export function DailyReportProvider({ children, projectId }) {
                 // Group progress by date
                 const progressByDate = {};
                 (progressData || []).forEach(p => { progressByDate[p.report_date] = p; });
+
+                // Group inspections by date
+                const inspsByDate = {};
+                (inspData || []).forEach(r => {
+                    if (!inspsByDate[r.inspect_date]) inspsByDate[r.inspect_date] = [];
+                    inspsByDate[r.inspect_date].push(r);
+                });
+
+                // Group material entries by date
+                const materialsByDate = {};
+                (matData || []).forEach(r => {
+                    if (!materialsByDate[r.entry_date]) materialsByDate[r.entry_date] = [];
+                    materialsByDate[r.entry_date].push(r);
+                });
 
                 // Collect all unique dates from logs + items
                 const allDates = new Set([
@@ -122,6 +146,8 @@ export function DailyReportProvider({ children, projectId }) {
                         logsByDate[date] || null,
                         itemsByDate[date] || [],
                         progressByDate[date] || null,
+                        inspsByDate[date] || [],
+                        materialsByDate[date] || [],
                     ));
 
                 setReports(allReports);

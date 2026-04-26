@@ -13,7 +13,8 @@
 }
 
 /* ─── Modal Panel ─────────────────────────────────────── */
-.modal-panel {
+.modal-panel,
+.modal-container {
   background: var(--color-surface);
   border: 1px solid var(--color-surface-border);
   border-radius: var(--radius-2xl);
@@ -24,7 +25,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* 入場動畫由各 modal 的 animate-slide-up class 控制，此處不重複設定 */
 }
 
 /* ─── Modal Header ────────────────────────────────────── */
