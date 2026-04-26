@@ -132,6 +132,7 @@ function DiaryJournalInner() {
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
   const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
+  const [matCollapsed,     setMatCollapsed]     = useState(true);
   const [inspections,      setInspections]      = useState([]);
   const [showInspModal,    setShowInspModal]    = useState(false);
   const [inspEditing,      setInspEditing]      = useState(null);
@@ -214,6 +215,7 @@ function DiaryJournalInner() {
     if (!selectedKey) {
       setSummary(null);
       setMaterialStatus({ entries: [], tests: [] });
+      setMatCollapsed(true);
       setInspections([]);
       return;
     }
@@ -248,6 +250,7 @@ function DiaryJournalInner() {
         entries: matEntries.data || [],
         tests:   matTests.data   || [],
       });
+      setMatCollapsed((matEntries.data || []).length === 0);
       setInspections(insp.data || []);
       setLoadingSummary(false);
     });
@@ -550,39 +553,44 @@ function DiaryJournalInner() {
 
         {/* ── 材料進場管制區塊 ── */}
         <div className="dj-coexist-block material-block">
-          <div className="dj-coexist-title">
+          <div className="dj-coexist-title dj-coexist-title--toggle" onClick={() => setMatCollapsed(v => !v)}>
             <Package size={13} />
             材料進場管制
             <span className="dj-mat-summary-badge">
               進場 {materialStatus.entries.length} 筆 · 試驗 {materialStatus.tests.length} 筆
             </span>
+            {matCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </div>
-          {detectedMaterials.length > 0 ? (
-            <div className="dj-mat-rows">
-              {detectedMaterials.map(mat => {
-                const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
-                const tc = materialStatus.tests.filter(t => (t.name || '').includes(mat.keyword)).length;
-                return (
-                  <div key={mat.keyword} className="dj-mat-row">
-                    <span className="dj-mat-name">{mat.label}</span>
-                    <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
-                      進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
-                    </span>
-                    <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
-                      試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="dj-empty" style={{ marginBottom: 6 }}>
-              {hasDiary ? '日誌未記載重點管制材料（混凝土／鋼筋／瀝青等）' : '尚無施工日誌'}
-            </div>
+          {!matCollapsed && (
+            <>
+              {detectedMaterials.length > 0 ? (
+                <div className="dj-mat-rows">
+                  {detectedMaterials.map(mat => {
+                    const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
+                    const tc = materialStatus.tests.filter(t => (t.name || '').includes(mat.keyword)).length;
+                    return (
+                      <div key={mat.keyword} className="dj-mat-row">
+                        <span className="dj-mat-name">{mat.label}</span>
+                        <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
+                          進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
+                        </span>
+                        <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
+                          試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="dj-empty" style={{ marginBottom: 6 }}>
+                  {hasDiary ? '日誌未記載重點管制材料（混凝土／鋼筋／瀝青等）' : '尚無施工日誌'}
+                </div>
+              )}
+              <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
+                前往材料管制 →
+              </button>
+            </>
           )}
-          <button className="dj-mat-link" onClick={() => navigate(`/projects/${projectId}/material`)}>
-            前往材料管制 →
-          </button>
         </div>
 
         {/* ── 當日抽查區塊 ── */}
