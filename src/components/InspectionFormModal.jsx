@@ -111,20 +111,21 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>表 ${template.code} ${template.label}施工抽查紀錄表</title>
+<title>${template.label}施工抽查紀錄表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">
 <style>
   body { font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; margin:1.5cm; font-size:11pt; color:#000; }
-  h2 { text-align:center; font-size:15pt; margin:0 0 4px; }
-  .subhead { text-align:right; font-size:10pt; margin:0 0 8px; }
-  table { width:100%; border-collapse:collapse; }
+  .title-row { position:relative; text-align:center; margin-bottom:6px; }
+  .title-row h2 { font-size:15pt; margin:0; }
+  .title-row .serial { position:absolute; top:2px; right:0; font-size:10pt; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
-  .hdr-label { width:70px; font-weight:bold; background:#f5f5f5; }
-  .hdr-value { }
-  .phase-cell { width:48px; text-align:center; font-weight:bold; writing-mode:vertical-rl; background:#f5f5f5; }
-  .item-cell { width:130px; }
-  .std-cell { width:230px; font-size:10pt; }
-  .actual-cell { width:160px; font-size:10pt; }
-  .result-cell { width:50px; text-align:center; font-size:14pt; }
+  .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; }
+  .phase-cell { text-align:center; font-weight:bold; writing-mode:vertical-rl; background:#f5f5f5; }
+  .std-cell { font-size:10pt; }
+  .actual-cell { font-size:10pt; }
+  .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
   .sign-row { margin-top:12px; display:flex; justify-content:space-between; align-items:center; }
@@ -132,45 +133,54 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </style>
 </head>
 <body>
-<h2>表 ${template.code} ${template.label}施工抽查紀錄表</h2>
-<p class="subhead">編號：${template.code}-01-</p>
+<div class="title-row">
+  <h2>${template.label}施工抽查紀錄表</h2>
+  <span class="serial">編號：${template.code}-01-</span>
+</div>
 <table>
-  <tr><td class="hdr-label">工程名稱</td><td class="hdr-value" colspan="3">${projectName || ''}</td></tr>
-  <tr><td class="hdr-label">承包廠商</td><td class="hdr-value" colspan="3">${contractor || ''}</td></tr>
+  <colgroup>
+    <col style="width:58px">
+    <col style="width:130px">
+    <col>
+    <col style="width:150px">
+    <col style="width:48px">
+  </colgroup>
+  <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
+  <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
   <tr>
     <td class="hdr-label">檢查位置</td>
-    <td class="hdr-value">${header.location || ''}</td>
+    <td>${header.location || ''}</td>
     <td class="hdr-label">檢查日期</td>
-    <td class="hdr-value">${toRocDate(header.date)}</td>
+    <td colspan="2">${toRocDate(header.date)}</td>
   </tr>
   <tr>
     <td class="hdr-label">檢查時機</td>
-    <td class="hdr-value" colspan="3">
+    <td colspan="4">
       ${header.inspectType === '施工檢驗停留點' ? '☑' : '☐'} 施工檢驗停留點
-      ${header.inspectType === '不定期檢查' ? '☑' : '☐'} 不定期檢查
+      &emsp;${header.inspectType === '不定期檢查' ? '☑' : '☐'} 不定期檢查
     </td>
   </tr>
   <tr>
     <td class="hdr-label">施工流程</td>
-    <td class="hdr-value" colspan="3">
+    <td colspan="4">
       ${header.flow === '施工前' ? '☑' : '☐'} 施工前
-      ${header.flow === '施工中檢查' ? '☑' : '☐'} 施工中檢查
-      ${header.flow === '施工完成檢查' ? '☑' : '☐'} 施工完成檢查
+      &emsp;${header.flow === '施工中檢查' ? '☑' : '☐'} 施工中檢查
+      &emsp;${header.flow === '施工完成檢查' ? '☑' : '☐'} 施工完成檢查
     </td>
   </tr>
   <tr>
     <td class="hdr-label">檢查結果</td>
-    <td class="hdr-value" colspan="3">○ 檢查合格　╳ 有缺失需改正　／ 無此檢查項目</td>
+    <td colspan="4">○ 檢查合格　╳ 有缺失需改正　／ 無此檢查項目</td>
   </tr>
   <tr>
-    <th>管理項目</th>
-    <th>依設計圖說、規範之抽查標準（定量定性，含容許誤差）</th>
-    <th>實際抽查情形（含檢查數據）</th>
-    <th>抽查結果</th>
+    <th colspan="2">管理項目</th>
+    <th class="std-cell">依設計圖說、規範之抽查標準（定量定性，含容許誤差）</th>
+    <th class="actual-cell">實際抽查情形（含檢查數據）</th>
+    <th class="result-cell" style="font-family:inherit;font-size:11pt;">抽查結果</th>
   </tr>
   ${rowsHtml}
   <tr class="defect-row">
-    <td colspan="4">
+    <td colspan="5">
       <strong>缺失複查結果：</strong><br>
       ${defectChecked1} 已立即完成改善（檢附改善前中後照片）<br>
       ${defectChecked2} 未完成改善，填具「不符合事項追蹤改善表」進行追蹤改善<br>
@@ -178,7 +188,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
     </td>
   </tr>
   <tr class="note-row">
-    <td colspan="4">
+    <td colspan="5">
       <strong>備註：</strong><br>
       1. 檢查標準及實際檢查情形應具體明確或量化尺寸。<br>
       2. 檢查結果合格者註明「○」，不合格者註明「╳」，如無需檢查之項目則打「／」。<br>
