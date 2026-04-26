@@ -140,6 +140,15 @@ git log --oneline -5  # commit 訊息清晰
 
 ---
 
+## Claude 作業規則
+
+- **新建任何 `.css` 檔前，必須先讀 `src/index.css` 確認設計系統 token，再動筆**
+  - 禁止使用 Tailwind / 自創 fallback 值（`#fff`, `#f3f4f6`, `#3b82f6` 等）
+  - 禁止引用不存在的 token（如 `--color-bg3`）
+  - 所有顏色、間距、圓角、字級一律使用 `index.css` 中已定義的 CSS 變數
+
+---
+
 ## 已知技術負債
 
 | 項目 | 嚴重度 | 處理方式 |
