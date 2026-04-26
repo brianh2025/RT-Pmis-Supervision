@@ -2,7 +2,7 @@
    InspectionFormModal.jsx — 施工抽查紀錄表填寫 Modal
    ============================================================ */
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save } from 'lucide-react';
+import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save, Trash2 } from 'lucide-react';
 import {
   INSPECTION_TEMPLATES, TEMPLATE_OPTIONS, INSPECT_TYPE_OPTIONS,
   FLOW_OPTIONS, RESULT_SYMBOL, guessTemplateCode,
@@ -83,7 +83,7 @@ function toRocDate(d) {
 /* ── 產生抽查單 HTML（用於列印 / Drive 上傳） ── */
 function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc, supervisorImgSrc, projectName, contractor }) {
   const phases = ['施工前', '施工中', '施工完成'];
-  const PHASE_LABELS = { '施工前': '施工前', '施工中': '施工中', '施工完成': '施工完成' };
+  const PHASE_LABELS = { '施工前': '施工前', '施工中': '施工中', '施工完成': '施工<br>完成' };
 
   const rowsHtml = phases.map(phase => {
     const phaseItems = template.items.filter(it => it.phase === phase);
@@ -127,10 +127,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .title-row h2 { flex:1; text-align:center; font-size:15pt; margin:0; white-space:nowrap; }
   .title-spacer { min-width:90px; }
   .title-row .serial { min-width:90px; font-size:10pt; text-align:right; white-space:nowrap; }
+  .serial-blank { display:inline-block; width:60px; border-bottom:1px solid #333; vertical-align:bottom; margin-left:2px; }
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
-  .phase-cell { text-align:center; font-weight:bold; writing-mode:vertical-rl; background:#f5f5f5; }
+  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; overflow:hidden; }
   .std-cell { font-size:10pt; }
   .actual-cell { font-size:10pt; font-family:'Ma Shan Zheng','標楷體','DFKai-SB',cursive; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
@@ -144,7 +145,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <div class="title-row">
   <span class="title-spacer"></span>
   <h2>${template.label}施工抽查紀錄表</h2>
-  <span class="serial">編號：${template.code}-01-　　　</span>
+  <span class="serial">編號：${template.code}-01-<span class="serial-blank"></span></span>
 </div>
 <table>
   <colgroup>
@@ -252,6 +253,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   }
   function setActual(itemName, actual) {
     setItems(prev => ({ ...prev, [itemName]: { ...(prev[itemName] || {}), actual } }));
+  }
+  function clearAllActual() {
+    setItems(prev => Object.fromEntries(
+      Object.entries(prev).map(([k, v]) => [k, { ...v, actual: '' }])
+    ));
   }
 
   function readImgFile(file, setter) {
@@ -432,7 +438,12 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
           {/* 抽查項目表 */}
           {template && (
             <div className="ifm-section">
-              <div className="ifm-section-title">抽查項目</div>
+              <div className="ifm-section-title" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span>抽查項目</span>
+                <button className="ifm-btn" style={{ fontSize:'var(--fs-xs)', padding:'2px 8px' }} onClick={clearAllActual}>
+                  <Trash2 size={12} />清空實際欄
+                </button>
+              </div>
               <div className="ifm-table-wrap">
                 <table className="ifm-table">
                   <thead>

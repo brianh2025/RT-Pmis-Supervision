@@ -8,6 +8,8 @@ import { DailyReportView } from './DailyReport/DailyReportView';
 import { DiaryImportModal } from '../components/DiaryImportModal';
 import { QuickDiaryModal } from '../components/QuickDiaryModal';
 import { DriveSyncModal } from '../components/DriveSyncModal';
+import InspectionFormModal from '../components/InspectionFormModal';
+import MaterialInspectionModal from '../components/MaterialInspectionModal';
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
 async function runBackgroundSync(projectId, startDate) {
@@ -50,6 +52,11 @@ function progressColor(actual, planned) {
   if (actual >= planned) return '#10b981';
   if (actual >= planned * 0.95) return '#f59e0b';
   return '#ef4444';
+}
+
+const MATERIAL_KEYWORDS = ['混凝土', '鋼筋', '瀝青', '鋼線', '地工', 'CLSM', '止水', '鋼板'];
+function isMaterialItem(name) {
+  return MATERIAL_KEYWORDS.some(k => name.includes(k));
 }
 
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
@@ -97,6 +104,11 @@ function DiaryLogInner() {
   const autoSyncedRef = useRef(false);
   const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
   const [tabD, setTabD] = useState('work');
+
+  /* ── 工項偵測（一鍵建立抽查） ── */
+  const [pendingWorkItems, setPendingWorkItems] = useState([]);
+  const [inspTarget, setInspTarget] = useState(null);
+  const [matTarget,  setMatTarget]  = useState(null);
 
   useEffect(() => {
     setLogs([]);
@@ -209,6 +221,16 @@ function DiaryLogInner() {
       },
     }));
   };
+
+  /* 當選定日期變更時，載入 daily_report_items 供抽查偵測使用 */
+  useEffect(() => {
+    if (!selectedKey || !supabase) { setPendingWorkItems([]); return; }
+    supabase.from('daily_report_items')
+      .select('item_name, unit, today_qty')
+      .eq('project_id', projectId)
+      .eq('log_date', selectedKey)
+      .then(({ data }) => setPendingWorkItems(data || []));
+  }, [selectedKey, projectId]);
 
   // ── initDate 模式：直接從 DiaryJournal 跳入，不顯示日曆 ─────────────
   if (initDate) {
@@ -392,6 +414,43 @@ function DiaryLogInner() {
               </div>
             )}
 
+            {/* 待辦抽查 — 當選定日期且有工項資料時顯示 */}
+            {selectedDay && selectedKey && pendingWorkItems.length > 0 && (
+              <div className="b-content-panel" style={{ marginTop: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semi)', color: 'var(--color-text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  施工日誌工項　{selectedKey}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {pendingWorkItems.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                      padding: '6px 10px', borderRadius: 'var(--radius-sm)',
+                      background: 'var(--color-surface-hover)', border: '1px solid var(--color-surface-border)' }}>
+                      <span style={{ flex: 1, minWidth: 100, fontSize: 'var(--fs-xs)', color: 'var(--color-text-main)' }}>
+                        {item.item_name}
+                        {item.today_qty ? <span style={{ color: 'var(--color-text-muted)', marginLeft: 6 }}>{item.today_qty} {item.unit || ''}</span> : null}
+                      </span>
+                      <button
+                        style={{ padding: '3px 10px', fontSize: 'var(--fs-xs)', borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--color-primary)', background: 'rgba(21,101,192,0.1)',
+                          color: 'var(--color-primary-light)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onClick={() => setInspTarget({ work_item: item.item_name, inspect_date: selectedKey })}>
+                        施工抽查
+                      </button>
+                      {isMaterialItem(item.item_name) && (
+                        <button
+                          style={{ padding: '3px 10px', fontSize: 'var(--fs-xs)', borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--color-success)', background: 'rgba(16,185,129,0.1)',
+                            color: 'var(--color-success)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          onClick={() => setMatTarget({ name: item.item_name, qty: item.today_qty, unit: item.unit, date: selectedKey })}>
+                          材料進場
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 本月匯入統計 — 直接進入模式時隱藏 */}
             {!initDate && (
               <div className="b-content-panel" style={{ padding: '20px' }}>
@@ -445,9 +504,28 @@ function DiaryLogInner() {
       {showDriveSync && (
         <DriveSyncModal
           projectId={projectId}
-          startDate={project?.start_date || ''}
+          startDate={_project?.start_date || ''}
           onClose={() => setShowDriveSync(false)}
           onSuccess={() => { setShowDriveSync(false); setRefreshTrigger(t => t + 1); refresh?.(); }}
+        />
+      )}
+      {inspTarget && (
+        <InspectionFormModal
+          inspection={{ work_item: inspTarget.work_item, inspect_date: inspTarget.inspect_date }}
+          project={{ id: projectId, name: _project?.name, contractor: _project?.contractor }}
+          onClose={() => setInspTarget(null)}
+          onSave={() => setInspTarget(null)}
+        />
+      )}
+      {matTarget && (
+        <MaterialInspectionModal
+          date={matTarget.date}
+          materialName={matTarget.name}
+          qty={matTarget.qty}
+          unit={matTarget.unit}
+          project={{ id: projectId, name: _project?.name, contractor: _project?.contractor }}
+          onClose={() => setMatTarget(null)}
+          onSave={() => setMatTarget(null)}
         />
       )}
     </div>
