@@ -2,11 +2,13 @@
    InspectionFormModal.jsx — 施工抽查紀錄表填寫 Modal
    ============================================================ */
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Printer, Cloud, Loader2, CheckSquare } from 'lucide-react';
+import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save } from 'lucide-react';
 import {
   INSPECTION_TEMPLATES, TEMPLATE_OPTIONS, INSPECT_TYPE_OPTIONS,
   FLOW_OPTIONS, RESULT_SYMBOL, guessTemplateCode,
 } from '../config/inspectionFormTemplates';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import './InspectionFormModal.css';
 
 /* ── Google Drive 工具（與 PhotoTable.jsx 相同邏輯） ── */
@@ -211,7 +213,8 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 }
 
 /* ── 主元件 ── */
-export default function InspectionFormModal({ inspection, project, onClose }) {
+export default function InspectionFormModal({ inspection, project, onClose, onSave }) {
+  const { user } = useAuth();
   const guessedCode = guessTemplateCode(inspection?.work_item);
   const [templateCode, setTemplateCode] = useState(guessedCode || '');
   const template = INSPECTION_TEMPLATES.find(t => t.code === templateCode) || null;
@@ -222,6 +225,7 @@ export default function InspectionFormModal({ inspection, project, onClose }) {
     date:        inspection?.inspect_date || new Date().toISOString().split('T')[0],
     inspectType: inspection?.inspect_type || '',
     flow:        '',
+    inspector:   inspection?.inspector   || '',
   });
 
   /* 各子項目結果 { [itemName]: { result: 'pass'|'fail'|'na'|'', actual: '' } } */
@@ -236,8 +240,9 @@ export default function InspectionFormModal({ inspection, project, onClose }) {
   const signRef      = useRef(null);
   const supervisorRef = useRef(null);
 
-  const [saving, setSaving] = useState(false);
-  const [driveLink, setDriveLink] = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [savingDb,    setSavingDb]    = useState(false);
+  const [driveLink,   setDriveLink]   = useState('');
 
   /* 切換 template 時重置 items */
   useEffect(() => { setItems({}); }, [templateCode]);
@@ -290,6 +295,36 @@ export default function InspectionFormModal({ inspection, project, onClose }) {
     finally { setSaving(false); }
   }
 
+  /* 儲存至 construction_inspections */
+  async function handleSaveDb() {
+    if (!template) return alert('請先選擇工項');
+    if (!supabase) return alert('資料庫未連線');
+    setSavingDb(true);
+    try {
+      const results = Object.values(items).map(v => v.result).filter(Boolean);
+      const overallResult = results.includes('fail') ? '不合格'
+        : results.length > 0 && results.every(r => r === 'pass') ? '合格'
+        : '待複驗';
+      const payload = {
+        project_id:   project?.id,
+        created_by:   user?.id,
+        inspect_date: header.date,
+        work_item:    template.label,
+        location:     header.location || null,
+        inspect_type: header.inspectType || null,
+        inspector:    header.inspector || null,
+        result:       overallResult,
+        remark:       defect.resolved ? '已立即完成改善' : defect.unresolved ? '未完成改善，需追蹤' : null,
+      };
+      const { data, error } = await supabase.from('construction_inspections').insert([payload]).select().single();
+      if (error) throw error;
+      alert(`已儲存至施工檢驗管制表（結果：${overallResult}）`);
+      onSave?.(data);
+      onClose();
+    } catch (e) { alert(`儲存失敗：${e.message}`); }
+    finally { setSavingDb(false); }
+  }
+
   /* 各 phase 的項目 */
   const phases = template ? ['施工前', '施工中', '施工完成'] : [];
 
@@ -301,8 +336,12 @@ export default function InspectionFormModal({ inspection, project, onClose }) {
         <div className="ifm-header">
           <span className="ifm-title">填寫施工抽查紀錄表</span>
           <div className="ifm-header-actions">
+            <button className="ifm-btn ifm-btn-primary" onClick={handleSaveDb} disabled={savingDb}>
+              {savingDb ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              儲存至管制表
+            </button>
             <button className="ifm-btn" onClick={handlePrint}><Printer size={13} />列印 / PDF</button>
-            <button className="ifm-btn ifm-btn-primary" onClick={handleUploadDrive} disabled={saving}>
+            <button className="ifm-btn" onClick={handleUploadDrive} disabled={saving}>
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Cloud size={13} />}
               上傳 Drive
             </button>
@@ -352,6 +391,12 @@ export default function InspectionFormModal({ inspection, project, onClose }) {
                 <label className="ifm-label">檢查日期</label>
                 <input className="ifm-input" type="date" value={header.date}
                   onChange={e => setHeader(h => ({ ...h, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="ifm-label">監造人員</label>
+                <input className="ifm-input" value={header.inspector}
+                  placeholder="姓名"
+                  onChange={e => setHeader(h => ({ ...h, inspector: e.target.value }))} />
               </div>
             </div>
             <div className="ifm-grid-2" style={{ marginTop: 8 }}>

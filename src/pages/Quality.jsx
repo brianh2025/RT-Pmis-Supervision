@@ -973,6 +973,7 @@ export function Quality() {
           inspection={formRow}
           project={project}
           onClose={() => setFormRow(null)}
+          onSave={newRecord => setInspections(prev => [newRecord, ...prev])}
         />
       )}
 
