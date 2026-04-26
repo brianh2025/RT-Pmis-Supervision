@@ -88,7 +88,12 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
     if (!phaseItems.length) return '';
     return phaseItems.map((it, idx) => {
       const res = items[it.name] || {};
-      const sym = res.result === 'pass' ? '○' : res.result === 'fail' ? '╳' : res.result === 'na' ? '／' : '';
+      const SYM = {
+        pass: `<svg width="19" height="19" viewBox="0 0 19 19" style="vertical-align:middle;display:inline-block"><path d="M9.5,2 C14,2.4 16.8,6 16.5,10.2 C16.2,14.5 12.8,17.2 9.2,17 C5.4,16.8 2.5,13.5 2.8,9.8 C3.1,5.8 6.2,2.4 9.5,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+        fail: `<svg width="19" height="19" viewBox="0 0 19 19" style="vertical-align:middle;display:inline-block"><path d="M3.5,3.5 Q7,8.5 15.5,15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15.5,3.5 Q11,9 3.5,15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+        na:   `<svg width="19" height="19" viewBox="0 0 19 19" style="vertical-align:middle;display:inline-block"><path d="M14,2.5 Q9.5,9.5 5,16.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+      };
+      const sym = SYM[res.result] || '';
       const td1 = idx === 0
         ? `<td class="phase-cell" rowspan="${phaseItems.length}">${PHASE_LABELS[phase]}</td>`
         : '';
@@ -116,9 +121,10 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
   body { font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; margin:1.5cm; font-size:11pt; color:#000; }
-  .title-row { position:relative; text-align:center; margin-bottom:6px; }
-  .title-row h2 { font-size:15pt; margin:0; }
-  .title-row .serial { position:absolute; top:2px; right:0; font-size:10pt; }
+  .title-row { display:flex; align-items:center; margin-bottom:6px; }
+  .title-row h2 { flex:1; text-align:center; font-size:15pt; margin:0; white-space:nowrap; }
+  .title-spacer { min-width:90px; }
+  .title-row .serial { min-width:90px; font-size:10pt; text-align:right; white-space:nowrap; }
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
@@ -128,12 +134,13 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
-  .sign-row { margin-top:12px; display:flex; justify-content:space-between; align-items:center; }
+  .sign-row { margin-top:12px; display:flex; justify-content:flex-start; gap:60px; align-items:center; }
   @media print { body { margin:1cm; } }
 </style>
 </head>
 <body>
 <div class="title-row">
+  <span class="title-spacer"></span>
   <h2>${template.label}施工抽查紀錄表</h2>
   <span class="serial">編號：${template.code}-01-　　　</span>
 </div>
