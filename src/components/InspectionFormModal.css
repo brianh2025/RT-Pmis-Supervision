@@ -2,17 +2,18 @@
 
 .ifm-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.6);
   z-index: 1200;
   display: flex; align-items: flex-start; justify-content: center;
   padding: 24px 16px; overflow-y: auto;
 }
 
 .ifm-modal {
-  background: var(--color-bg1, #fff);
-  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-block-border);
+  border-radius: var(--radius-lg);
   width: 100%; max-width: 1000px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-card);
   display: flex; flex-direction: column;
 }
 
@@ -20,12 +21,12 @@
 .ifm-header {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  border-bottom: 1px solid var(--color-surface-border);
   flex-wrap: wrap;
 }
 .ifm-title {
-  font-size: 15px; font-weight: 600;
-  color: var(--color-text1, #111);
+  font-size: var(--fs-base); font-weight: var(--fw-semi);
+  color: var(--color-text-main);
   margin-right: auto;
 }
 .ifm-header-actions {
@@ -33,26 +34,26 @@
 }
 .ifm-btn {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 10px; font-size: 13px;
-  background: var(--color-bg2, #f3f4f6);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 6px; cursor: pointer;
-  color: var(--color-text1, #111);
+  padding: 5px 10px; font-size: var(--fs-sm);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-block-border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--color-text-main);
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
 }
-.ifm-btn:hover { background: var(--color-bg3, #e5e7eb); }
+.ifm-btn:hover { background: rgba(51, 65, 85, 0.95); }
 .ifm-btn-primary {
-  background: var(--color-primary, #3b82f6);
-  color: #fff; border-color: var(--color-primary, #3b82f6);
+  background: var(--color-primary);
+  color: #fff; border-color: var(--color-primary);
 }
-.ifm-btn-primary:hover { background: var(--color-primary-dark, #2563eb); }
-.ifm-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.ifm-btn-primary:hover { background: var(--color-primary-dark); }
+.ifm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .ifm-btn-close {
   padding: 4px; background: transparent; border: none; cursor: pointer;
-  color: var(--color-text2, #6b7280); border-radius: 4px;
+  color: var(--color-text-muted); border-radius: var(--radius-sm);
 }
-.ifm-btn-close:hover { background: var(--color-bg3, #e5e7eb); }
+.ifm-btn-close:hover { background: var(--color-surface-hover); }
 
 /* ── 主體 ── */
 .ifm-body {
@@ -62,13 +63,13 @@
 
 .ifm-section {
   padding: 12px 14px;
-  background: var(--color-bg2, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
 }
 .ifm-section-title {
-  font-size: 13px; font-weight: 600;
-  color: var(--color-text2, #6b7280);
+  font-size: var(--fs-xs); font-weight: var(--fw-semi);
+  color: var(--color-text-muted);
   margin-bottom: 10px;
   text-transform: uppercase; letter-spacing: 0.5px;
 }
@@ -76,82 +77,96 @@
 /* ── 欄位 ── */
 .ifm-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ifm-label {
-  font-size: 12px; font-weight: 500;
-  color: var(--color-text2, #6b7280);
+  font-size: var(--fs-xs); font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
   display: block; margin-bottom: 3px;
 }
 .ifm-input, .ifm-select {
-  width: 100%; padding: 5px 8px; font-size: 13px;
-  background: var(--color-bg1, #fff);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 5px; color: var(--color-text1, #111);
+  width: 100%; padding: 5px 8px; font-size: var(--fs-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-sm); color: var(--color-text-main);
   box-sizing: border-box;
 }
-.ifm-input[readonly] { background: var(--color-bg2, #f3f4f6); color: var(--color-text2, #6b7280); }
+.ifm-input[readonly] {
+  background: var(--color-background-soft);
+  color: var(--color-text-muted);
+}
 .ifm-select { cursor: pointer; }
-.ifm-hint { font-size: 12px; color: var(--color-primary, #3b82f6); }
+.ifm-hint { font-size: var(--fs-xs); color: var(--color-primary-light); }
 
 .ifm-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ifm-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .ifm-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
 .ifm-radio-group { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
-.ifm-radio { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
-.ifm-radio input { cursor: pointer; }
+.ifm-radio { display: flex; align-items: center; gap: 5px; font-size: var(--fs-sm); cursor: pointer; color: var(--color-text-main); }
+.ifm-radio input { cursor: pointer; accent-color: var(--color-primary-light); }
 
 /* ── 抽查表格 ── */
 .ifm-table-wrap { overflow-x: auto; }
 .ifm-table {
   width: 100%; border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .ifm-table th, .ifm-table td {
-  border: 1px solid var(--color-border, #d1d5db);
+  border: 1px solid var(--color-surface-border);
   padding: 4px 6px; vertical-align: middle;
 }
 .ifm-table th {
-  background: var(--color-bg3, #f3f4f6);
-  font-weight: 600; font-size: 12px;
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-semi); font-size: var(--fs-xs);
   text-align: center;
 }
 .ifm-phase-cell {
-  text-align: center; font-weight: 600; font-size: 12px;
-  background: var(--color-bg2, #f9fafb);
+  text-align: center; font-weight: var(--fw-semi); font-size: var(--fs-xs);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
   width: 48px;
 }
-.ifm-item-name { font-size: 12px; }
-.ifm-key-star { color: #ef4444; margin-right: 2px; }
-.ifm-std { font-size: 11px; color: var(--color-text2, #6b7280); }
+.ifm-item-name { font-size: var(--fs-xs); color: var(--color-text-main); }
+.ifm-key-star { color: var(--color-danger); margin-right: 2px; }
+.ifm-std { font-size: 11px; color: var(--color-text-muted); }
 .ifm-textarea {
   width: 100%; min-width: 0; resize: vertical;
-  padding: 3px 5px; font-size: 12px;
-  background: var(--color-bg1, #fff);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 4px; color: var(--color-text1, #111);
+  padding: 3px 5px; font-size: var(--fs-xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-sm); color: var(--color-text-main);
   box-sizing: border-box; font-family: inherit;
 }
 .ifm-result-cell { text-align: center; white-space: nowrap; }
 .ifm-sym-btn {
   width: 26px; height: 26px;
-  background: var(--color-bg2, #f3f4f6);
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 4px; cursor: pointer;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-sm); cursor: pointer;
   font-size: 14px; font-weight: bold;
-  transition: background 0.12s, color 0.12s;
+  color: var(--color-text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
-.ifm-sym-btn.active { background: var(--color-primary, #3b82f6); color: #fff; border-color: var(--color-primary, #3b82f6); }
+.ifm-sym-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
 
 /* ── 缺失複查 ── */
 .ifm-defect-row { display: flex; gap: 16px; flex-wrap: wrap; }
-.ifm-check { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.ifm-check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-sm); cursor: pointer; color: var(--color-text-main);
+}
+.ifm-check input { accent-color: var(--color-primary-light); }
 
 /* ── 簽署影像 ── */
 .ifm-sign-block { display: flex; flex-direction: column; gap: 6px; }
 .ifm-sign-preview { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .ifm-sign-preview img {
   max-height: 60px; max-width: 200px;
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 4px; object-fit: contain;
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-sm); object-fit: contain;
 }
 
 /* ── 響應式 ── */
