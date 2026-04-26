@@ -134,6 +134,7 @@ function DiaryJournalInner() {
   const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
   const [matCollapsed,     setMatCollapsed]     = useState(true);
   const [inspections,      setInspections]      = useState([]);
+  const [inspCollapsed,    setInspCollapsed]    = useState(true);
   const [showInspModal,    setShowInspModal]    = useState(false);
   const [inspEditing,      setInspEditing]      = useState(null);
   const [inspPrefill,      setInspPrefill]      = useState('');
@@ -217,6 +218,7 @@ function DiaryJournalInner() {
       setMaterialStatus({ entries: [], tests: [] });
       setMatCollapsed(true);
       setInspections([]);
+      setInspCollapsed(true);
       return;
     }
     setLoadingSummary(true);
@@ -252,6 +254,7 @@ function DiaryJournalInner() {
       });
       setMatCollapsed((matEntries.data || []).length === 0);
       setInspections(insp.data || []);
+      setInspCollapsed((insp.data || []).length === 0);
       setLoadingSummary(false);
     });
   }, [projectId, selectedKey, refreshKey]);
@@ -595,7 +598,7 @@ function DiaryJournalInner() {
 
         {/* ── 當日抽查區塊 ── */}
         <div className="dj-coexist-block insp-block">
-          <div className="dj-coexist-title">
+          <div className="dj-coexist-title dj-coexist-title--toggle" onClick={() => setInspCollapsed(v => !v)}>
             <ClipboardCheck size={13} />
             當日抽查
             <span className="dj-insp-count-badge">
@@ -608,91 +611,96 @@ function DiaryJournalInner() {
             )}
             <button
               className="dj-insp-add-btn"
-              onClick={() => handleOpenInspModal('')}
+              onClick={(e) => { e.stopPropagation(); handleOpenInspModal(''); }}
               title="新增抽查記錄"
             >
               <Plus size={11} /> 新增
             </button>
+            {inspCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </div>
 
-          {/* 自主檢查提示 */}
-          {hasSelfInsp && inspections.filter(i => i.inspect_type === '施工抽查').length === 0 && (
-            <div className="dj-selfinsp-prompt" onClick={() => handleOpenInspModal('')}>
-              <AlertTriangle size={12} />
-              廠商本日有自主檢查記錄，尚未登錄施工抽查，點此新增
-            </div>
-          )}
+          {!inspCollapsed && (
+            <>
+              {/* 自主檢查提示 */}
+              {hasSelfInsp && inspections.filter(i => i.inspect_type === '施工抽查').length === 0 && (
+                <div className="dj-selfinsp-prompt" onClick={() => handleOpenInspModal('')}>
+                  <AlertTriangle size={12} />
+                  廠商本日有自主檢查記錄，尚未登錄施工抽查，點此新增
+                </div>
+              )}
 
-          {/* 已登錄的抽查清單 */}
-          {inspections.length > 0 && (
-            <div className="dj-insp-list">
-              {inspections.map(ins => (
-                <div key={ins.id} className="dj-insp-row">
-                  <span className={`dj-insp-result-dot ${
-                    ins.result === '合格' ? 'ok'
-                    : ins.result === '不合格' ? 'bad'
-                    : 'warn'
-                  }`}>
-                    {ins.result === '合格' ? '✓' : ins.result === '不合格' ? '✗' : '○'}
-                  </span>
-                  <span className="dj-insp-item" title={ins.work_item}>{ins.work_item}</span>
-                  <span className="dj-insp-meta">
-                    {ins.location && <span className="dj-insp-loc">{ins.location}</span>}
-                    {ins.inspector && <span className="dj-insp-person">· {ins.inspector}</span>}
-                  </span>
-                  <span className={`dj-insp-result-tag ${
-                    ins.result === '合格' ? 'ok'
-                    : ins.result === '不合格' ? 'bad'
-                    : 'warn'
-                  }`}>{ins.result}</span>
-                  {ins.result === '不合格' && (
-                    <AlertTriangle size={11} className="dj-insp-alert" />
-                  )}
-                  <button className="dj-insp-icon-btn" onClick={() => handleOpenInspModal('', ins)} title="編輯">
-                    <Edit3 size={11} />
-                  </button>
-                  <button className="dj-insp-icon-btn danger" onClick={() => handleDeleteInspection(ins.id)} title="刪除">
-                    <Trash2 size={11} />
+              {/* 已登錄的抽查清單 */}
+              {inspections.length > 0 && (
+                <div className="dj-insp-list">
+                  {inspections.map(ins => (
+                    <div key={ins.id} className="dj-insp-row">
+                      <span className={`dj-insp-result-dot ${
+                        ins.result === '合格' ? 'ok'
+                        : ins.result === '不合格' ? 'bad'
+                        : 'warn'
+                      }`}>
+                        {ins.result === '合格' ? '✓' : ins.result === '不合格' ? '✗' : '○'}
+                      </span>
+                      <span className="dj-insp-item" title={ins.work_item}>{ins.work_item}</span>
+                      <span className="dj-insp-meta">
+                        {ins.location && <span className="dj-insp-loc">{ins.location}</span>}
+                        {ins.inspector && <span className="dj-insp-person">· {ins.inspector}</span>}
+                      </span>
+                      <span className={`dj-insp-result-tag ${
+                        ins.result === '合格' ? 'ok'
+                        : ins.result === '不合格' ? 'bad'
+                        : 'warn'
+                      }`}>{ins.result}</span>
+                      {ins.result === '不合格' && (
+                        <AlertTriangle size={11} className="dj-insp-alert" />
+                      )}
+                      <button className="dj-insp-icon-btn" onClick={() => handleOpenInspModal('', ins)} title="編輯">
+                        <Edit3 size={11} />
+                      </button>
+                      <button className="dj-insp-icon-btn danger" onClick={() => handleDeleteInspection(ins.id)} title="刪除">
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 未抽查的工項（從廠商同步的工項中過濾已抽查過的） */}
+              {pendingInspItems.length > 0 && (
+                <div className="dj-insp-pending">
+                  <div className="dj-insp-pending-title">待抽查工項</div>
+                  <div className="dj-insp-pending-list">
+                    {pendingInspItems.map((wi, i) => (
+                      <button
+                        key={i}
+                        className="dj-insp-pending-chip"
+                        onClick={() => handleOpenInspModal(wi.item_name)}
+                        title={`對「${wi.item_name}」新增抽查`}
+                      >
+                        <Plus size={10} /> {wi.item_name}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="dj-insp-genall-btn"
+                    onClick={() => handleGenAllInsp(pendingInspItems)}
+                    disabled={genAllBusy}
+                    title="批次建立所有待抽查工項（預設合格，可事後修改）"
+                  >
+                    {genAllBusy
+                      ? <Loader2 size={11} className="animate-spin" />
+                      : <ClipboardCheck size={11} />}
+                    一鍵建立 {pendingInspItems.length} 筆抽查（預設合格）
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* 未抽查的工項（從廠商同步的工項中過濾已抽查過的） */}
-          {pendingInspItems.length > 0 && (
-            <div className="dj-insp-pending">
-              <div className="dj-insp-pending-title">待抽查工項</div>
-              <div className="dj-insp-pending-list">
-                {pendingInspItems.map((wi, i) => (
-                  <button
-                    key={i}
-                    className="dj-insp-pending-chip"
-                    onClick={() => handleOpenInspModal(wi.item_name)}
-                    title={`對「${wi.item_name}」新增抽查`}
-                  >
-                    <Plus size={10} /> {wi.item_name}
-                  </button>
-                ))}
-              </div>
-              <button
-                className="dj-insp-genall-btn"
-                onClick={() => handleGenAllInsp(pendingInspItems)}
-                disabled={genAllBusy}
-                title="批次建立所有待抽查工項（預設合格，可事後修改）"
-              >
-                {genAllBusy
-                  ? <Loader2 size={11} className="animate-spin" />
-                  : <ClipboardCheck size={11} />}
-                一鍵建立 {pendingInspItems.length} 筆抽查（預設合格）
-              </button>
-            </div>
-          )}
-
-          {inspections.length === 0 && meaningfulItems.length === 0 && (
-            <div className="dj-empty" style={{ marginTop: 4 }}>
-              尚無抽查記錄，點擊「新增」開始登錄
-            </div>
+              {inspections.length === 0 && meaningfulItems.length === 0 && (
+                <div className="dj-empty" style={{ marginTop: 4 }}>
+                  尚無抽查記錄，點擊「新增」開始登錄
+                </div>
+              )}
+            </>
           )}
         </div>
 
