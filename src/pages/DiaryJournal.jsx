@@ -355,7 +355,7 @@ function DiaryJournalInner() {
         project_id: projectId,
         inspect_date: selectedKey,
         work_item: wi.item_name,
-        inspect_type: '施工抽查',
+        inspect_type: '查驗',
         result: '合格',
         inspector: '',
       }));
@@ -403,7 +403,8 @@ function DiaryJournalInner() {
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
-  const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems);
+  const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems)
+    || inspections.some(i => i.inspect_type === '自主檢查' || i.inspect_type === '自檢');
   const pendingInspItems = meaningfulItems.filter(wi => !inspections.some(ins => ins.work_item === wi.item_name));
   const uninspectedCount = pendingInspItems.length;
 
@@ -622,10 +623,10 @@ function DiaryJournalInner() {
           {!inspCollapsed && (
             <>
               {/* 自主檢查提示 */}
-              {hasSelfInsp && inspections.filter(i => i.inspect_type === '施工抽查').length === 0 && (
+              {hasSelfInsp && !inspections.some(i => i.inspect_type === '查驗') && (
                 <div className="dj-selfinsp-prompt" onClick={() => handleOpenInspModal('')}>
                   <AlertTriangle size={12} />
-                  廠商本日有自主檢查記錄，尚未登錄施工抽查，點此新增
+                  廠商本日有自主檢查記錄，尚未登錄查驗記錄，點此新增
                 </div>
               )}
 
@@ -641,6 +642,7 @@ function DiaryJournalInner() {
                       }`}>
                         {ins.result === '合格' ? '✓' : ins.result === '不合格' ? '✗' : '○'}
                       </span>
+                      <span className="dj-insp-type-tag">{ins.inspect_type || '查驗'}</span>
                       <span className="dj-insp-item" title={ins.work_item}>{ins.work_item}</span>
                       <span className="dj-insp-meta">
                         {ins.location && <span className="dj-insp-loc">{ins.location}</span>}
