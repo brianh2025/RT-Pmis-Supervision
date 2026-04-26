@@ -24,15 +24,15 @@ function todayISO() { return new Date().toISOString().split('T')[0]; }
 function parseRemark(r) { try { return JSON.parse(r) || {}; } catch { return {}; } }
 
 /* ── Google Picker / Drive 工具 ── */
-const GAPI_KEY        = import.meta.env.VITE_GOOGLE_API_KEY        || '';
-const GCLIENT_ID      = import.meta.env.VITE_GOOGLE_CLIENT_ID      || '';
-const DRIVE_FOLDER_ID = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '';
+const GAPI_KEY              = import.meta.env.VITE_GOOGLE_API_KEY                    || '';
+const GCLIENT_ID            = import.meta.env.VITE_GOOGLE_CLIENT_ID                  || '';
+const DRIVE_FOLDER_ID       = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID            || '';
+const INSPECTION_FOLDER_ID  = import.meta.env.VITE_GOOGLE_DRIVE_INSPECTION_FOLDER_ID || '';
 
-/** 取得或建立日期子資料夾（YYYYMMDD），回傳資料夾 ID */
-async function getOrCreateDateFolder(token, date) {
-  const name = (date || todayISO()).replace(/-/g, '');
+/** 通用：取得或建立子資料夾，回傳資料夾 ID */
+async function getOrCreateFolder(token, parentId, name) {
   const q = encodeURIComponent(
-    `'${DRIVE_FOLDER_ID}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    `'${parentId}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
   );
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id)`,
@@ -46,7 +46,7 @@ async function getOrCreateDateFolder(token, date) {
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [DRIVE_FOLDER_ID] }),
+      body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
     }
   );
   const folder = await createRes.json();
@@ -67,17 +67,25 @@ async function makeFilePublic(fileId, token) {
 }
 
 /**
- * 上傳 Blob 至共用雲端硬碟日期子資料夾，設公開，回傳可嵌入縮圖 URL。
- * date 格式 YYYY-MM-DD，用於建立 YYYYMMDD 子資料夾。
+ * 上傳照片至 Drive。
+ * 結構：根目錄 → E0-1施工 / E0-2材料進場 → 工項 → YYYYMMDD → 檔案
+ * category：照片類別（'材料進場' 進 E0-2，其餘進 E0-1）
+ * workItem：工項名稱（作為子資料夾，空值則省略）
  */
-async function uploadToDrive(blob, mimeType, token, date) {
+async function uploadToDrive(blob, mimeType, token, date, category = '', workItem = '') {
   if (!DRIVE_FOLDER_ID) throw new Error('尚未設定 VITE_GOOGLE_DRIVE_FOLDER_ID');
-  const folderId = await getOrCreateDateFolder(token, date);
+
+  const catFolderName = category === '材料進場' ? 'E0-2材料進場' : 'E0-1施工';
+  let parentId = await getOrCreateFolder(token, DRIVE_FOLDER_ID, catFolderName);
+  if (workItem) parentId = await getOrCreateFolder(token, parentId, workItem);
+  const dateFolder = (date || todayISO()).replace(/-/g, '');
+  parentId = await getOrCreateFolder(token, parentId, dateFolder);
+
   const ext      = (mimeType || '').includes('png') ? 'png' : 'jpg';
   const filename = `photo_${Date.now()}.${ext}`;
 
   const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }));
+  form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [parentId] })], { type: 'application/json' }));
   form.append('file', blob);
 
   const uploadRes = await fetch(
@@ -87,6 +95,29 @@ async function uploadToDrive(blob, mimeType, token, date) {
   if (!uploadRes.ok) throw new Error(`Drive 上傳失敗（${uploadRes.status}）`);
   const { id } = await uploadRes.json();
   return makeFilePublic(id, token);
+}
+
+/**
+ * 上傳抽查單 PDF 至 Drive。
+ * 結構：抽查單根目錄 → 工項 → YYYYMMDD → 檔案
+ */
+async function uploadInspectionToDrive(blob, filename, token, workItem, date) {
+  if (!INSPECTION_FOLDER_ID) throw new Error('尚未設定 VITE_GOOGLE_DRIVE_INSPECTION_FOLDER_ID');
+  let parentId = INSPECTION_FOLDER_ID;
+  if (workItem) parentId = await getOrCreateFolder(token, parentId, workItem);
+  const dateFolder = (date || todayISO()).replace(/-/g, '');
+  parentId = await getOrCreateFolder(token, parentId, dateFolder);
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [parentId] })], { type: 'application/json' }));
+  form.append('file', blob);
+
+  const uploadRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink',
+    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+  );
+  if (!uploadRes.ok) throw new Error(`抽查單上傳失敗（${uploadRes.status}）`);
+  return await uploadRes.json();
 }
 
 /** 從本機 File 解析 EXIF */
@@ -979,6 +1010,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
   const [srcTypeChoice,  setSrcTypeChoice]  = useState('');
   const [srcRecords,     setSrcRecords]     = useState([]);
   const [srcRecordId,    setSrcRecordId]    = useState('');
+  const [srcWorkItem,    setSrcWorkItem]    = useState('');
   const [srcLoading,     setSrcLoading]     = useState(false);
 
   const pages = [];
@@ -997,8 +1029,10 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
     setSrcRecords((recs || []).map(r => ({
       id: r.id,
       label: `${r[dateField] || '—'} · ${r[nameField] || '（無名稱）'}`,
+      workItem: r[nameField] || '',
     })));
     setSrcRecordId('');
+    setSrcWorkItem('');
     setSrcLoading(false);
   }
 
@@ -1028,7 +1062,8 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
         const p = photos[i] || {};
         let url = p.url || '';
         if (p.blob && token) {
-          url = await uploadToDrive(p.blob, p.mimeType || 'image/jpeg', token, d.date);
+          const effectiveWorkItem = srcCtx?.workItem || srcWorkItem || '';
+          url = await uploadToDrive(p.blob, p.mimeType || 'image/jpeg', token, d.date, photoCategory || '', effectiveWorkItem);
         }
         return { location: d.location, description: d.description, date: d.date, gps: d.gps, url };
       }));
@@ -1090,7 +1125,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
               {srcTypeChoice && (
                 srcLoading
                   ? <Loader2 size={12} className="animate-spin" />
-                  : <select value={srcRecordId} onChange={e => setSrcRecordId(e.target.value)}
+                  : <select value={srcRecordId} onChange={e => { setSrcRecordId(e.target.value); setSrcWorkItem(srcRecords.find(r => r.id === e.target.value)?.workItem || ''); }}
                       style={{ padding: '3px 6px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: 5, fontSize: '13px', color: 'var(--color-text1)', maxWidth: 160 }}>
                       <option value="">選擇記錄…</option>
                       {srcRecords.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
