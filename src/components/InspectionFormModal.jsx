@@ -2,7 +2,7 @@
    InspectionFormModal.jsx — 施工抽查紀錄表填寫 Modal
    ============================================================ */
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save, Trash2 } from 'lucide-react';
+import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save, Trash2, Camera } from 'lucide-react';
 import {
   INSPECTION_TEMPLATES, TEMPLATE_OPTIONS, INSPECT_TYPE_OPTIONS,
   FLOW_OPTIONS, RESULT_SYMBOL, guessTemplateCode,
@@ -241,9 +241,12 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const signRef      = useRef(null);
   const supervisorRef = useRef(null);
 
-  const [saving,      setSaving]      = useState(false);
-  const [savingDb,    setSavingDb]    = useState(false);
-  const [driveLink,   setDriveLink]   = useState('');
+  const [saving,          setSaving]          = useState(false);
+  const [savingDb,        setSavingDb]        = useState(false);
+  const [driveLink,       setDriveLink]       = useState('');
+  const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
+  const [photoBatches,    setPhotoBatches]    = useState([]);
+  const [photoLoading,    setPhotoLoading]    = useState(false);
 
   /* 切換 template 時重置 items */
   useEffect(() => { setItems({}); }, [templateCode]);
@@ -258,6 +261,25 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     setItems(prev => Object.fromEntries(
       Object.entries(prev).map(([k, v]) => [k, { ...v, actual: '' }])
     ));
+  }
+
+  async function loadPhotoBatches() {
+    if (!supabase || !project?.id || !header.date) return;
+    setPhotoLoading(true);
+    const { data } = await supabase.from('archive_docs')
+      .select('id, title, doc_no, remark')
+      .eq('project_id', project.id).eq('category', 'photo').eq('doc_date', header.date)
+      .order('created_at', { ascending: false });
+    setPhotoBatches(data || []);
+    setPhotoLoading(false);
+    setPhotoPickerOpen(true);
+  }
+
+  function importFromBatch(batch) {
+    const info = JSON.parse(batch.remark || '{}');
+    const locs = [...new Set((info.photos || []).map(p => p.location).filter(Boolean))];
+    if (locs.length) setHeader(h => ({ ...h, location: locs.join('、') }));
+    setPhotoPickerOpen(false);
   }
 
   function readImgFile(file, setter) {
@@ -335,6 +357,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const phases = template ? ['施工前', '施工中', '施工完成'] : [];
 
   return (
+    <>
     <div className="ifm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ifm-modal">
 
@@ -390,8 +413,17 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               </div>
               <div>
                 <label className="ifm-label">檢查位置</label>
-                <input className="ifm-input" value={header.location}
-                  onChange={e => setHeader(h => ({ ...h, location: e.target.value }))} />
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <input className="ifm-input" style={{ flex: 1 }} value={header.location}
+                    onChange={e => setHeader(h => ({ ...h, location: e.target.value }))} />
+                  <button type="button" className="ifm-btn" onClick={loadPhotoBatches}
+                    disabled={!header.date || photoLoading}
+                    style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '12px' }}
+                    title="從當日照片紀錄帶入位置">
+                    {photoLoading ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
+                    導入照片
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="ifm-label">檢查日期</label>
@@ -559,5 +591,32 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
         </div>
       </div>
     </div>
+
+    {/* 照片批次選取 overlay */}
+    {photoPickerOpen && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        onClick={() => setPhotoPickerOpen(false)}>
+        <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 20, minWidth: 320, maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: 12, color: 'var(--color-text-main)' }}>
+            選擇 {header.date} 的照片批次
+          </div>
+          {photoBatches.length === 0
+            ? <div style={{ color: 'var(--color-text-muted)', fontSize: '13px', padding: '8px 0' }}>當日無照片紀錄</div>
+            : photoBatches.map(b => (
+              <button key={b.id} onClick={() => importFromBatch(b)}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', marginBottom: 6, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-main)' }}>
+                {b.title || b.doc_no || '（無標題）'}
+              </button>
+            ))
+          }
+          <button onClick={() => setPhotoPickerOpen(false)}
+            style={{ marginTop: 8, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+            取消
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

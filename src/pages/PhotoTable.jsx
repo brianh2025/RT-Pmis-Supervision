@@ -281,8 +281,9 @@ function openPrintWindow(bodyHtml, windowTitle) {
 
 /* ── 記錄詳情 / 編輯 ── */
 function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
-  const locked = record.tags?.includes('日報已附註');
-  const info   = parseRemark(record.remark);
+  const locked     = record.tags?.includes('日報已附註');
+  const isMaterial = record.source_table === 'material_entries';
+  const info       = parseRemark(record.remark);
 
   const [title,        setTitle]        = useState(record.title || '');
   const [docDate,      setDocDate]      = useState(record.doc_date || '');
@@ -290,7 +291,10 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
   const [photos,       setPhotos]       = useState(info.photos || []);
   const [saving,       setSaving]       = useState(false);
   const [deleting,     setDeleting]     = useState(false);
-  const [subtitle,     setSubtitle]     = useState(SUBTITLE_OPTIONS[0]);
+  const [subtitle,     setSubtitle]     = useState(
+    isMaterial ? SUBTITLE_OPTIONS[1]
+      : (SUBTITLE_OPTIONS.includes(info.subtitle) ? info.subtitle : SUBTITLE_OPTIONS[0])
+  );
   const [replacingIdx, setReplacingIdx] = useState(null);
   const replaceInputRef = useRef(null);
 
@@ -328,7 +332,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
       }));
       const { error } = await supabase.from('archive_docs')
         .update({ title, doc_date: docDate || null, doc_no: docNo || null,
-          remark: JSON.stringify({ count: finalPhotos.length, photos: finalPhotos }) })
+          remark: JSON.stringify({ count: finalPhotos.length, photos: finalPhotos, subtitle }) })
         .eq('id', record.id);
       if (error) throw error;
       onSaved();
@@ -370,7 +374,8 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
           {SUBTITLE_OPTIONS.map(opt => (
             <button key={opt}
               className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
-              style={{ padding: '4px 10px', fontSize: '13px' }}
+              style={{ padding: '4px 10px', fontSize: '13px', opacity: (locked || isMaterial) ? 0.45 : 1, cursor: (locked || isMaterial) ? 'not-allowed' : 'pointer' }}
+              disabled={locked || isMaterial}
               onClick={() => setSubtitle(opt)}>
               {opt}
             </button>
@@ -1003,9 +1008,10 @@ const SOURCE_TYPE_OPTIONS = [
 
 /* ── 報告預覽 ── */
 function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved, srcCtx, photoCategory }) {
+  const isMaterial = srcCtx?.srcTable === 'material_entries';
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
-  const [subtitle,       setSubtitle]       = useState(SUBTITLE_OPTIONS[0]);
+  const [subtitle,       setSubtitle]       = useState(isMaterial ? SUBTITLE_OPTIONS[1] : SUBTITLE_OPTIONS[0]);
   // 附入來源（獨立開啟時顯示）
   const [srcTypeChoice,  setSrcTypeChoice]  = useState('');
   const [srcRecords,     setSrcRecords]     = useState([]);
@@ -1078,7 +1084,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
       const { error } = await supabase.from('archive_docs').insert({
         project_id: projectId, category: 'photo', title,
         doc_no: reportNo || null, doc_date: data[0]?.date || todayISO(),
-        remark: JSON.stringify({ count: photos.length, photos: photoDetails }),
+        remark: JSON.stringify({ count: photos.length, photos: photoDetails, subtitle }),
         file_url: photoDetails[0]?.url || null,
         tags,
         source_table: effectiveSrcTable || null,
@@ -1104,7 +1110,8 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
           {SUBTITLE_OPTIONS.map(opt => (
             <button key={opt}
               className={`pt-btn${subtitle === opt ? ' pt-btn-primary' : ''}`}
-              style={{ padding: '4px 10px', fontSize: '13px' }}
+              style={{ padding: '4px 10px', fontSize: '13px', opacity: isMaterial ? 0.45 : 1, cursor: isMaterial ? 'not-allowed' : 'pointer' }}
+              disabled={isMaterial}
               onClick={() => setSubtitle(opt)}>
               {opt}
             </button>
