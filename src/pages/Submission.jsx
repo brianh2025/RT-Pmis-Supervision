@@ -3,11 +3,36 @@
    Based on MaterialControl MCS spreadsheet interface
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Send, Plus, Trash2, Download, Columns, RotateCcw, Archive, Loader2, CheckCircle } from 'lucide-react';
+import { Send, Plus, Trash2, Download, Columns, RotateCcw, Archive, Loader2, CheckCircle, Upload, ClipboardList } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { uploadPdfToDrive } from '../utils/uploadPdfToDrive';
+import { PlanItemModal } from '../components/PlanItemModal';
 import './MaterialControl.css';
+
+/* ── Google OAuth（與 InspectionFormModal.jsx 相同邏輯） ── */
+const GCLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+let _gisReady = false;
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+async function getGoogleToken() {
+  if (!_gisReady) { await loadScript('https://accounts.google.com/gsi/client'); _gisReady = true; }
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GCLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: resp => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
+    });
+    client.requestAccessToken({ prompt: '' });
+  });
+}
 
 /* ── Column Definitions ── */
 const VER_COL = { k: 'ver', l: 'VER', w: 68, ver: true };
@@ -122,6 +147,9 @@ export function Submission() {
   const [archivingId, setArchivingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [seeding, setSeeding] = useState(false);
+  const [planPdfUrl, setPlanPdfUrl] = useState('');
+  const [showPlanImport, setShowPlanImport] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const saveQueueRef = useRef({});
   const editInputRef = useRef(null);
 
@@ -233,6 +261,35 @@ export function Submission() {
     }, 800);
   }
 
+  /* ── 上傳監造計畫 PDF ── */
+  async function handleUploadPdf(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploadingPdf(true);
+    try {
+      const token = await getGoogleToken();
+      const { webViewLink } = await uploadPdfToDrive(file, token, '材料送審管制表');
+      if (supabase && projectId) {
+        await supabase.from('archive_docs').insert([{
+          project_id: projectId,
+          category: 'submission',
+          title: '材料設備送審管制總表',
+          tags: ['監造計畫', '材料送審管制表'],
+          file_url: webViewLink,
+          doc_date: new Date().toISOString().split('T')[0],
+          created_by: user?.id,
+        }]);
+      }
+      setPlanPdfUrl(webViewLink);
+      alert('上傳完成！點擊「開始定項」設定管制項目');
+    } catch (err) {
+      alert(`上傳失敗：${err.message}`);
+    } finally {
+      setUploadingPdf(false);
+    }
+  }
+
   /* ── Seed 材料送審預設範本 ── */
   async function seedSub() {
     if (!supabase) return;
@@ -330,6 +387,18 @@ export function Submission() {
             <button className="mcs-btn mcs-btn-seed" onClick={seedSub} disabled={seeding}>
               {seeding ? <Loader2 size={12} className="mcs-spin" /> : <RotateCcw size={12} />}
               載入預設範本
+            </button>
+          )}
+          {tab === 0 && (
+            <label className="mcs-btn" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {uploadingPdf ? <Loader2 size={12} className="mcs-spin" /> : <Upload size={12} />}
+              上傳監造計畫 PDF
+              <input type="file" accept=".pdf" hidden onChange={handleUploadPdf} />
+            </label>
+          )}
+          {tab === 0 && planPdfUrl && (
+            <button className="mcs-btn mcs-btn-primary" onClick={() => setShowPlanImport(true)}>
+              <ClipboardList size={12} /> 開始定項
             </button>
           )}
           <button className="mcs-btn mcs-btn-danger" onClick={deleteSel} disabled={!selected.size}>
@@ -453,6 +522,17 @@ export function Submission() {
 
       {/* Toast */}
       {toast && <ArchiveToast message={toast} onClose={() => setToast(null)} />}
+
+      {/* 定項 Modal */}
+      {showPlanImport && (
+        <PlanItemModal
+          mode="submission"
+          project={{ id: projectId }}
+          pdfUrl={planPdfUrl}
+          onClose={() => setShowPlanImport(false)}
+          onSaved={() => { setShowPlanImport(false); loadTable(0).then(sub => setTables(prev => [sub, prev[1]])); }}
+        />
+      )}
     </div>
   );
 }

@@ -132,6 +132,8 @@ function DiaryJournalInner() {
   const [summary,          setSummary]          = useState(null);
   const [loadingSummary,   setLoadingSummary]   = useState(false);
   const [materialStatus,   setMaterialStatus]   = useState({ entries: [], tests: [] });
+  const [matLinkedIds,     setMatLinkedIds]     = useState(new Set());
+  const [matNeedsLab,      setMatNeedsLab]      = useState(false);
   const [matCollapsed,     setMatCollapsed]     = useState(true);
   const [inspections,      setInspections]      = useState([]);
   const [inspCollapsed,    setInspCollapsed]    = useState(true);
@@ -242,19 +244,33 @@ function DiaryJournalInner() {
         .select('*')
         .eq('project_id', projectId).eq('inspect_date', selectedKey)
         .order('created_at', { ascending: true }),
-    ]).then(([items, log, prog, matEntries, matTests, insp]) => {
+    ]).then(async ([items, log, prog, matEntries, matTests, insp]) => {
       setSummary({
         workItems: items.data || [],
         log:       log.data   || null,
         progress:  prog.data  || null,
       });
-      setMaterialStatus({
-        entries: matEntries.data || [],
-        tests:   matTests.data   || [],
-      });
-      setMatCollapsed((matEntries.data || []).length === 0);
+      const entries = matEntries.data || [];
+      const tests   = matTests.data   || [];
+      setMaterialStatus({ entries, tests });
+      setMatCollapsed(entries.length === 0);
       setInspections(insp.data || []);
       setInspCollapsed((insp.data || []).length === 0);
+
+      // 查詢當日 material_entries 是否已有指附照片
+      const entryIds = entries.map(e => e.id);
+      if (entryIds.length > 0) {
+        const { data: linked } = await supabase.from('archive_docs')
+          .select('submission_id')
+          .eq('project_id', projectId).eq('category', 'photo')
+          .eq('source_table', 'material_entries').in('submission_id', entryIds);
+        const ids = new Set((linked || []).map(p => p.submission_id).filter(Boolean));
+        setMatLinkedIds(ids);
+        setMatNeedsLab(ids.size === entryIds.length && tests.length === 0);
+      } else {
+        setMatLinkedIds(new Set());
+        setMatNeedsLab(false);
+      }
       setLoadingSummary(false);
     });
   }, [projectId, selectedKey, refreshKey]);
@@ -560,9 +576,10 @@ function DiaryJournalInner() {
           <div className="dj-coexist-title dj-coexist-title--toggle" onClick={() => setMatCollapsed(v => !v)}>
             <Package size={13} />
             材料進場管制
-            <span className="dj-mat-summary-badge">
-              進場 {materialStatus.entries.length} 筆 · 試驗 {materialStatus.tests.length} 筆
-            </span>
+            {materialStatus.entries.length > 0 && matLinkedIds.size === materialStatus.entries.length
+              ? <span className="dj-mat-summary-badge" style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}>管制完成 ✓</span>
+              : <span className="dj-mat-summary-badge">進場 {materialStatus.entries.length} 筆 · 試驗 {materialStatus.tests.length} 筆</span>
+            }
             {matCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </div>
           {!matCollapsed && (
@@ -570,20 +587,33 @@ function DiaryJournalInner() {
               {detectedMaterials.length > 0 ? (
                 <div className="dj-mat-rows">
                   {detectedMaterials.map(mat => {
-                    const ec = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword)).length;
+                    const matchedEntries = materialStatus.entries.filter(e => (e.name || '').includes(mat.keyword));
+                    const ec = matchedEntries.length;
+                    const allLinked = ec > 0 && matchedEntries.every(e => matLinkedIds.has(e.id));
                     const tc = materialStatus.tests.filter(t => (t.name || '').includes(mat.keyword)).length;
                     return (
                       <div key={mat.keyword} className="dj-mat-row">
                         <span className="dj-mat-name">{mat.label}</span>
-                        <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
-                          進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
-                        </span>
-                        <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
-                          試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
-                        </span>
+                        {allLinked ? (
+                          <span className="dj-mat-badge ok">✅ 完成</span>
+                        ) : (
+                          <>
+                            <span className={`dj-mat-badge${ec > 0 ? ' ok' : ' warn'}`}>
+                              進場 {ec > 0 ? `${ec} 筆` : '未登錄'}
+                            </span>
+                            <span className={`dj-mat-badge${tc > 0 ? ' ok' : ' warn'}`}>
+                              試驗 {tc > 0 ? `${tc} 筆` : '未登錄'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     );
                   })}
+                  {matNeedsLab && (
+                    <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: 4, paddingLeft: 2 }}>
+                      ⚠️ 提醒：請至材料管制登錄試驗預定日期
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="dj-empty" style={{ marginBottom: 6 }}>

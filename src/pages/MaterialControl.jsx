@@ -4,11 +4,36 @@
    Tab 1: 檢試驗管制表（mcs_test）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ClipboardCheck, Plus, Trash2, Download, Columns, RotateCcw, ChevronDown, ChevronUp, Loader2, Camera } from 'lucide-react';
+import { ClipboardCheck, Plus, Trash2, Download, Columns, RotateCcw, ChevronDown, ChevronUp, Loader2, Camera, Upload, ClipboardList } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { uploadPdfToDrive } from '../utils/uploadPdfToDrive';
+import { PlanItemModal } from '../components/PlanItemModal';
 import './MaterialControl.css';
+
+/* ── Google OAuth（與 InspectionFormModal.jsx 相同邏輯） ── */
+const GCLIENT_ID_MC = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+let _gisReadyMc = false;
+function loadScriptMc(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+async function getGoogleTokenMc() {
+  if (!_gisReadyMc) { await loadScriptMc('https://accounts.google.com/gsi/client'); _gisReadyMc = true; }
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GCLIENT_ID_MC,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: resp => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
+    });
+    client.requestAccessToken({ prompt: '' });
+  });
+}
 
 /* ── Column Definitions ── */
 const VER_COL = { k: 'ver', l: 'VER', w: 68, ver: true };
@@ -178,6 +203,11 @@ export function MaterialControl() {
   const [tstToast, setTstToast] = useState(null);
   // { type: 'match'|'nomatch', matched: tstRow|null, entry: entryRow }
 
+  // 監造計畫 PDF 定項（Tab 1）
+  const [tstPlanPdfUrl, setTstPlanPdfUrl] = useState('');
+  const [showTstPlanImport, setShowTstPlanImport] = useState(false);
+  const [uploadingTstPdf, setUploadingTstPdf] = useState(false);
+
   const saveQueueRef = useRef({});
   const editInputRef = useRef(null);
 
@@ -297,6 +327,34 @@ export function MaterialControl() {
     const t = await loadTst();
     setTstRows(t);
     setSeeding(false);
+  }
+
+  async function handleUploadTstPdf(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploadingTstPdf(true);
+    try {
+      const token = await getGoogleTokenMc();
+      const { webViewLink } = await uploadPdfToDrive(file, token, '材料檢試驗管制表');
+      if (supabase && projectId) {
+        await supabase.from('archive_docs').insert([{
+          project_id: projectId,
+          category: 'submission',
+          title: '材料設備檢試驗管制總表',
+          tags: ['監造計畫', '材料檢試驗管制表'],
+          file_url: webViewLink,
+          doc_date: new Date().toISOString().split('T')[0],
+          created_by: user?.id,
+        }]);
+      }
+      setTstPlanPdfUrl(webViewLink);
+      alert('上傳完成！點擊「開始定項」設定管制項目');
+    } catch (err) {
+      alert(`上傳失敗：${err.message}`);
+    } finally {
+      setUploadingTstPdf(false);
+    }
   }
 
   async function addRow() {
@@ -494,15 +552,31 @@ export function MaterialControl() {
     if (col.photoLink) {
       const count = photoCountMap[row.id] || 0;
       const nav = photoNavMap[row.id] || 'none';
-      const autoQ = nav === 'linked' ? 'open' : nav === 'date' ? 'date' : 'new';
+      const isLinked = nav === 'linked';
+      const autoQ = isLinked ? 'open' : nav === 'date' ? 'date' : 'new';
       const dateQ = nav === 'date' && row.entry_date ? `&src_date=${row.entry_date}` : '';
+      const prefix = (row.name || '').slice(0, 4);
+      const matchedTst = tstRows.find(t => t.name?.includes(prefix));
+      const needsLabDate = isLinked && matchedTst && !matchedTst.s_date;
       return (
-        <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 2px' }}>
-          <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
-            onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}${dateQ}`)}>
-            <Camera size={11} />
-            {count > 0 ? count : ''}
-          </button>
+        <td key={col.k} style={{ width: col.w, minWidth: col.w, textAlign: 'center', padding: '1px 4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <button className="mcs-photo-btn" title={count > 0 ? `查看 ${count} 筆照片記錄` : '新增照片記錄'}
+              onClick={() => navigate(`/projects/${projectId}/photos?src_table=material_entries&src_id=${row.id}&src_name=${encodeURIComponent(row.name || '材料照片')}&auto=${autoQ}${dateQ}`)}>
+              <Camera size={11} />
+              {count > 0 ? count : ''}
+            </button>
+            {isLinked && (
+              <span style={{ fontSize: '10px', color: 'var(--color-success)', fontWeight: 600, lineHeight: 1 }}>✓ 完成</span>
+            )}
+            {needsLabDate && (
+              <button onClick={() => setTab(1)}
+                style={{ fontSize: '10px', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.3 }}
+                title="點此前往試驗管制表設定抽樣日期">
+                試驗日期待設
+              </button>
+            )}
+          </div>
         </td>
       );
     }
@@ -648,6 +722,18 @@ export function MaterialControl() {
               載入預設範本
             </button>
           )}
+          {tab === 1 && (
+            <label className="mcs-btn" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {uploadingTstPdf ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              上傳監造計畫 PDF
+              <input type="file" accept=".pdf" hidden onChange={handleUploadTstPdf} />
+            </label>
+          )}
+          {tab === 1 && tstPlanPdfUrl && (
+            <button className="mcs-btn mcs-btn-add" onClick={() => setShowTstPlanImport(true)}>
+              <ClipboardList size={12} /> 開始定項
+            </button>
+          )}
         </div>
         <div className="mcs-toolbar-group">
           <span className="mcs-grp-label">表格</span>
@@ -729,6 +815,17 @@ export function MaterialControl() {
           }
         </span>
       </div>
+
+      {/* 檢試驗管制定項 Modal */}
+      {showTstPlanImport && (
+        <PlanItemModal
+          mode="test"
+          project={{ id: projectId }}
+          pdfUrl={tstPlanPdfUrl}
+          onClose={() => setShowTstPlanImport(false)}
+          onSaved={async () => { setShowTstPlanImport(false); const t = await loadTst(); setTstRows(t); }}
+        />
+      )}
 
       {/* 試驗管制材料提示 Toast */}
       {tstToast && (
