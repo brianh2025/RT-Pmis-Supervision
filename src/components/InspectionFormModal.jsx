@@ -101,7 +101,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
         : '';
       return `<tr>
         ${td1}
-        <td class="item-cell">${it.key ? '★' : ''}${it.name}</td>
+        <td class="item-cell">${it.name}</td>
         <td class="std-cell">${it.standard}</td>
         <td class="actual-cell">${(res.actual || '').replace(/\n/g, '<br>')}</td>
         <td class="result-cell">${sym}</td>
@@ -534,7 +534,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                             </td>
                           )}
                           <td className="ifm-item-name">
-                            {it.key && <span className="ifm-key-star">★</span>}{it.name}
+                            {it.name}
                           </td>
                           <td className="ifm-std">{it.standard}</td>
                           <td>
