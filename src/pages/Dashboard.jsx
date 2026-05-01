@@ -254,6 +254,12 @@ export function Dashboard() {
     };
   }, []);
 
+  // 若目前選中的篩選標籤已消失（如刪除最後一個該狀態專案），自動重設為「全部」
+  useEffect(() => {
+    const conditional = { completed: completedCount, accepted: acceptedCount, suspended: suspendedCount, pending: pendingCount, starred: starredCount };
+    if (statusFilter in conditional && conditional[statusFilter] === 0) setStatusFilter('all');
+  }, [statusFilter, completedCount, acceptedCount, suspendedCount, pendingCount, starredCount]);
+
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
@@ -379,7 +385,7 @@ export function Dashboard() {
   const handleDrop = useCallback((e, targetId) => {
     e.preventDefault();
     const srcId = dragSrcId.current;
-    if (!srcId || srcId === targetId) { setDragOverId(null); return; }
+    if (!srcId || srcId === targetId) { e.stopPropagation(); setDragOverId(null); return; }
     setCardOrder(prev => {
       const projectIds = projects.map(p => p.id);
       // 確保新增的專案（不在舊 cardOrder 裡）也能參與排序
@@ -399,7 +405,8 @@ export function Dashboard() {
       return next;
     });
     setDragOverId(null);
-    dragSrcId.current = null;
+    // 不在此清除 dragSrcId，讓事件冒泡到父層（dash-project-grid）
+    // 由父層判斷是否需要取消收藏，dragSrcId 由 handleDragEnd 統一清除
   }, [projects, user]);
 
   const handleDragEnd = useCallback(() => { setDragOverId(null); dragSrcId.current = null; }, []);
@@ -437,7 +444,7 @@ export function Dashboard() {
     ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
     { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
     { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
-    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
+    ...(completedCount > 0 ? [{ key: 'completed', label: '已完工', count: completedCount, color: 'var(--color-success)' }] : []),
     ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
@@ -588,7 +595,7 @@ export function Dashboard() {
 
       <div className="pl-main-wrapper">
         {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
+        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
