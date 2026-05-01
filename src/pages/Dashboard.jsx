@@ -379,7 +379,7 @@ export function Dashboard() {
   const handleDrop = useCallback((e, targetId) => {
     e.preventDefault();
     const srcId = dragSrcId.current;
-    if (!srcId || srcId === targetId) { setDragOverId(null); return; }
+    if (!srcId || srcId === targetId) { e.stopPropagation(); setDragOverId(null); return; }
     setCardOrder(prev => {
       const projectIds = projects.map(p => p.id);
       // 確保新增的專案（不在舊 cardOrder 裡）也能參與排序
@@ -399,7 +399,8 @@ export function Dashboard() {
       return next;
     });
     setDragOverId(null);
-    dragSrcId.current = null;
+    // 不在此清除 dragSrcId，讓事件冒泡到父層（dash-project-grid）
+    // 由父層判斷是否需要取消收藏，dragSrcId 由 handleDragEnd 統一清除
   }, [projects, user]);
 
   const handleDragEnd = useCallback(() => { setDragOverId(null); dragSrcId.current = null; }, []);
@@ -587,7 +588,7 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
+        {/* Topbar 僅行動版顯示（總覽模式：圖示按鈕、隱藏漢堡鍵） */}
         <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
