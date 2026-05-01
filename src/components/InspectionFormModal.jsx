@@ -171,9 +171,9 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   <tr>
     <td class="hdr-label">施工流程</td>
     <td colspan="4">
-      ${header.flow === '施工前' ? '☑' : '☐'} 施工前
-      &emsp;${header.flow === '施工中檢查' ? '☑' : '☐'} 施工中檢查
-      &emsp;${header.flow === '施工完成檢查' ? '☑' : '☐'} 施工完成檢查
+      ${(header.flows||[]).includes('施工前') ? '☑' : '☐'} 施工前
+      &emsp;${(header.flows||[]).includes('施工中檢查') ? '☑' : '☐'} 施工中檢查
+      &emsp;${(header.flows||[]).includes('施工完成檢查') ? '☑' : '☐'} 施工完成檢查
     </td>
   </tr>
   <tr>
@@ -223,8 +223,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     location:    inspection?.location    || '',
     date:        inspection?.inspect_date || new Date().toISOString().split('T')[0],
     inspectType: inspection?.inspect_type || '',
-    flow:        '',
-    inspector:   inspection?.inspector   || '',
+    flows:       [],
   });
 
   /* 各子項目結果 { [itemName]: { result: 'pass'|'fail'|'na'|'', actual: '' } } */
@@ -338,7 +337,6 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
         work_item:    template.label,
         location:     header.location || null,
         inspect_type: header.inspectType || null,
-        inspector:    header.inspector || null,
         result:       overallResult,
         remark:       defect.resolved ? '已立即完成改善' : defect.unresolved ? '未完成改善，需追蹤' : null,
       };
@@ -428,12 +426,6 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <input className="ifm-input" type="date" value={header.date}
                   onChange={e => setHeader(h => ({ ...h, date: e.target.value }))} />
               </div>
-              <div>
-                <label className="ifm-label">監造人員</label>
-                <input className="ifm-input" value={header.inspector}
-                  placeholder="姓名"
-                  onChange={e => setHeader(h => ({ ...h, inspector: e.target.value }))} />
-              </div>
             </div>
             <div className="ifm-grid-2" style={{ marginTop: 8 }}>
               <div>
@@ -454,9 +446,12 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <div className="ifm-radio-group">
                   {FLOW_OPTIONS.map(o => (
                     <label key={o} className="ifm-radio">
-                      <input type="radio" name="flow" value={o}
-                        checked={header.flow === o}
-                        onChange={() => setHeader(h => ({ ...h, flow: o }))} />
+                      <input type="checkbox" value={o}
+                        checked={(header.flows || []).includes(o)}
+                        onChange={() => setHeader(h => {
+                          const flows = h.flows || [];
+                          return { ...h, flows: flows.includes(o) ? flows.filter(f => f !== o) : [...flows, o] };
+                        })} />
                       {o}
                     </label>
                   ))}
