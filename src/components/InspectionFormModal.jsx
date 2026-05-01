@@ -103,7 +103,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
         ${td1}
         <td class="item-cell">${it.key ? '★' : ''}${it.name}</td>
         <td class="std-cell">${it.standard}</td>
-        <td class="actual-cell">${(res.actual || it.standard).replace(/\n/g, '<br>')}</td>
+        <td class="actual-cell">${(res.actual || '').replace(/\n/g, '<br>')}</td>
         <td class="result-cell">${sym}</td>
       </tr>`;
     }).join('');
@@ -473,18 +473,25 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               <div className="ifm-section-title" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span>抽查項目</span>
                 <button className="ifm-btn" style={{ fontSize:'var(--fs-xs)', padding:'2px 8px' }} onClick={clearAllActual}>
-                  <Trash2 size={12} />清空實際欄
+                  <Trash2 size={12} />實際欄留空白
                 </button>
               </div>
               <div className="ifm-table-wrap">
                 <table className="ifm-table">
+                  <colgroup>
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '26%' }} />
+                    <col style={{ width: '38%' }} />
+                    <col style={{ width: '13%' }} />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ width: 48 }}>施工階段</th>
-                      <th style={{ width: 130 }}>管理項目</th>
+                      <th>施工階段</th>
+                      <th>管理項目</th>
                       <th>依設計圖說、規範之抽查標準</th>
-                      <th style={{ width: 160 }}>實際抽查情形（含檢查數據）</th>
-                      <th style={{ width: 80 }}>抽查結果</th>
+                      <th>實際抽查情形（含檢查數據）</th>
+                      <th>抽查結果</th>
                     </tr>
                   </thead>
                   <tbody>
