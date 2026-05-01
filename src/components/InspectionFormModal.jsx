@@ -526,35 +526,37 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               onClick={() => setDefectOpen(o => !o)}>
               缺失複查結果 {defectOpen ? '▲' : '▼'}
             </div>
-            {defectOpen && <div className="ifm-defect-row">
-              <label className="ifm-check">
-                <input type="checkbox" checked={defect.resolved}
-                  onChange={e => setDefect(d => ({ ...d, resolved: e.target.checked }))} />
-                已立即完成改善（檢附改善前中後照片）
-              </label>
-              <label className="ifm-check">
-                <input type="checkbox" checked={defect.unresolved}
-                  onChange={e => setDefect(d => ({ ...d, unresolved: e.target.checked }))} />
-                未完成改善，填具「不符合事項追蹤改善表」
-              </label>
-            </div>
-            <div className="ifm-grid-3" style={{ marginTop: 8 }}>
-              <div>
-                <label className="ifm-label">複查日期</label>
-                <input className="ifm-input" type="date" value={defect.date}
-                  onChange={e => setDefect(d => ({ ...d, date: e.target.value }))} />
+            {defectOpen && <>
+              <div className="ifm-defect-row">
+                <label className="ifm-check">
+                  <input type="checkbox" checked={defect.resolved}
+                    onChange={e => setDefect(d => ({ ...d, resolved: e.target.checked }))} />
+                  已立即完成改善（檢附改善前中後照片）
+                </label>
+                <label className="ifm-check">
+                  <input type="checkbox" checked={defect.unresolved}
+                    onChange={e => setDefect(d => ({ ...d, unresolved: e.target.checked }))} />
+                  未完成改善，填具「不符合事項追蹤改善表」
+                </label>
               </div>
-              <div>
-                <label className="ifm-label">複查人員職稱</label>
-                <input className="ifm-input" value={defect.reviewer}
-                  onChange={e => setDefect(d => ({ ...d, reviewer: e.target.value }))} />
+              <div className="ifm-grid-3" style={{ marginTop: 8 }}>
+                <div>
+                  <label className="ifm-label">複查日期</label>
+                  <input className="ifm-input" type="date" value={defect.date}
+                    onChange={e => setDefect(d => ({ ...d, date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="ifm-label">複查人員職稱</label>
+                  <input className="ifm-input" value={defect.reviewer}
+                    onChange={e => setDefect(d => ({ ...d, reviewer: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="ifm-label">簽名（文字）</label>
+                  <input className="ifm-input" value={defect.reviewSign}
+                    onChange={e => setDefect(d => ({ ...d, reviewSign: e.target.value }))} />
+                </div>
               </div>
-              <div>
-                <label className="ifm-label">簽名（文字）</label>
-                <input className="ifm-input" value={defect.reviewSign}
-                  onChange={e => setDefect(d => ({ ...d, reviewSign: e.target.value }))} />
-              </div>
-            </div>}
+            </>}
           </div>
 
           {/* 簽署影像 */}
