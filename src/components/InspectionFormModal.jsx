@@ -451,8 +451,8 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               </div>
               <div className="ifm-basic-col-wide">
                 <label className="ifm-label">檢查位置</label>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <input className="ifm-input" style={{ flex: 1 }} value={header.location}
+                <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                  <textarea className="ifm-textarea" style={{ flex: 1, resize: 'vertical' }} rows={2} value={header.location}
                     onChange={e => setHeader(h => ({ ...h, location: e.target.value }))} />
                   <button type="button" className="ifm-btn" onClick={loadPhotoBatches}
                     disabled={photoLoading}
