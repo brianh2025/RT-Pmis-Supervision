@@ -241,6 +241,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
 
   const [defectOpen,      setDefectOpen]      = useState(false);
   const [signOpen,        setSignOpen]        = useState(false);
+  const [diaryHintDates,  setDiaryHintDates]  = useState([]);
   const [saving,          setSaving]          = useState(false);
   const [savingDb,        setSavingDb]        = useState(false);
   const [driveLink,       setDriveLink]       = useState('');
@@ -250,6 +251,22 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
 
   /* 切換 template 時重置 items */
   useEffect(() => { setItems({}); }, [templateCode]);
+
+  /* 查本月日誌中該工項出現的日期 */
+  useEffect(() => {
+    if (!template || !supabase || !project?.id) { setDiaryHintDates([]); return; }
+    const ym = (header.date || new Date().toISOString().split('T')[0]).substring(0, 7);
+    supabase.from('daily_report_items')
+      .select('log_date')
+      .eq('project_id', project.id)
+      .eq('item_name', template.label)
+      .gte('log_date', `${ym}-01`)
+      .lte('log_date', `${ym}-31`)
+      .then(({ data }) => {
+        const dates = [...new Set((data || []).map(d => d.log_date))].sort();
+        setDiaryHintDates(dates);
+      });
+  }, [templateCode, project?.id, header.date?.substring(0, 7)]);
 
   function setResult(itemName, result) {
     setItems(prev => ({ ...prev, [itemName]: { ...(prev[itemName] || {}), result } }));
@@ -402,6 +419,26 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
           <div className="ifm-section">
             <div className="ifm-section-title">基本資料</div>
             <div className="ifm-basic-row">
+              <div>
+                <label className="ifm-label">檢查日期</label>
+                <input className="ifm-input" type="date" value={header.date}
+                  onChange={e => setHeader(h => ({ ...h, date: e.target.value }))} />
+                {diaryHintDates.length > 0 && (
+                  <div style={{ marginTop: 3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {diaryHintDates.map(d => (
+                      <button key={d} onClick={() => setHeader(h => ({ ...h, date: d }))}
+                        style={{
+                          fontSize: '11px', padding: '1px 6px', borderRadius: 4, cursor: 'pointer',
+                          border: '1px solid var(--color-primary-light)',
+                          background: header.date === d ? 'var(--color-primary)' : 'transparent',
+                          color: header.date === d ? '#fff' : 'var(--color-primary-light)',
+                        }}>
+                        {parseInt(d.split('-')[2])}日
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="ifm-basic-col-wide">
                 <label className="ifm-label">檢查位置</label>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -415,11 +452,6 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                     導入照片
                   </button>
                 </div>
-              </div>
-              <div>
-                <label className="ifm-label">檢查日期</label>
-                <input className="ifm-input" type="date" value={header.date}
-                  onChange={e => setHeader(h => ({ ...h, date: e.target.value }))} />
               </div>
               <div className="ifm-basic-col-wide">
                 <label className="ifm-label">檢查時機</label>
