@@ -20,7 +20,7 @@ import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut,
+  GripHorizontal, LogOut, Star,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -560,6 +560,13 @@ export function Dashboard() {
                 材料未回填
               </span>
             )}
+            <button
+              className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
+              title={p.is_starred ? '移出常用' : '加入常用'}
+              onClick={e => { e.stopPropagation(); toggleStar(e, p); }}
+            >
+              <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} color={p.is_starred ? '#f59e0b' : 'currentColor'} />
+            </button>
             <button
               className="card-edit-btn"
               title="編輯工程資料"
