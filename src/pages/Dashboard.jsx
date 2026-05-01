@@ -381,7 +381,14 @@ export function Dashboard() {
     const srcId = dragSrcId.current;
     if (!srcId || srcId === targetId) { setDragOverId(null); return; }
     setCardOrder(prev => {
-      const base = prev || projects.map(p => p.id);
+      const projectIds = projects.map(p => p.id);
+      // 確保新增的專案（不在舊 cardOrder 裡）也能參與排序
+      const base = prev
+        ? [
+            ...prev.filter(id => projectIds.includes(id)),
+            ...projectIds.filter(id => !prev.includes(id))
+          ]
+        : projectIds;
       const from = base.indexOf(srcId);
       const to   = base.indexOf(targetId);
       if (from === -1 || to === -1) return prev;
@@ -544,6 +551,13 @@ export function Dashboard() {
               onClick={e => { e.stopPropagation(); setEditTarget(p); }}
             >
               <Pencil size={12} />
+            </button>
+            <button
+              className="card-delete-btn"
+              title="刪除工程"
+              onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+            >
+              <Trash2 size={12} />
             </button>
           </div>
         </div>
