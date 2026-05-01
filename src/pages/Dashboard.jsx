@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
+import { ReportReminderBanner } from '../components/ReportReminderBanner';
 import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
@@ -644,12 +645,17 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 歡迎詞 */}
-            {showWelcome && (
+            {/* 整合：歡迎詞 + 提前預警 */}
+            {(showWelcome || projects.length > 0) && (
               <div className="dash-info-strip">
-                <span className="welcome-msg-inline animate-fade-out">
-                  歡迎進行監造作業。
-                </span>
+                {showWelcome && (
+                  <span className="welcome-msg-inline animate-fade-out">
+                    歡迎進行監造作業。
+                  </span>
+                )}
+                {projects.length > 0 && (
+                  <ReportReminderBanner projectId={projects[0]?.id} />
+                )}
               </div>
             )}
 
