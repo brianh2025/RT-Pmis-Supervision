@@ -149,11 +149,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </div>
 <table>
   <colgroup>
-    <col style="width:15%">
+    <col style="width:12%">
     <col style="width:25%">
     <col style="width:25%">
-    <col style="width:30%">
-    <col style="width:5%">
+    <col style="width:28%">
+    <col style="width:9%">
   </colgroup>
   <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
@@ -479,11 +479,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               <div className="ifm-table-wrap">
                 <table className="ifm-table">
                   <colgroup>
-                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '12%' }} />
                     <col style={{ width: '25%' }} />
                     <col style={{ width: '25%' }} />
-                    <col style={{ width: '30%' }} />
-                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '28%' }} />
+                    <col style={{ width: '9%' }} />
                   </colgroup>
                   <thead>
                     <tr>
