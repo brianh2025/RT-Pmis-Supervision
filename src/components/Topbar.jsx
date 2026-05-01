@@ -36,17 +36,20 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
         {onHelp && (
           <button className="pl-topbar-help-btn" onClick={onHelp} title="使用說明">
             <HelpCircle size={14} />
+            <span>說明</span>
           </button>
         )}
         {/* 總覽頁行動版專用：Excel匯入（次要）+ 登出（危險） */}
         {isGlobalDashboard && onShowExcel && (
-          <button className="pl-topbar-excel-btn" onClick={onShowExcel} title="Excel 批次匯入">
+          <button className="pl-topbar-excel-btn" onClick={onShowExcel}>
             <FileSpreadsheet size={15} />
+            <span>匯入</span>
           </button>
         )}
         {isGlobalDashboard && onSignOut && (
-          <button className="pl-topbar-logout-btn" onClick={onSignOut} title="登出系統">
+          <button className="pl-topbar-logout-btn" onClick={onSignOut}>
             <LogOut size={15} />
+            <span>登出</span>
           </button>
         )}
       </div>
