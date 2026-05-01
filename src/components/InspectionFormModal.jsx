@@ -245,9 +245,10 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const [saving,          setSaving]          = useState(false);
   const [savingDb,        setSavingDb]        = useState(false);
   const [driveLink,       setDriveLink]       = useState('');
-  const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
-  const [photoBatches,    setPhotoBatches]    = useState([]);
-  const [photoLoading,    setPhotoLoading]    = useState(false);
+  const [photoPickerOpen,   setPhotoPickerOpen]   = useState(false);
+  const [photoBatches,      setPhotoBatches]      = useState([]);
+  const [photoLoading,      setPhotoLoading]      = useState(false);
+  const [pickerDateFilter,  setPickerDateFilter]  = useState('');
 
   /* 切換 template 時重置 items */
   useEffect(() => { setItems({}); }, [templateCode]);
@@ -284,13 +285,15 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   }
 
   async function loadPhotoBatches() {
-    if (!supabase || !project?.id || !header.date) return;
+    if (!supabase || !project?.id) return;
     setPhotoLoading(true);
     const { data } = await supabase.from('archive_docs')
       .select('id, title, doc_no, remark, doc_date')
-      .eq('project_id', project.id).eq('category', 'photo').eq('doc_date', header.date)
-      .order('created_at', { ascending: false });
+      .eq('project_id', project.id).eq('category', 'photo')
+      .order('doc_date', { ascending: false })
+      .limit(120);
     setPhotoBatches(data || []);
+    setPickerDateFilter('');
     setPhotoLoading(false);
     setPhotoPickerOpen(true);
   }
@@ -452,7 +455,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                   <input className="ifm-input" style={{ flex: 1 }} value={header.location}
                     onChange={e => setHeader(h => ({ ...h, location: e.target.value }))} />
                   <button type="button" className="ifm-btn" onClick={loadPhotoBatches}
-                    disabled={!header.date || photoLoading}
+                    disabled={photoLoading}
                     style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '12px', borderColor: 'var(--color-primary-light)', color: 'var(--color-primary-light)' }}
                     title="從當日照片紀錄帶入位置、日期">
                     {photoLoading ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
@@ -638,22 +641,32 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     {photoPickerOpen && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         onClick={() => setPhotoPickerOpen(false)}>
-        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', borderRadius: 10, padding: 20, minWidth: 320, maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', borderRadius: 10, padding: 16, minWidth: 340, maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
           onClick={e => e.stopPropagation()}>
-          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: 12, color: 'var(--color-text-main)' }}>
-            選擇 {header.date} 的照片批次
+          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: 10, color: 'var(--color-text-main)' }}>
+            選擇照片批次
           </div>
-          {photoBatches.length === 0
-            ? <div style={{ color: 'var(--color-text-muted)', fontSize: '13px', padding: '8px 0' }}>當日無照片紀錄</div>
-            : photoBatches.map(b => (
-              <button key={b.id} onClick={() => importFromBatch(b)}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', marginBottom: 6, borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-main)' }}>
-                {b.title || b.doc_no || '（無標題）'}
-              </button>
-            ))
-          }
+          <input type="date" value={pickerDateFilter}
+            onChange={e => setPickerDateFilter(e.target.value)}
+            style={{ marginBottom: 8, padding: '4px 8px', fontSize: '13px', borderRadius: 6, border: '1px solid var(--color-block-border)', background: 'var(--color-background-soft)', color: 'var(--color-text-main)', width: '100%', boxSizing: 'border-box' }} />
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {(() => {
+              const filtered = pickerDateFilter
+                ? photoBatches.filter(b => b.doc_date === pickerDateFilter)
+                : photoBatches;
+              return filtered.length === 0
+                ? <div style={{ color: 'var(--color-text-muted)', fontSize: '13px', padding: '8px 0' }}>無照片紀錄</div>
+                : filtered.map(b => (
+                  <button key={b.id} onClick={() => importFromBatch(b)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 5, borderRadius: 6, border: '1px solid var(--color-block-border)', background: 'var(--color-background-soft)', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-main)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{b.doc_date}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title || b.doc_no || '（無標題）'}</span>
+                  </button>
+                ));
+            })()}
+          </div>
           <button onClick={() => setPhotoPickerOpen(false)}
-            style={{ marginTop: 8, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+            style={{ marginTop: 10, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-block-border)', background: 'transparent', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)', alignSelf: 'flex-start' }}>
             取消
           </button>
         </div>
