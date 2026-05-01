@@ -239,6 +239,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const signRef      = useRef(null);
   const supervisorRef = useRef(null);
 
+  const [defectOpen,      setDefectOpen]      = useState(false);
   const [saving,          setSaving]          = useState(false);
   const [savingDb,        setSavingDb]        = useState(false);
   const [driveLink,       setDriveLink]       = useState('');
@@ -521,8 +522,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
 
           {/* 缺失複查 */}
           <div className="ifm-section">
-            <div className="ifm-section-title">缺失複查結果</div>
-            <div className="ifm-defect-row">
+            <div className="ifm-section-title" style={{ cursor:'pointer', userSelect:'none' }}
+              onClick={() => setDefectOpen(o => !o)}>
+              缺失複查結果 {defectOpen ? '▲' : '▼'}
+            </div>
+            {defectOpen && <div className="ifm-defect-row">
               <label className="ifm-check">
                 <input type="checkbox" checked={defect.resolved}
                   onChange={e => setDefect(d => ({ ...d, resolved: e.target.checked }))} />
@@ -550,7 +554,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <input className="ifm-input" value={defect.reviewSign}
                   onChange={e => setDefect(d => ({ ...d, reviewSign: e.target.value }))} />
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* 簽署影像 */}
