@@ -123,10 +123,9 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
   body { font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; margin:1.5cm; font-size:11pt; color:#000; }
-  .title-row { display:flex; align-items:center; margin-bottom:6px; }
-  .title-row h2 { flex:1; text-align:center; font-size:15pt; margin:0; white-space:nowrap; }
-  .title-spacer { min-width:90px; }
-  .title-row .serial { min-width:90px; font-size:10pt; text-align:right; white-space:nowrap; }
+  .title-wrap { margin-bottom:6px; }
+  .title-wrap h2 { text-align:center; font-size:15pt; margin:0 0 2px; white-space:nowrap; }
+  .title-wrap .serial { display:block; text-align:right; font-size:10pt; white-space:nowrap; }
   .serial-blank { display:inline-block; width:60px; border-bottom:1px solid #333; vertical-align:bottom; margin-left:2px; }
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
@@ -142,18 +141,17 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </style>
 </head>
 <body>
-<div class="title-row">
-  <span class="title-spacer"></span>
+<div class="title-wrap">
   <h2>${template.label}施工抽查紀錄表</h2>
   <span class="serial">編號：${template.code}-01-<span class="serial-blank"></span></span>
 </div>
 <table>
   <colgroup>
     <col style="width:12%">
+    <col style="width:27%">
     <col style="width:25%">
-    <col style="width:25%">
-    <col style="width:28%">
-    <col style="width:9%">
+    <col style="width:26%">
+    <col style="width:10%">
   </colgroup>
   <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
@@ -480,10 +478,10 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <table className="ifm-table">
                   <colgroup>
                     <col style={{ width: '12%' }} />
+                    <col style={{ width: '27%' }} />
                     <col style={{ width: '25%' }} />
-                    <col style={{ width: '25%' }} />
-                    <col style={{ width: '28%' }} />
-                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '26%' }} />
+                    <col style={{ width: '10%' }} />
                   </colgroup>
                   <thead>
                     <tr>
