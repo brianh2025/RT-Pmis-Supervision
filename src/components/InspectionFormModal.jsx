@@ -434,9 +434,9 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                   ))}
                 </div>
               </div>
-              <div className="ifm-basic-col-wide">
+              <div style={{ flex: 2, minWidth: 0 }}>
                 <label className="ifm-label">施工流程</label>
-                <div className="ifm-radio-group">
+                <div className="ifm-radio-group" style={{ gap: 6 }}>
                   {FLOW_OPTIONS.map(o => (
                     <label key={o} className="ifm-radio">
                       <input type="checkbox" value={o}
