@@ -113,7 +113,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   const defectChecked2 = defect.unresolved ? '☑' : '☐';
 
   const signBlock = (label, src) => src
-    ? `<span style="font-size:13pt;">${label}：<img src="${src}" style="height:40px;vertical-align:middle;margin-left:8px;"></span>`
+    ? `<span style="font-size:13pt;">${label}：<img src="${src}" style="height:80px;vertical-align:middle;margin-left:8px;"></span>`
     : `<span style="font-size:13pt;">${label}：＿＿＿＿＿＿＿</span>`;
 
   return `<!DOCTYPE html>
@@ -136,7 +136,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
-  .sign-row { margin-top:12px; display:flex; justify-content:flex-start; gap:60px; align-items:center; }
+  .sign-row { margin-top:12px; display:flex; justify-content:space-between; align-items:center; min-height:80px; }
   @media print { body { margin:1cm; } }
 </style>
 </head>
