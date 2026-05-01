@@ -16,7 +16,6 @@ import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
 import { Sidebar } from '../components/Sidebar';
-import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
@@ -609,8 +608,6 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：圖示按鈕、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
