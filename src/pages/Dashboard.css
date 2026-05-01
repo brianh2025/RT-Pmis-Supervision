@@ -2034,6 +2034,11 @@
   transform: scale(0.92);
 }
 
+/* 觸控裝置無 hover：直接顯示刪除鈕 */
+@media (hover: none) {
+  .card-delete-btn { opacity: 1; }
+}
+
 /* ── 刪除確認 Modal ── */
 .del-modal-warning-box {
   display: flex;
