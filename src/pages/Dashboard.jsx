@@ -10,7 +10,8 @@ import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
-import { ReportReminderBanner } from '../components/ReportReminderBanner';
+import { InfoTicker } from '../components/InfoTicker';
+import { useReportReminder } from '../hooks/useReportReminder';
 import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
@@ -19,7 +20,7 @@ import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut,
+  GripHorizontal, LogOut, Star,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -227,7 +228,9 @@ export function Dashboard() {
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
   const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
-  const [alerts,       setAlerts]       = useState([]);
+  const [alerts,          setAlerts]          = useState([]);
+  const [dismissReminder, setDismissReminder] = useState(false);
+  const reminderBanner = useReportReminder(projects.length > 0 ? projects[0]?.id : null);
   const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
   const [matWarnMap,   setMatWarnMap]   = useState({});    // projectId -> 未登錄檢驗筆數
   const [cardOrder,    setCardOrder]    = useState(() => {
@@ -469,6 +472,17 @@ export function Dashboard() {
       return true;
     });
 
+  const tickerItems = React.useMemo(() => {
+    const items = [];
+    if (showWelcome) items.push({ key: 'welcome', type: 'welcome', icon: '👋', message: '歡迎進行監造作業。' });
+    if (reminderBanner && !dismissReminder) items.push({
+      key: 'reminder', type: reminderBanner.type, dismissible: true,
+      icon: reminderBanner.type === 'urgent' ? '⚠️' : '📋',
+      message: reminderBanner.message,
+    });
+    return items;
+  }, [showWelcome, reminderBanner, dismissReminder]);
+
   const starredProjects  = filteredProjects.filter(p => p.is_starred);
   const regularProjects  = filteredProjects.filter(p => !p.is_starred);
 
@@ -546,6 +560,13 @@ export function Dashboard() {
                 材料未回填
               </span>
             )}
+            <button
+              className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
+              title={p.is_starred ? '移出常用' : '加入常用'}
+              onClick={e => { e.stopPropagation(); toggleStar(e, p); }}
+            >
+              <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} color={p.is_starred ? '#f59e0b' : 'currentColor'} />
+            </button>
             <button
               className="card-edit-btn"
               title="編輯工程資料"
@@ -645,18 +666,12 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 整合：歡迎詞 + 提前預警 */}
-            {(showWelcome || projects.length > 0) && (
-              <div className="dash-info-strip">
-                {showWelcome && (
-                  <span className="welcome-msg-inline animate-fade-out">
-                    歡迎進行監造作業。
-                  </span>
-                )}
-                {projects.length > 0 && (
-                  <ReportReminderBanner projectId={projects[0]?.id} />
-                )}
-              </div>
+            {/* 動態翻頁提示列 */}
+            {tickerItems.length > 0 && (
+              <InfoTicker
+                items={tickerItems}
+                onDismiss={key => { if (key === 'reminder') setDismissReminder(true); }}
+              />
             )}
 
             {/* 跨工程待辦彙總 */}
