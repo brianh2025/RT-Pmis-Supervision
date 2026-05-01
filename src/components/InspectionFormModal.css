@@ -57,12 +57,12 @@
 
 /* ── 主體 ── */
 .ifm-body {
-  padding: 16px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 16px;
+  padding: 10px 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
 }
 
 .ifm-section {
-  padding: 12px 14px;
+  padding: 8px 12px;
   background: var(--color-background-soft);
   border: 1px solid var(--color-surface-border);
   border-radius: var(--radius-md);
@@ -70,7 +70,7 @@
 .ifm-section-title {
   font-size: var(--fs-xs); font-weight: var(--fw-semi);
   color: var(--color-text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   text-transform: uppercase; letter-spacing: 0.5px;
 }
 
@@ -99,7 +99,14 @@
 .ifm-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .ifm-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
-.ifm-radio-group { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+/* ── 基本資料單列 ── */
+.ifm-basic-row {
+  display: flex; gap: 10px; align-items: flex-start; flex-wrap: nowrap;
+}
+.ifm-basic-row > * { flex: 1; min-width: 0; }
+.ifm-basic-col-wide { flex: 1.5 !important; }
+
+.ifm-radio-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
 .ifm-radio { display: flex; align-items: center; gap: 5px; font-size: var(--fs-sm); cursor: pointer; color: var(--color-text-main); }
 .ifm-radio input { cursor: pointer; accent-color: var(--color-primary-light); }
 
@@ -173,6 +180,8 @@
 /* ── 響應式 ── */
 @media (max-width: 600px) {
   .ifm-grid-2, .ifm-grid-3, .ifm-grid-4 { grid-template-columns: 1fr; }
+  .ifm-basic-row { flex-wrap: wrap; }
+  .ifm-basic-row > *, .ifm-basic-col-wide { flex: 1 1 calc(50% - 5px) !important; }
   .ifm-overlay { padding: 0; }
   .ifm-modal { border-radius: 0; min-height: 100dvh; }
 }

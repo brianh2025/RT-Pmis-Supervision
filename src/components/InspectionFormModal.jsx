@@ -240,6 +240,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const supervisorRef = useRef(null);
 
   const [defectOpen,      setDefectOpen]      = useState(false);
+  const [signOpen,        setSignOpen]        = useState(false);
   const [saving,          setSaving]          = useState(false);
   const [savingDb,        setSavingDb]        = useState(false);
   const [driveLink,       setDriveLink]       = useState('');
@@ -400,8 +401,8 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
           {/* 基本資料 */}
           <div className="ifm-section">
             <div className="ifm-section-title">基本資料</div>
-            <div className="ifm-grid-4">
-              <div>
+            <div className="ifm-basic-row">
+              <div className="ifm-basic-col-wide">
                 <label className="ifm-label">檢查位置</label>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   <input className="ifm-input" style={{ flex: 1 }} value={header.location}
@@ -420,9 +421,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <input className="ifm-input" type="date" value={header.date}
                   onChange={e => setHeader(h => ({ ...h, date: e.target.value }))} />
               </div>
-            </div>
-            <div className="ifm-grid-2" style={{ marginTop: 8 }}>
-              <div>
+              <div className="ifm-basic-col-wide">
                 <label className="ifm-label">檢查時機</label>
                 <div className="ifm-radio-group">
                   {INSPECT_TYPE_OPTIONS.map(o => (
@@ -435,7 +434,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                   ))}
                 </div>
               </div>
-              <div>
+              <div className="ifm-basic-col-wide">
                 <label className="ifm-label">施工流程</label>
                 <div className="ifm-radio-group">
                   {FLOW_OPTIONS.map(o => (
@@ -561,30 +560,35 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
 
           {/* 簽署影像 */}
           <div className="ifm-section">
-            <div className="ifm-section-title">簽署影像</div>
-            <div className="ifm-grid-2">
-              {[
-                { label: '監造人員', img: signImg, setImg: setSignImg, ref: signRef },
-                { label: '監造主管', img: supervisorImg, setImg: setSupervisorImg, ref: supervisorRef },
-              ].map(({ label, img, setImg, ref: r }) => (
-                <div key={label} className="ifm-sign-block">
-                  <label className="ifm-label">{label}</label>
-                  {img
-                    ? <div className="ifm-sign-preview">
-                        <img src={img} alt={label} />
-                        <button className="ifm-btn" style={{ marginTop: 4 }} onClick={() => setImg(null)}>
-                          <X size={12} />移除
-                        </button>
-                      </div>
-                    : <button className="ifm-btn" onClick={() => r.current?.click()}>
-                        <Upload size={12} />上傳簽署影像
-                      </button>
-                  }
-                  <input ref={r} type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => readImgFile(e.target.files[0], setImg)} />
-                </div>
-              ))}
+            <div className="ifm-section-title" style={{ cursor:'pointer', userSelect:'none' }}
+              onClick={() => setSignOpen(o => !o)}>
+              Signatures {signOpen ? '▲' : '▼'}
             </div>
+            {signOpen && (
+              <div className="ifm-grid-2">
+                {[
+                  { label: '監造人員', img: signImg, setImg: setSignImg, ref: signRef },
+                  { label: '監造主管', img: supervisorImg, setImg: setSupervisorImg, ref: supervisorRef },
+                ].map(({ label, img, setImg, ref: r }) => (
+                  <div key={label} className="ifm-sign-block">
+                    <label className="ifm-label">{label}</label>
+                    {img
+                      ? <div className="ifm-sign-preview">
+                          <img src={img} alt={label} />
+                          <button className="ifm-btn" style={{ marginTop: 4 }} onClick={() => setImg(null)}>
+                            <X size={12} />移除
+                          </button>
+                        </div>
+                      : <button className="ifm-btn" onClick={() => r.current?.click()}>
+                          <Upload size={12} />上傳簽署影像
+                        </button>
+                    }
+                    <input ref={r} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => readImgFile(e.target.files[0], setImg)} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
