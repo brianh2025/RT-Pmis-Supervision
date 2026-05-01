@@ -157,7 +157,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
   <tr>
     <td class="hdr-label">檢查位置</td>
-    <td>${header.location || ''}</td>
+    <td style="white-space:pre-wrap;">${(header.location || '').replace(/\n/g, '<br>')}</td>
     <td class="hdr-label">檢查日期</td>
     <td colspan="2">${toRocDate(header.date)}</td>
   </tr>
