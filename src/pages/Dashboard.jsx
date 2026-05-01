@@ -609,8 +609,8 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：圖示按鈕、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
+        {/* Topbar 僅行動版顯示（總覽模式：開啟側邊欄） */}
+        <Topbar setIsMobileOpen={setIsMobileOpen} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
