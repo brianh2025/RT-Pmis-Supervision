@@ -131,7 +131,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
-  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; overflow:hidden; }
+  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:keep-all; overflow:hidden; }
   .std-cell { font-size:10pt; }
   .actual-cell { font-size:10pt; font-family:'Ma Shan Zheng','標楷體','DFKai-SB',cursive; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
@@ -149,11 +149,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </div>
 <table>
   <colgroup>
-    <col style="width:58px">
-    <col style="width:130px">
-    <col>
-    <col style="width:150px">
-    <col style="width:48px">
+    <col style="width:15%">
+    <col style="width:25%">
+    <col style="width:25%">
+    <col style="width:30%">
+    <col style="width:5%">
   </colgroup>
   <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
@@ -479,11 +479,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
               <div className="ifm-table-wrap">
                 <table className="ifm-table">
                   <colgroup>
-                    <col style={{ width: '8%' }} />
                     <col style={{ width: '15%' }} />
-                    <col style={{ width: '26%' }} />
-                    <col style={{ width: '38%' }} />
-                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '30%' }} />
+                    <col style={{ width: '5%' }} />
                   </colgroup>
                   <thead>
                     <tr>
