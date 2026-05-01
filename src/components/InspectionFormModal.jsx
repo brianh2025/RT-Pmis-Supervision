@@ -181,7 +181,8 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
     <td colspan="4">○ 檢查合格　╳ 有缺失需改正　／ 無此檢查項目</td>
   </tr>
   <tr>
-    <th colspan="2">管理項目</th>
+    <th>施工階段</th>
+    <th>管理項目</th>
     <th class="std-cell">依設計圖說、規範之抽查標準（定量定性，含容許誤差）</th>
     <th class="actual-cell">實際抽查情形（含檢查數據）</th>
     <th class="result-cell" style="font-family:inherit;font-size:11pt;">抽查<br>結果</th>
