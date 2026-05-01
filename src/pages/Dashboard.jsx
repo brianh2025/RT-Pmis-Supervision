@@ -254,12 +254,6 @@ export function Dashboard() {
     };
   }, []);
 
-  // 若目前選中的篩選標籤已消失（如刪除最後一個該狀態專案），自動重設為「全部」
-  useEffect(() => {
-    const conditional = { completed: completedCount, accepted: acceptedCount, suspended: suspendedCount, pending: pendingCount, starred: starredCount };
-    if (statusFilter in conditional && conditional[statusFilter] === 0) setStatusFilter('all');
-  }, [statusFilter, completedCount, acceptedCount, suspendedCount, pendingCount, starredCount]);
-
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
@@ -444,7 +438,7 @@ export function Dashboard() {
     ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
     { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
     { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
-    ...(completedCount > 0 ? [{ key: 'completed', label: '已完工', count: completedCount, color: 'var(--color-success)' }] : []),
+    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
     ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
