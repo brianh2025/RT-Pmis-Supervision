@@ -207,7 +207,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </table>
 <div class="sign-row">
   ${signBlock('監造人員', signImgSrc)}
-  ${signBlock('監造主管', supervisorImgSrc)}
+  <span style="padding-right:3em;">${signBlock('監造主管', supervisorImgSrc)}</span>
 </div>
 </body></html>`;
 }
@@ -252,18 +252,21 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   /* 切換 template 時重置 items */
   useEffect(() => { setItems({}); }, [templateCode]);
 
-  /* 查本月日誌中該工項出現的日期 */
+  /* 查本月日誌中該工項出現的日期（以 guessTemplateCode 關鍵字比對） */
   useEffect(() => {
     if (!template || !supabase || !project?.id) { setDiaryHintDates([]); return; }
     const ym = (header.date || new Date().toISOString().split('T')[0]).substring(0, 7);
     supabase.from('daily_report_items')
-      .select('log_date')
+      .select('log_date, item_name')
       .eq('project_id', project.id)
-      .eq('item_name', template.label)
       .gte('log_date', `${ym}-01`)
       .lte('log_date', `${ym}-31`)
       .then(({ data }) => {
-        const dates = [...new Set((data || []).map(d => d.log_date))].sort();
+        const dates = [...new Set(
+          (data || [])
+            .filter(d => guessTemplateCode(d.item_name) === templateCode)
+            .map(d => d.log_date)
+        )].sort();
         setDiaryHintDates(dates);
       });
   }, [templateCode, project?.id, header.date?.substring(0, 7)]);
