@@ -1,0 +1,98 @@
+.info-ticker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid;
+  height: 34px;
+  overflow: hidden;
+  transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease;
+}
+
+.ticker-welcome  {
+  background:   var(--color-surface-hover);
+  border-color: var(--color-surface-border);
+  color:        var(--color-text-muted);
+}
+.ticker-urgent   {
+  background:   rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.25);
+  color:        var(--color-danger);
+}
+.ticker-advisory {
+  background:   rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.25);
+  color:        var(--color-warning);
+}
+
+/* ── 滾動內容 ── */
+.ticker-body {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+@keyframes ticker-in {
+  from { transform: translateY(110%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes ticker-out {
+  from { transform: translateY(0);     opacity: 1; }
+  to   { transform: translateY(-110%); opacity: 0; }
+}
+
+.ticker-body.ticker-enter { animation: ticker-in  0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.ticker-body.ticker-exit  { animation: ticker-out 0.28s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards; }
+
+.ticker-icon { font-size: 0.82rem; flex-shrink: 0; }
+
+.ticker-msg {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 右側（圓點 + 關閉） ── */
+.ticker-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ticker-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.ticker-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+  transition: opacity 0.25s;
+}
+.ticker-dot.on { opacity: 0.75; }
+
+.ticker-dismiss {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+.ticker-dismiss:hover { opacity: 0.85; }
