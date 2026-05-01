@@ -33,7 +33,7 @@
   --color-background-soft: rgba(15, 23, 42, 0.4);
 
   --color-text-main: #FFFFFF;
-  --color-text-muted: #94A3B8;
+  --color-text-muted: #a8b9cc;
 
   /* Border Radius */
   --radius-sm:   4px;
@@ -58,7 +58,7 @@
 
   /* Alias tokens (used by MaterialControl, ProjectLayout, Analytics, Dashboard) */
   --color-text1: #e2e8f0;
-  --color-text2: #94a3b8;
+  --color-text2: #a8b9cc;
   --color-bg1: rgba(15, 23, 42, 0.6);
   --color-bg2: rgba(30, 41, 59, 0.8);
   --color-bg2-rgb: 30, 41, 59;
@@ -75,6 +75,7 @@
   --color-background-soft: rgba(248, 250, 252, 0.8);
   --color-text-main: #0F172A;
   --color-text-muted: #64748B;
+  --color-primary-light: #1976d2;
 
   /* Semantic Colors (light mode) */
   --color-success: #059669;
