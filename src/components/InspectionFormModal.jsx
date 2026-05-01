@@ -157,9 +157,9 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
   <tr>
     <td class="hdr-label">檢查位置</td>
-    <td>${header.location || ''}</td>
+    <td colspan="2">${header.location || ''}</td>
     <td class="hdr-label">檢查日期</td>
-    <td colspan="2">${toRocDate(header.date)}</td>
+    <td>${toRocDate(header.date)}</td>
   </tr>
   <tr>
     <td class="hdr-label">檢查時機</td>
@@ -184,7 +184,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
     <th colspan="2">管理項目</th>
     <th class="std-cell">依設計圖說、規範之抽查標準（定量定性，含容許誤差）</th>
     <th class="actual-cell">實際抽查情形（含檢查數據）</th>
-    <th class="result-cell" style="font-family:inherit;font-size:11pt;">抽查結果</th>
+    <th class="result-cell" style="font-family:inherit;font-size:11pt;">抽查<br>結果</th>
   </tr>
   ${rowsHtml}
   <tr class="defect-row">
