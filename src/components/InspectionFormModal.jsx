@@ -401,14 +401,6 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
             <div className="ifm-section-title">基本資料</div>
             <div className="ifm-grid-4">
               <div>
-                <label className="ifm-label">工程名稱</label>
-                <input className="ifm-input" value={project?.name || ''} readOnly />
-              </div>
-              <div>
-                <label className="ifm-label">承包廠商</label>
-                <input className="ifm-input" value={project?.contractor || ''} readOnly />
-              </div>
-              <div>
                 <label className="ifm-label">檢查位置</label>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   <input className="ifm-input" style={{ flex: 1 }} value={header.location}
