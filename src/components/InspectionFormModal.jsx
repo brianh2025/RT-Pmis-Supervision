@@ -287,7 +287,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     if (!supabase || !project?.id || !header.date) return;
     setPhotoLoading(true);
     const { data } = await supabase.from('archive_docs')
-      .select('id, title, doc_no, remark')
+      .select('id, title, doc_no, remark, doc_date')
       .eq('project_id', project.id).eq('category', 'photo').eq('doc_date', header.date)
       .order('created_at', { ascending: false });
     setPhotoBatches(data || []);
@@ -298,7 +298,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   function importFromBatch(batch) {
     const info = JSON.parse(batch.remark || '{}');
     const locs = [...new Set((info.photos || []).map(p => p.location).filter(Boolean))];
-    if (locs.length) setHeader(h => ({ ...h, location: locs.join('、') }));
+    setHeader(h => ({
+      ...h,
+      ...(locs.length ? { location: locs.join('、') } : {}),
+      ...(batch.doc_date ? { date: batch.doc_date } : {}),
+    }));
     setPhotoPickerOpen(false);
   }
 
@@ -449,8 +453,8 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                     onChange={e => setHeader(h => ({ ...h, location: e.target.value }))} />
                   <button type="button" className="ifm-btn" onClick={loadPhotoBatches}
                     disabled={!header.date || photoLoading}
-                    style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '12px' }}
-                    title="從當日照片紀錄帶入位置">
+                    style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '12px', borderColor: 'var(--color-primary-light)', color: 'var(--color-primary-light)' }}
+                    title="從當日照片紀錄帶入位置、日期">
                     {photoLoading ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
                     導入照片
                   </button>
@@ -534,7 +538,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                             <textarea className="ifm-textarea"
                               value={items[it.name]?.actual || ''}
                               onChange={e => setActual(it.name, e.target.value)}
-                              rows={2} />
+                              rows={1} />
                           </td>
                           <td className="ifm-result-cell">
                             {['pass', 'fail', 'na'].map(sym => (
@@ -632,9 +636,9 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
 
     {/* 照片批次選取 overlay */}
     {photoPickerOpen && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         onClick={() => setPhotoPickerOpen(false)}>
-        <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 20, minWidth: 320, maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', borderRadius: 10, padding: 20, minWidth: 320, maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
           onClick={e => e.stopPropagation()}>
           <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: 12, color: 'var(--color-text-main)' }}>
             選擇 {header.date} 的照片批次
