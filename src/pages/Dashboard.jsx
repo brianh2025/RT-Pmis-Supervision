@@ -431,6 +431,12 @@ export function Dashboard() {
   const acceptedCount  = projects.filter(p => p.status === 'accepted').length;
   const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
+  // 當目前篩選標籤數量歸零（如刪除最後一個）自動重設為全部
+  useEffect(() => {
+    const counts = { starred: starredCount, pending: pendingCount, active: activeCount, behind: behindCount, completed: completedCount, accepted: acceptedCount, suspended: suspendedCount };
+    if (statusFilter in counts && counts[statusFilter] === 0) setStatusFilter('all');
+  }, [statusFilter, starredCount, pendingCount, activeCount, behindCount, completedCount, acceptedCount, suspendedCount]);
+
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
     ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
