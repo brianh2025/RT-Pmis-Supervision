@@ -24,6 +24,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 // Boilerplate text to skip (pre-filled sections 二/三/四 that appear in every page)
 const SKIP_PATTERNS = [
+  /^[一二三四五六七八九十]、/,  // section headers: 一、工程進行情況… etc.
+  /^（[一二三四五六七八九十]）/, // sub-section headers: （一）施工廠商…
   /^二、監督依照設計圖說/,
   /^三、查核材料規格/,
   /^四、督導工地職業安全/,
@@ -40,7 +42,7 @@ const SKIP_PATTERNS = [
   /告知承商/,
   /■|□/,  // checkbox markers
   /超前（＋）或落後/,
-  /^(公共工程監造報表|施工日誌|監造單位|主辦機關|設計單位|施工廠商|表報編號|工程編號|填表日期|契約工期|開工日期|預定完工日期|累計工期|工期展延天數|契約金額|預定進度|實際進度|本日天氣)/,
+  /^(公共工程監造報表|施工日誌|監造單位|主辦機關|設計單位|施工廠商|表報編號|工程編號|填表日期|填報日期|契約工期|開工日期|預定完工日期|累計工期|工期展延天數|契約金額|預定進度|實際進度|本日天氣)/,
   /(含約定之檢驗停留點|主辦機關指示及通知廠商辦理事項|請參詳施工日誌)/
 ];
 
@@ -63,27 +65,30 @@ async function extractPageItems(page) {
 }
 
 // ---------------------------------------------------------------------------
-// Date parsers: handles CE and ROC year strings
+// Date parsers: handles CE (4-digit) and ROC (2-3 digit) year strings
+// Extracts date from within a larger string (e.g. "2026 年 4 月 1 日 星期三")
 // ---------------------------------------------------------------------------
 function parseDate(raw) {
   if (!raw) return null;
-  // Remove all spaces and normalize delimiters
-  let s = String(raw).replace(/\s+/g, '')
-    .replace(/[年/]/g, '-').replace(/月/g, '-').replace(/日/g, '')
-    .trim();
-  // ROC: 2~3 digit year like 113-05-12 or 99-05-12
-  const rocMatch = s.match(/^(\d{2,3})-(\d{1,2})-(\d{1,2})$/);
-  if (rocMatch) {
-    const y = parseInt(rocMatch[1]);
-    const m = rocMatch[2].padStart(2, '0');
-    const d = rocMatch[3].padStart(2, '0');
-    return `${y + 1911}-${m}-${d}`;
+  const s = String(raw).replace(/\s+/g, '');
+  // 年月日 format: ROC (2-3 digit) or CE (4-digit)
+  const cjkMatch = s.match(/(\d{2,4})年(\d{1,2})月(\d{1,2})日/);
+  if (cjkMatch) {
+    const y = parseInt(cjkMatch[1]);
+    const m = cjkMatch[2].padStart(2, '0');
+    const d = cjkMatch[3].padStart(2, '0');
+    return `${y < 1000 ? y + 1911 : y}-${m}-${d}`;
   }
-  // CE formats: 2024-05-12, 2024/05/12
-  const ceMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (ceMatch) return `${ceMatch[1]}-${ceMatch[2].padStart(2,'0')}-${ceMatch[3].padStart(2,'0')}`;
-  const d = new Date(s);
-  if (!isNaN(d)) return d.toISOString().split('T')[0];
+  // slash / dash format: 113/5/12 or 2026-04-01
+  const slashMatch = s.match(/(\d{2,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if (slashMatch) {
+    const y = parseInt(slashMatch[1]);
+    const m = slashMatch[2].padStart(2, '0');
+    const d = slashMatch[3].padStart(2, '0');
+    return `${y < 1000 ? y + 1911 : y}-${m}-${d}`;
+  }
+  const dt = new Date(s);
+  if (!isNaN(dt)) return dt.toISOString().split('T')[0];
   return null;
 }
 
@@ -116,12 +121,13 @@ async function parseMonitoringPage(page, pageNum) {
   // --- 1. Report Date ---
   //    The label may be "填表日期" or "填表日期：" (with colon)
   //    The date value may be "115/3/30" or "115年3月30日"
-  const dateLabelItem = items.find(i => i.str.startsWith('填表日期'));
+  // Support both 填表日期 (older format) and 填報日期 (newer format)
+  const dateLabelItem = items.find(i => i.str.startsWith('填報日期') || i.str.startsWith('填表日期'));
   let logDate = null;
-  console.log(`[PDF Parser] Page ${pageNum} — 填表日期 label:`, dateLabelItem || 'NOT FOUND');
+  console.log(`[PDF Parser] Page ${pageNum} — 填報/填表日期 label:`, dateLabelItem || 'NOT FOUND');
   if (dateLabelItem) {
-    // Check if the date is embedded in the label itself (e.g. "填表日期：115年3月30日" as one item)
-    const embeddedDate = dateLabelItem.str.match(/(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    // Date may be embedded (e.g. "填報日期：2026年4月1日星期三" or "填表日期：115年3月30日")
+    const embeddedDate = dateLabelItem.str.match(/(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
     if (embeddedDate) {
       logDate = parseDate(`${embeddedDate[1]}年${embeddedDate[2]}月${embeddedDate[3]}日`);
     }
@@ -130,29 +136,27 @@ async function parseMonitoringPage(page, pageNum) {
       const near = items.filter(i =>
         Math.abs(i.y - dateLabelItem.y) <= 8 &&
         i.x > dateLabelItem.x - 10 &&
-        i.x < dateLabelItem.x + 200 &&
+        i.x < dateLabelItem.x + 300 &&
         i.str !== dateLabelItem.str &&
-        (/\d{2,3}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,3}\s*年/.test(i.str))
+        (/\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
       );
       console.log(`[PDF Parser] Page ${pageNum} — date candidates near label:`, near);
       if (near.length) logDate = parseDate(near[0].str);
     }
   }
-  // Fallback: any date-like string in the page
+  // Fallback: any 年月日 string in the page (CE 4-digit or ROC 2-3 digit)
   if (!logDate) {
-    // Try 年月日 format first
-    const cjkDateItems = items.filter(i => /\d{2,3}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(i.str));
+    const cjkDateItems = items.filter(i => /\d{2,4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(i.str));
     if (cjkDateItems.length) {
       logDate = parseDate(cjkDateItems[0].str);
     }
   }
   if (!logDate) {
-    // Try slash format, prefer items near the top of the page (y > 700)
+    // Try slash/dash format (ROC or CE)
     const dateItems = items.filter(i =>
-      /^\d{2,3}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
+      /^\d{2,4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
     );
     console.log(`[PDF Parser] Page ${pageNum} — all date-like items (fallback):`, dateItems.slice(0, 5));
-    // Pick the one closest to the label's y coordinate, or the first one
     const labelY = dateLabelItem?.y ?? 770;
     const sorted = dateItems.sort((a, b) => Math.abs(a.y - labelY) - Math.abs(b.y - labelY));
     if (sorted.length) logDate = parseDate(sorted[0].str);
@@ -161,7 +165,7 @@ async function parseMonitoringPage(page, pageNum) {
   if (!logDate) return null;
 
   // --- 2. Weather ---
-  const VALID_WEATHER = ['晴', '多雲', '陰', '小雨', '中雨', '大雨', '颱風', '豪雨'];
+  const VALID_WEATHER = ['晴', '多雲', '陰', '雨', '陣雨', '小雨', '中雨', '大雨', '颱風', '豪雨'];
   let weatherAm = null;
   let weatherPm = null;
 
@@ -171,7 +175,7 @@ async function parseMonitoringPage(page, pageNum) {
 
   if (amItem) {
     // Check if weather is embedded (e.g. "上午：晴")
-    const embeddedMatch = amItem.str.match(/(?:上午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
+    const embeddedMatch = amItem.str.match(/(?:上午)[:：\s]*(晴|多雲|陰|雨|陣雨|小雨|中雨|大雨|颱風|豪雨)/);
     if (embeddedMatch) {
       weatherAm = embeddedMatch[1];
     } else {
@@ -182,7 +186,7 @@ async function parseMonitoringPage(page, pageNum) {
   }
 
   if (pmItem) {
-    const embeddedMatch = pmItem.str.match(/(?:下午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
+    const embeddedMatch = pmItem.str.match(/(?:下午)[:：\s]*(晴|多雲|陰|雨|陣雨|小雨|中雨|大雨|颱風|豪雨)/);
     if (embeddedMatch) {
       weatherPm = embeddedMatch[1];
     } else {
@@ -331,8 +335,7 @@ async function parseMonitoringPage(page, pageNum) {
   
   const notes = [...new Set(noteItems.map(i => i.str))]
     .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s))
-    .filter(s => /^\d+\./.test(s.trim())) // Only accept enumerated list texts (e.g. "1. 進行整地")
-    .slice(0, 10)
+    .slice(0, 15)
     .join('\n') || null;
 
   // Narrative Fallback: If the user didn't write ANY valid quantities in the formal matrix table,
