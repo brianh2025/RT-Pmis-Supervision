@@ -396,9 +396,9 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ 
           data: arrayBuffer,
-          cMapUrl: 'https://unpkg.com/pdfjs-dist@5.6.205/cmaps/',
+          cMapUrl: '/cmaps/',
           cMapPacked: true,
-          standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@5.6.205/standard_fonts/'
+          standardFontDataUrl: '/standard_fonts/'
         }).promise;
         totalPages += pdf.numPages;
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
