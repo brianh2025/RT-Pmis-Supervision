@@ -10,16 +10,16 @@ import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
-import { ReportReminderBanner } from '../components/ReportReminderBanner';
+import { InfoTicker } from '../components/InfoTicker';
+import { useReportReminder } from '../hooks/useReportReminder';
 import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
 import { Sidebar } from '../components/Sidebar';
-import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut,
+  GripHorizontal, LogOut, Star,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -227,7 +227,9 @@ export function Dashboard() {
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
   const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
-  const [alerts,       setAlerts]       = useState([]);
+  const [alerts,          setAlerts]          = useState([]);
+  const [dismissReminder, setDismissReminder] = useState(false);
+  const reminderBanner = useReportReminder(projects.length > 0 ? projects[0]?.id : null);
   const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
   const [matWarnMap,   setMatWarnMap]   = useState({});    // projectId -> 未登錄檢驗筆數
   const [cardOrder,    setCardOrder]    = useState(() => {
@@ -253,6 +255,12 @@ export function Dashboard() {
       clearTimeout(welcomeTimer);
     };
   }, []);
+
+  // 當目前篩選標籤數量歸零（如刪除最後一個）自動重設為全部
+  useEffect(() => {
+    const counts = { starred: starredCount, pending: pendingCount, active: activeCount, behind: behindCount, completed: completedCount, accepted: acceptedCount, suspended: suspendedCount };
+    if (statusFilter in counts && counts[statusFilter] === 0) setStatusFilter('all');
+  }, [statusFilter, starredCount, pendingCount, activeCount, behindCount, completedCount, acceptedCount, suspendedCount]);
 
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
@@ -379,7 +387,7 @@ export function Dashboard() {
   const handleDrop = useCallback((e, targetId) => {
     e.preventDefault();
     const srcId = dragSrcId.current;
-    if (!srcId || srcId === targetId) { setDragOverId(null); return; }
+    if (!srcId || srcId === targetId) { e.stopPropagation(); setDragOverId(null); return; }
     setCardOrder(prev => {
       const projectIds = projects.map(p => p.id);
       // 確保新增的專案（不在舊 cardOrder 裡）也能參與排序
@@ -399,7 +407,8 @@ export function Dashboard() {
       return next;
     });
     setDragOverId(null);
-    dragSrcId.current = null;
+    // 不在此清除 dragSrcId，讓事件冒泡到父層（dash-project-grid）
+    // 由父層判斷是否需要取消收藏，dragSrcId 由 handleDragEnd 統一清除
   }, [projects, user]);
 
   const handleDragEnd = useCallback(() => { setDragOverId(null); dragSrcId.current = null; }, []);
@@ -439,12 +448,12 @@ export function Dashboard() {
 
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
-    ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
-    ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
-    { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
-    { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
-    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
-    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
+    ...(starredCount   > 0 ? [{ key: 'starred',   label: '常用',   count: starredCount,   color: '#f59e0b' }] : []),
+    ...(pendingCount   > 0 ? [{ key: 'pending',   label: '未發包', count: pendingCount,   color: '#94a3b8' }] : []),
+    ...(activeCount    > 0 ? [{ key: 'active',    label: '執行中', count: activeCount,    color: 'var(--color-primary-light)' }] : []),
+    ...(behindCount    > 0 ? [{ key: 'behind',    label: '落後',   count: behindCount,    color: 'var(--color-danger)' }] : []),
+    ...(completedCount > 0 ? [{ key: 'completed', label: '已竣工', count: completedCount, color: 'var(--color-success)' }] : []),
+    ...(acceptedCount  > 0 ? [{ key: 'accepted',  label: '已竣工', count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
@@ -473,6 +482,17 @@ export function Dashboard() {
       }
       return true;
     });
+
+  const tickerItems = React.useMemo(() => {
+    const items = [];
+    if (showWelcome) items.push({ key: 'welcome', type: 'welcome', icon: '👋', message: '歡迎進行監造作業。' });
+    if (reminderBanner && !dismissReminder) items.push({
+      key: 'reminder', type: reminderBanner.type, dismissible: true,
+      icon: reminderBanner.type === 'urgent' ? '⚠️' : '📋',
+      message: reminderBanner.message,
+    });
+    return items;
+  }, [showWelcome, reminderBanner, dismissReminder]);
 
   const starredProjects  = filteredProjects.filter(p => p.is_starred);
   const regularProjects  = filteredProjects.filter(p => !p.is_starred);
@@ -552,6 +572,13 @@ export function Dashboard() {
               </span>
             )}
             <button
+              className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
+              title={p.is_starred ? '移出常用' : '加入常用'}
+              onClick={e => { e.stopPropagation(); toggleStar(e, p); }}
+            >
+              <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} color={p.is_starred ? '#f59e0b' : 'currentColor'} />
+            </button>
+            <button
               className="card-edit-btn"
               title="編輯工程資料"
               onClick={e => { e.stopPropagation(); setEditTarget(p); }}
@@ -593,8 +620,6 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} onSignOut={handleSignOut} onShowExcel={() => setShowExcelModal(true)} onHelp={() => setShowTutorial(true)} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
@@ -650,18 +675,12 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 整合：歡迎詞 + 提前預警 */}
-            {(showWelcome || projects.length > 0) && (
-              <div className="dash-info-strip">
-                {showWelcome && (
-                  <span className="welcome-msg-inline animate-fade-out">
-                    歡迎進行監造作業。
-                  </span>
-                )}
-                {projects.length > 0 && (
-                  <ReportReminderBanner projectId={projects[0]?.id} />
-                )}
-              </div>
+            {/* 動態翻頁提示列 */}
+            {tickerItems.length > 0 && (
+              <InfoTicker
+                items={tickerItems}
+                onDismiss={key => { if (key === 'reminder') setDismissReminder(true); }}
+              />
             )}
 
             {/* 跨工程待辦彙總 */}
