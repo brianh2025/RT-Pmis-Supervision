@@ -100,21 +100,11 @@ async function parseMonitoringPage(page, pageNum) {
   const items = await extractPageItems(page);
   const allText = items.map(i => i.str).join(' ');
 
-  // DEBUG: Log extracted text for troubleshooting
-  console.log(`[PDF Parser] Page ${pageNum} — first 300 chars:`, allText.substring(0, 300));
-  console.log(`[PDF Parser] Page ${pageNum} — total items:`, items.length);
-  console.log(`[PDF Parser] Page ${pageNum} — first 15 items:`, items.slice(0, 15).map(i => `(${i.x},${i.y})"${i.str}"`));
+  // Compact text (no whitespace) handles PDFs where each CJK character is a separate item
+  const compactText = allText.replace(/\s/g, '');
 
   // Quick check: must contain "公共工程監造報表" OR "施工日誌" to be a valid log page
-  // Use regex to allow spaces between characters which sometimes happens in PDF extraction
-  if (!/公共\s*工程\s*監造\s*報表/.test(allText) && !/施工日誌/.test(allText)) {
-    console.warn(`[PDF Parser] Page ${pageNum} — SKIP: 未找到「公共工程監造報表」或「施工日誌」標題`);
-    // Also try looser match
-    const hasPublic = allText.includes('公共');
-    const hasEngineering = allText.includes('工程');
-    const hasMonitor = allText.includes('監造');
-    const hasReport = allText.includes('報表');
-    console.warn(`[PDF Parser] 個別關鍵字: 公共=${hasPublic}, 工程=${hasEngineering}, 監造=${hasMonitor}, 報表=${hasReport}`);
+  if (!compactText.includes('公共工程監造報表') && !compactText.includes('施工日誌')) {
     return null;
   }
 
@@ -124,7 +114,6 @@ async function parseMonitoringPage(page, pageNum) {
   // Support both 填表日期 (older format) and 填報日期 (newer format)
   const dateLabelItem = items.find(i => i.str.startsWith('填報日期') || i.str.startsWith('填表日期'));
   let logDate = null;
-  console.log(`[PDF Parser] Page ${pageNum} — 填報/填表日期 label:`, dateLabelItem || 'NOT FOUND');
   if (dateLabelItem) {
     // Date may be embedded (e.g. "填報日期：2026年4月1日星期三" or "填表日期：115年3月30日")
     const embeddedDate = dateLabelItem.str.match(/(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
@@ -140,7 +129,6 @@ async function parseMonitoringPage(page, pageNum) {
         i.str !== dateLabelItem.str &&
         (/\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
       );
-      console.log(`[PDF Parser] Page ${pageNum} — date candidates near label:`, near);
       if (near.length) logDate = parseDate(near[0].str);
     }
   }
@@ -156,12 +144,10 @@ async function parseMonitoringPage(page, pageNum) {
     const dateItems = items.filter(i =>
       /^\d{2,4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
     );
-    console.log(`[PDF Parser] Page ${pageNum} — all date-like items (fallback):`, dateItems.slice(0, 5));
     const labelY = dateLabelItem?.y ?? 770;
     const sorted = dateItems.sort((a, b) => Math.abs(a.y - labelY) - Math.abs(b.y - labelY));
     if (sorted.length) logDate = parseDate(sorted[0].str);
   }
-  console.log(`[PDF Parser] Page ${pageNum} — resolved logDate:`, logDate);
   if (!logDate) return null;
 
   // --- 2. Weather ---
