@@ -256,6 +256,12 @@ export function Dashboard() {
     };
   }, []);
 
+  // 當目前篩選標籤數量歸零（如刪除最後一個）自動重設為全部
+  useEffect(() => {
+    const counts = { starred: starredCount, pending: pendingCount, active: activeCount, behind: behindCount, completed: completedCount, accepted: acceptedCount, suspended: suspendedCount };
+    if (statusFilter in counts && counts[statusFilter] === 0) setStatusFilter('all');
+  }, [statusFilter, starredCount, pendingCount, activeCount, behindCount, completedCount, acceptedCount, suspendedCount]);
+
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
@@ -436,12 +442,12 @@ export function Dashboard() {
 
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
-    ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
-    ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
-    { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
-    { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
-    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
-    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
+    ...(starredCount   > 0 ? [{ key: 'starred',   label: '常用',   count: starredCount,   color: '#f59e0b' }] : []),
+    ...(pendingCount   > 0 ? [{ key: 'pending',   label: '未發包', count: pendingCount,   color: '#94a3b8' }] : []),
+    ...(activeCount    > 0 ? [{ key: 'active',    label: '執行中', count: activeCount,    color: 'var(--color-primary-light)' }] : []),
+    ...(behindCount    > 0 ? [{ key: 'behind',    label: '落後',   count: behindCount,    color: 'var(--color-danger)' }] : []),
+    ...(completedCount > 0 ? [{ key: 'completed', label: '已竣工', count: completedCount, color: 'var(--color-success)' }] : []),
+    ...(acceptedCount  > 0 ? [{ key: 'accepted',  label: '已竣工', count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
