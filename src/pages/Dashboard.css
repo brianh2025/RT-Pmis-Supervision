@@ -1965,6 +1965,11 @@
   opacity: 1;
 }
 
+.card-star-btn.starred {
+  opacity: 1;
+  color: #f59e0b;
+}
+
 .card-star-btn:hover {
   background: rgba(245, 158, 11, 0.12);
   color: #f59e0b;
@@ -2034,9 +2039,10 @@
   transform: scale(0.92);
 }
 
-/* 觸控裝置無 hover：直接顯示刪除鈕 */
+/* 觸控裝置無 hover：直接顯示刪除鈕與星號鈕 */
 @media (hover: none) {
   .card-delete-btn { opacity: 1; }
+  .card-star-btn   { opacity: 1; }
 }
 
 /* ── 刪除確認 Modal ── */
