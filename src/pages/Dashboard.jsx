@@ -256,12 +256,6 @@ export function Dashboard() {
     };
   }, []);
 
-  // 當目前篩選標籤數量歸零（如刪除最後一個）自動重設為全部
-  useEffect(() => {
-    const counts = { starred: starredCount, pending: pendingCount, active: activeCount, behind: behindCount, completed: completedCount, accepted: acceptedCount, suspended: suspendedCount };
-    if (statusFilter in counts && counts[statusFilter] === 0) setStatusFilter('all');
-  }, [statusFilter, starredCount, pendingCount, activeCount, behindCount, completedCount, acceptedCount, suspendedCount]);
-
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
     if (loading || !projects.length) return;
