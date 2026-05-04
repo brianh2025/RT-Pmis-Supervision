@@ -566,6 +566,7 @@ export function Dashboard() {
         setIsMobileOpen={setIsMobileOpen}
         projectId={null}
         onSignOut={handleSignOut}
+        user={user}
         isDarkMode={isDarkMode}
         toggleTheme={toggleTheme}
         time={time}

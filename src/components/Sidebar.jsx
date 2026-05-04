@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Sun,
   Moon,
+  Thermometer,
   HelpCircle,
   TrendingUp,
   BarChart3,
@@ -142,7 +143,7 @@ export function Sidebar({
                 {!isCollapsed && (
                   <div className="pl-nav-row-tools">
                     <span className="pl-tool-weather" title="今日天氣：晴">
-                      <Sun size={18} color="#FCD34D" />
+                      <Thermometer size={18} color="#FCD34D" />
                       <span>26°C</span>
                     </span>
                     <button
