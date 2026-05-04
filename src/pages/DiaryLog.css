@@ -9,3 +9,293 @@
     display: none;
   }
 }
+
+/* ─── 主 Tab 切換列 ─────────────────────────────────────────────────────────────── */
+
+.diary-main-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.diary-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.diary-tab-btn:hover {
+  color: var(--color-text-main);
+  background: var(--color-surface-hover);
+}
+
+.diary-tab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.diary-tab-hidden {
+  display: none;
+}
+
+/* ─── 月報稽核 Tab ───────────────────────────────────────────────────────────────── */
+
+.audit-tab-content {
+  overflow-x: auto;
+}
+
+.audit-loading,
+.audit-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 20px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.audit-table thead th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.audit-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--color-surface-border);
+}
+
+.audit-table tbody tr:hover {
+  background: var(--color-surface-hover);
+}
+
+.audit-row-overdue {
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.audit-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.audit-month {
+  font-weight: 500;
+  color: var(--color-text-main);
+  white-space: nowrap;
+}
+
+.audit-cell-muted {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+/* 狀態 Badge */
+.audit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-badge.submitted {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.audit-badge.pending {
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+}
+
+.audit-badge.overdue {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* ─── 月報稽核 Modal ─────────────────────────────────────────────────────────────── */
+
+.audit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.audit-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 420px;
+  max-width: 94vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.audit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.audit-modal-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.audit-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.audit-modal-close:hover {
+  background: var(--color-surface-hover);
+}
+
+.audit-modal-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.audit-form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.audit-form-row > span {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.audit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg2);
+  color: var(--color-text-main);
+  font-size: 0.82rem;
+}
+
+.audit-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.audit-toggle-row {
+  display: flex;
+  gap: 6px;
+}
+
+.audit-toggle-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg2);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.audit-toggle-btn.active-gray {
+  background: var(--color-surface-hover);
+  color: var(--color-text-main);
+  border-color: var(--color-text-muted);
+}
+
+.audit-toggle-btn.active-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: #10b981;
+  font-weight: 600;
+}
+
+.audit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.audit-btn-cancel {
+  padding: 7px 16px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.audit-btn-cancel:hover {
+  background: var(--color-surface-hover);
+}
+
+.audit-btn-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 20px;
+  border-radius: 7px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.audit-btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

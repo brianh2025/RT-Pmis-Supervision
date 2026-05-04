@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen, Loader2, ClipboardCheck, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { C } from './DailyReport/utils';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
@@ -35,6 +35,32 @@ async function runBackgroundSync(projectId, startDate) {
 import './DiaryLog.css';
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
+
+function generateMonths(startDate) {
+  if (!startDate) return [];
+  const start = new Date(startDate);
+  start.setDate(1);
+  const now = new Date();
+  const months = [];
+  let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cur <= now) {
+    months.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return months.reverse();
+}
+
+function isOverdue(monthStr, status) {
+  if (status === 'submitted') return false;
+  const [y, m] = monthStr.split('-').map(Number);
+  const deadline = new Date(y, m, 10);
+  return new Date() > deadline;
+}
+
+function fmtMonthLabel(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  return `${y - 1911} 年 ${m} 月（${y}/${String(m).padStart(2, '0')}）`;
+}
 
 function cleanNotes(raw) {
   if (!raw) return '';
@@ -104,6 +130,14 @@ function DiaryLogInner() {
   const autoSyncedRef = useRef(false);
   const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
   const [tabD, setTabD] = useState('work');
+  const [mainTab, setMainTab] = useState('calendar');
+
+  /* ── 月報稽核 ── */
+  const [auditRecords, setAuditRecords] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditModal, setAuditModal] = useState(null); // { monthStr, record }
+  const [auditForm, setAuditForm] = useState({});
+  const [auditSaving, setAuditSaving] = useState(false);
 
   /* ── 工項偵測（一鍵建立抽查） ── */
   const [pendingWorkItems, setPendingWorkItems] = useState([]);
@@ -145,6 +179,23 @@ function DiaryLogInner() {
     return () => { cancelled = true; };
   }, [projectId, year, month, refreshTrigger]);
 
+
+  useEffect(() => {
+    if (mainTab !== 'audit' || !projectId) return;
+    let cancelled = false;
+    async function fetchAudit() {
+      setAuditLoading(true);
+      const { data } = await supabase
+        .from('supervision_reports')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('report_month', { ascending: false });
+      if (!cancelled) setAuditRecords(data || []);
+      setAuditLoading(false);
+    }
+    fetchAudit();
+    return () => { cancelled = true; };
+  }, [mainTab, projectId]);
 
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const firstDow = useMemo(() => getFirstDow(year, month), [year, month]);
@@ -221,6 +272,36 @@ function DiaryLogInner() {
       },
     }));
   };
+
+  function openAuditModal(monthStr) {
+    const rec = auditRecords.find(r => r.report_month === monthStr) || null;
+    setAuditModal({ monthStr, record: rec });
+    setAuditForm({
+      status: rec?.status || 'pending',
+      submitted_at: rec?.submitted_at ? rec.submitted_at.slice(0, 10) : '',
+      doc_no: rec?.doc_no || '',
+      notes: rec?.notes || '',
+    });
+  }
+
+  async function saveAuditRecord() {
+    if (!auditModal) return;
+    setAuditSaving(true);
+    const { monthStr } = auditModal;
+    const payload = {
+      project_id: projectId,
+      report_month: monthStr,
+      status: auditForm.status,
+      submitted_at: auditForm.status === 'submitted' && auditForm.submitted_at ? auditForm.submitted_at : null,
+      doc_no: auditForm.doc_no.trim() || null,
+      notes: auditForm.notes.trim() || null,
+    };
+    await supabase.from('supervision_reports').upsert(payload, { onConflict: 'project_id,report_month' });
+    const { data } = await supabase.from('supervision_reports').select('*').eq('project_id', projectId).order('report_month', { ascending: false });
+    setAuditRecords(data || []);
+    setAuditSaving(false);
+    setAuditModal(null);
+  }
 
   /* 當選定日期變更時，載入 daily_report_items 供抽查偵測使用 */
   useEffect(() => {
@@ -304,8 +385,69 @@ function DiaryLogInner() {
         </div>
       </header>
       
+      {/* 主 Tab 切換 */}
+      <div className="diary-main-tabs">
+        <button className={`diary-tab-btn${mainTab === 'calendar' ? ' active' : ''}`} onClick={() => setMainTab('calendar')}>
+          <Calendar size={14} />
+          <span>日曆檢視</span>
+        </button>
+        <button className={`diary-tab-btn${mainTab === 'audit' ? ' active' : ''}`} onClick={() => setMainTab('audit')}>
+          <ClipboardCheck size={14} />
+          <span>月報稽核</span>
+        </button>
+      </div>
+
+      {/* 月報稽核 Tab */}
+      {mainTab === 'audit' && (
+        <div className="audit-tab-content">
+          {auditLoading ? (
+            <div className="audit-loading"><Loader2 size={20} className="animate-spin" />載入中…</div>
+          ) : (() => {
+            const months = generateMonths(_project?.start_date);
+            return months.length === 0 ? (
+              <div className="audit-empty">尚無資料，請確認工程起始日期已設定。</div>
+            ) : (
+              <table className="audit-table">
+                <thead>
+                  <tr>
+                    <th>月份</th>
+                    <th>提送狀態</th>
+                    <th>提送日期</th>
+                    <th>發文文號</th>
+                    <th>備註</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map(m => {
+                    const rec = auditRecords.find(r => r.report_month === m);
+                    const status = rec?.status || 'pending';
+                    const overdue = isOverdue(m, status);
+                    return (
+                      <tr key={m} className={overdue ? 'audit-row-overdue' : ''} onClick={() => openAuditModal(m)}>
+                        <td className="audit-month">{fmtMonthLabel(m)}</td>
+                        <td>
+                          {status === 'submitted'
+                            ? <span className="audit-badge submitted"><CheckCircle2 size={12} />已提送</span>
+                            : overdue
+                              ? <span className="audit-badge overdue"><AlertTriangle size={12} />逾期未送</span>
+                              : <span className="audit-badge pending"><Clock size={12} />未提送</span>
+                          }
+                        </td>
+                        <td className="audit-cell-muted">{rec?.submitted_at ? rec.submitted_at.slice(0, 10) : '—'}</td>
+                        <td className="audit-cell-muted">{rec?.doc_no || '—'}</td>
+                        <td className="audit-cell-muted">{rec?.notes || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
+        </div>
+      )}
+
       {/* B-version Calendar and details grid */}
-      <div className={initDate ? '' : 'b-dash-content-grid'}>
+      <div className={`${initDate ? '' : 'b-dash-content-grid'}${mainTab !== 'calendar' ? ' diary-tab-hidden' : ''}`}>
          {/* Left: Calendar — hidden when navigated from DiaryJournal */}
          {!initDate && <div className="b-content-panel">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -485,6 +627,51 @@ function DiaryLogInner() {
          </div>
       </div>
       
+      {/* 月報稽核編輯 Modal */}
+      {auditModal && (
+        <div className="audit-modal-overlay" onClick={() => setAuditModal(null)}>
+          <div className="audit-modal" onClick={e => e.stopPropagation()}>
+            <div className="audit-modal-header">
+              <span className="audit-modal-title">{fmtMonthLabel(auditModal.monthStr)}　月報提送</span>
+              <button className="audit-modal-close" onClick={() => setAuditModal(null)}><X size={16} /></button>
+            </div>
+            <div className="audit-modal-body">
+              <label className="audit-form-row">
+                <span>提送狀態</span>
+                <div className="audit-toggle-row">
+                  <button
+                    className={`audit-toggle-btn${auditForm.status === 'pending' ? ' active-gray' : ''}`}
+                    onClick={() => setAuditForm(f => ({ ...f, status: 'pending' }))}
+                  >未提送</button>
+                  <button
+                    className={`audit-toggle-btn${auditForm.status === 'submitted' ? ' active-green' : ''}`}
+                    onClick={() => setAuditForm(f => ({ ...f, status: 'submitted', submitted_at: f.submitted_at || new Date().toISOString().slice(0, 10) }))}
+                  >已提送</button>
+                </div>
+              </label>
+              <label className="audit-form-row">
+                <span>提送日期</span>
+                <input type="date" value={auditForm.submitted_at} onChange={e => setAuditForm(f => ({ ...f, submitted_at: e.target.value }))} className="audit-input" />
+              </label>
+              <label className="audit-form-row">
+                <span>發文文號</span>
+                <input type="text" value={auditForm.doc_no} onChange={e => setAuditForm(f => ({ ...f, doc_no: e.target.value }))} placeholder="例：府工字第00123號" className="audit-input" />
+              </label>
+              <label className="audit-form-row">
+                <span>備註</span>
+                <input type="text" value={auditForm.notes} onChange={e => setAuditForm(f => ({ ...f, notes: e.target.value }))} className="audit-input" />
+              </label>
+            </div>
+            <div className="audit-modal-footer">
+              <button className="audit-btn-cancel" onClick={() => setAuditModal(null)}>取消</button>
+              <button className="audit-btn-save" onClick={saveAuditRecord} disabled={auditSaving}>
+                {auditSaving ? <Loader2 size={13} className="animate-spin" /> : null}儲存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showImportModal && (
         <DiaryImportModal
           projectId={projectId}
