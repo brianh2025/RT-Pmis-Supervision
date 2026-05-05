@@ -24,7 +24,9 @@
       "Bash(git -C c:/RT/RT-Pmis-Supervision commit -m \"fix: 儀表板5項修正——任務看板恢復/去查驗/去重複、按鈕透明無框、返回按鈕加大加框、PROJECT DASHBOARD移右\")",
       "Bash(git -C c:/RT/RT-Pmis-Supervision push)",
       "Bash(git commit -m ' *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "mcp__6de4ef29-93e5-4d1e-8241-89f697ab524b__list_projects",
+      "mcp__6de4ef29-93e5-4d1e-8241-89f697ab524b__list_deployments"
     ]
   },
   "enableAllProjectMcpServers": true,
