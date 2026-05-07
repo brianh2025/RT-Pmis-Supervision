@@ -417,11 +417,7 @@ export function ProjectDashboard() {
               承包商：{project.contractor}
             </span>
           )}
-          {project.supervisor_name && (
-            <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              監造：{project.supervisor_name.split('\n').filter(Boolean).join('、')}
-            </span>
-          )}
+
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>

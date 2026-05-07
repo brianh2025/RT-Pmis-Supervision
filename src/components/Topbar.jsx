@@ -21,7 +21,6 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
         {backInfo && (
           <button className="pl-back-btn" onClick={backInfo.onClick}>
             <ChevronLeft size={18} />
-            <span>{backInfo.label}</span>
           </button>
         )}
       </div>
