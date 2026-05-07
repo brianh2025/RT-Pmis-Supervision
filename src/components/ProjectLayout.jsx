@@ -83,7 +83,6 @@ export function ProjectLayout() {
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
           pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : relPath === 'photos' ? 'PHOTO RECORDS' : null}
-          onHelp={helpContent ? () => setShowHelp(true) : undefined}
         />
         
         <main ref={contentRef} className="pl-content-area custom-scrollbar">
