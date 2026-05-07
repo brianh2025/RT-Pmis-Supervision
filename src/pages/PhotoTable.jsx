@@ -433,11 +433,11 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
             return (
             <div key={i} className="pt-detail-photo-row">
               <div className="pt-detail-photo-num">#{i + 1}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <div className="pt-detail-photo-preview">
                 {displaySrc
-                  ? <img src={displaySrc} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--color-border)' }}
+                  ? <img src={displaySrc} alt="" className="pt-detail-photo-img"
                       onError={e => { e.target.style.opacity = 0.2; }} />
-                  : <div style={{ width: 72, height: 72, borderRadius: 5, border: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  : <div className="pt-detail-photo-placeholder">
                       <Camera size={20} style={{ opacity: 0.3 }} />
                     </div>
                 }
