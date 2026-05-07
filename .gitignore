@@ -32,3 +32,6 @@ dist-ssr
 # Supabase CLI temp files
 supabase/.temp/
 .trae/
+
+.agents/
+.continue/
