@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
-import { ReportReminderBanner } from '../components/ReportReminderBanner';
 import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
@@ -24,6 +23,29 @@ import {
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
 import '../components/Modal.css';
+
+const WMO = {
+  0:'晴', 1:'晴時多雲', 2:'多雲', 3:'陰',
+  45:'霧', 48:'霧',
+  51:'毛毛雨', 53:'毛毛雨', 55:'毛毛雨',
+  61:'小雨', 63:'中雨', 65:'大雨',
+  80:'陣雨', 82:'大陣雨', 95:'雷雨',
+};
+
+function buildProjectMsg(project, wx) {
+  const nm = project.name.length > 10 ? project.name.slice(0, 10) + '…' : project.name;
+  const isHeavyRain = wx.precipMm >= 80;
+  const isRain      = wx.precipMm >= 10;
+  if (isHeavyRain)
+    return `今日豪雨特報，${nm}今天暫停施工，請加強防汛作業，嚴加戒備！`;
+  if (project.status === 'suspended')
+    return `今日天氣${wx.condition}，${nm}目前暫停施工。`;
+  if (isRain) {
+    const slot = wx.afternoonRainAvg >= 50 ? '下午' : '傍晚';
+    return `今日天氣${wx.condition}，${nm}正常施工，預計${slot}將有陣雨，預估雨量 ${wx.precipMm}mm。`;
+  }
+  return `今日天氣${wx.condition}，${nm}正常施工，天氣良好，氣溫 ${wx.temp}°C。`;
+}
 
 /* ── 跨工程待辦彙總區 ── */
 function AlertsPanel({ alerts, navigate }) {
@@ -223,7 +245,10 @@ export function Dashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [wx, setWx] = useState(null);
+  const [reportSlide, setReportSlide] = useState(null);
+  const [carouselIdx, setCarouselIdx] = useState(0);
+  const [carouselVisible, setCarouselVisible] = useState(true);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
   const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
@@ -247,12 +272,72 @@ export function Dashboard() {
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
-    const welcomeTimer = setTimeout(() => setShowWelcome(false), 5000);
-    return () => {
-      clearInterval(timer);
-      clearTimeout(welcomeTimer);
-    };
+    return () => clearInterval(timer);
   }, []);
+
+  // 天氣：Open-Meteo，雲林縣固定座標
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=23.7&longitude=120.4&current=temperature_2m,weather_code&daily=precipitation_sum&hourly=precipitation_probability&timezone=Asia%2FTaipei&forecast_days=1')
+      .then(r => r.json())
+      .then(d => {
+        const prob = d.hourly.precipitation_probability.slice(12, 18);
+        const afternoonRainAvg = prob.reduce((a, b) => a + b, 0) / prob.length;
+        setWx({
+          temp: Math.round(d.current.temperature_2m),
+          condition: WMO[d.current.weather_code] ?? '—',
+          precipMm: Math.round(d.daily.precipitation_sum[0] ?? 0),
+          afternoonRainAvg,
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  // 月報提醒（整合進輪播）
+  useEffect(() => {
+    if (!projects.length) return;
+    const now = new Date();
+    const day = now.getDate();
+    if (day > 5 && day < 25) { setReportSlide(null); return; }
+    if (day >= 25) {
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+      setReportSlide({ message: `本月監造月報需於 ${next.getFullYear()}/${String(next.getMonth()+1).padStart(2,'0')}/05 前提送，請提前準備。`, urgent: false });
+      return;
+    }
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthStr = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+    supabase.from('supervision_reports')
+      .select('id,status').eq('project_id', projects[0].id).eq('report_month', monthStr).maybeSingle()
+      .then(({ data }) => {
+        if (!data || data.status === 'pending') {
+          const deadline = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/05`;
+          setReportSlide({ message: `⚠ ${monthStr} 監造月報尚未提送！截止日期：${deadline}`, urgent: true });
+        }
+      });
+  }, [projects]);
+
+  // 輪播 slides
+  const slides = useMemo(() => {
+    const s = [{ type: 'welcome' }];
+    if (wx) {
+      s.push({ type: 'weather', wx });
+      projects.filter(p => p.status !== 'pending').forEach(p => s.push({ type: 'project', project: p, wx }));
+    }
+    if (reportSlide) s.push({ type: 'report', ...reportSlide });
+    return s;
+  }, [wx, projects, reportSlide]);
+
+  // 輪播自動推進
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const tick = setInterval(() => {
+      setCarouselVisible(false);
+      setTimeout(() => {
+        setCarouselIdx(i => (i + 1) % slides.length);
+        setCarouselVisible(true);
+      }, 300);
+    }, 5000);
+    return () => clearInterval(tick);
+  }, [slides.length]);
 
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
@@ -631,19 +716,25 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 整合：歡迎詞 + 提前預警 */}
-            {(showWelcome || projects.length > 0) && (
-              <div className="dash-info-strip">
-                {showWelcome && (
-                  <span className="welcome-msg-inline animate-fade-out">
-                    歡迎進行監造作業。
-                  </span>
-                )}
-                {projects.length > 0 && (
-                  <ReportReminderBanner projectId={projects[0]?.id} />
-                )}
-              </div>
-            )}
+            {/* 情境輪播橫幅 */}
+            <div className="dash-info-strip">
+              <span className={`info-carousel-slide${carouselVisible ? '' : ' fade-out'}`}>
+                {(() => {
+                  const s = slides[carouselIdx];
+                  if (!s) return null;
+                  if (s.type === 'welcome') return '歡迎進行監造作業。';
+                  if (s.type === 'weather') return `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`;
+                  if (s.type === 'project') return buildProjectMsg(s.project, s.wx);
+                  if (s.type === 'report') return <span style={{ color: s.urgent ? 'var(--color-danger, #ef4444)' : 'var(--color-warning, #f59e0b)' }}>{s.message}</span>;
+                  return null;
+                })()}
+              </span>
+              {slides.length > 1 && (
+                <span className="carousel-dots">
+                  {slides.map((_, i) => <span key={i} className={`cdot${i === carouselIdx ? ' active' : ''}`} />)}
+                </span>
+              )}
+            </div>
 
             {/* 跨工程待辦彙總 */}
             <AlertsPanel alerts={alerts} navigate={navigate} />
