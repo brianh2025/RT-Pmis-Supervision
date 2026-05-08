@@ -58,8 +58,41 @@ async function extractPageItems(page) {
       str: item.str.trim(),
       x: Math.round(item.transform[4]),
       y: Math.round(item.transform[5]),
+      w: Math.round(item.width || 0),
     }))
     .filter(i => i.str !== '');
+}
+
+// 合併同列相鄰 item（處理 pdfjs 將每個漢字拆成獨立 item 的 PDF）
+// gap ≤ 12px 視為相鄰字元，> 12px 視為不同欄位
+function mergeAdjacentItems(rawItems) {
+  if (!rawItems.length) return rawItems;
+  const lines = new Map();
+  for (const item of rawItems) {
+    let key = item.y;
+    for (const y of lines.keys()) {
+      if (Math.abs(y - item.y) <= 2) { key = y; break; }
+    }
+    if (!lines.has(key)) lines.set(key, []);
+    lines.get(key).push(item);
+  }
+  const result = [];
+  for (const lineItems of lines.values()) {
+    lineItems.sort((a, b) => a.x - b.x);
+    let cur = { ...lineItems[0] };
+    for (let i = 1; i < lineItems.length; i++) {
+      const next = lineItems[i];
+      const curEnd = cur.x + (cur.w || cur.str.length * 10);
+      if (next.x - curEnd <= 12) {
+        cur = { str: cur.str + next.str, x: cur.x, y: cur.y, w: (next.x + (next.w || 0)) - cur.x };
+      } else {
+        result.push(cur);
+        cur = { ...next };
+      }
+    }
+    result.push(cur);
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,9 +125,8 @@ function parseDate(raw) {
 // Returns null if this page is not a 監造報表 daily log page
 // ---------------------------------------------------------------------------
 async function parseMonitoringPage(page, pageNum) {
-  const items = await extractPageItems(page);
+  const items = mergeAdjacentItems(await extractPageItems(page));
   const allText = items.map(i => i.str).join(' ');
-  // 去除所有空白後比對，處理 pdfjs 將每個漢字拆成獨立 item 的情況
   const compactText = allText.replace(/\s/g, '');
 
   // Quick check: must contain "公共工程監造報表" OR "施工日誌" to be a valid log page
