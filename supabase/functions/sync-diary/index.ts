@@ -100,9 +100,11 @@ async function listFolderChildren(
   return json.files || [];
 }
 
-// 遞迴搜尋所有含「施工日誌」的 Excel 檔案（深度 ≤ 5 層）
+// 遞迴搜尋 Excel 檔案（深度 ≤ 5 層）
+// relaxed=true：在已知的施工日誌子資料夾內，接受所有 xlsx/xlsm
+// relaxed=false：從專案根目錄搜尋，只接受檔名含「施工日誌」的檔案
 async function listDiaryFilesRecursive(
-  folderId: string, token: string, depth = 0
+  folderId: string, token: string, depth = 0, relaxed = false
 ): Promise<{ id: string; name: string }[]> {
   if (depth > 5) return [];
   const FOLDER = "application/vnd.google-apps.folder";
@@ -110,9 +112,13 @@ async function listDiaryFilesRecursive(
   const results: { id: string; name: string }[] = [];
   for (const item of children) {
     if (item.mimeType === FOLDER) {
-      const sub = await listDiaryFilesRecursive(item.id, token, depth + 1);
+      const sub = await listDiaryFilesRecursive(item.id, token, depth + 1, relaxed);
       results.push(...sub);
-    } else if (item.name.includes("施工日誌")) {
+    } else if (
+      relaxed
+        ? /\.(xlsx|xlsm|xls)$/i.test(item.name)
+        : item.name.includes("施工日誌")
+    ) {
       results.push({ id: item.id, name: item.name });
     }
   }
@@ -120,9 +126,10 @@ async function listDiaryFilesRecursive(
 }
 
 async function listDiaryFiles(
-  folderId: string, token: string, startDate?: string, endDate?: string
+  folderId: string, token: string, startDate?: string, endDate?: string,
+  relaxed = false
 ): Promise<{ id: string; name: string }[]> {
-  let files = await listDiaryFilesRecursive(folderId, token);
+  let files = await listDiaryFilesRecursive(folderId, token, 0, relaxed);
   if (startDate || endDate) {
     files = files.filter((f) => {
       const d = parseDateFromFileName(f.name);
@@ -671,8 +678,10 @@ Deno.serve(async (req) => {
       if (projErr || !proj?.drive_folder_id)
         return json({ error: "找不到工程或未設定 Drive 資料夾" }, 400);
       const diaryFolderId = await getDiaryFolderId(proj.drive_folder_id, token);
+      // 找到專屬的施工日誌子資料夾時，放寬篩選接受所有 xlsx
+      const relaxed = diaryFolderId !== proj.drive_folder_id;
       const sd = startDate ?? proj.start_date ?? undefined;
-      const files = await listDiaryFiles(diaryFolderId, token, sd, endDate);
+      const files = await listDiaryFiles(diaryFolderId, token, sd, endDate, relaxed);
       files.sort((a, b) => {
         const da = parseDateFromFileName(a.name) ?? "9999";
         const db = parseDateFromFileName(b.name) ?? "9999";
@@ -701,7 +710,8 @@ Deno.serve(async (req) => {
       if (projErr || !proj?.drive_folder_id)
         return json({ error: "找不到工程或未設定 Drive 資料夾" }, 400);
       const diaryFolderId = await getDiaryFolderId(proj.drive_folder_id, token);
-      let files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate);
+      const relaxedBatch = diaryFolderId !== proj.drive_folder_id;
+      let files = await listDiaryFiles(diaryFolderId, token, startDate ?? proj.start_date ?? undefined, endDate, relaxedBatch);
       files.sort((a, b) => (parseDateFromFileName(a.name) ?? "9999").localeCompare(parseDateFromFileName(b.name) ?? "9999"));
       const batch = files.slice(0, 5); // 安全上限降為 5
       const results = [];
