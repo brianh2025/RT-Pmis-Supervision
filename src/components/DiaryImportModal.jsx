@@ -129,19 +129,25 @@ async function parseMonitoringPage(page, pageNum) {
   const allText = items.map(i => i.str).join(' ');
   const compactText = allText.replace(/\s/g, '');
 
-  // Quick check: must contain "公共工程監造報表" OR "施工日誌" to be a valid log page
-  if (!compactText.includes('公共工程監造報表') && !compactText.includes('施工日誌')) {
-    return null;
-  }
+  // 接受標準公文格式或任何含有日誌欄位關鍵字的頁面
+  const hasDiaryMarker =
+    compactText.includes('公共工程監造報表') ||
+    compactText.includes('施工日誌') ||
+    compactText.includes('監造週報') ||
+    compactText.includes('監造日誌') ||
+    compactText.includes('填表日期') ||
+    compactText.includes('填報日期') ||
+    compactText.includes('本日天氣');
+  if (!hasDiaryMarker) return null;
 
   // --- 1. Report Date ---
-  //    The label may be "填表日期" or "填表日期：" (with colon)
-  //    The date value may be "115/3/30" or "115年3月30日"
-  const dateLabelItem = items.find(i => i.str.startsWith('填表日期'));
+  const dateLabelItem = items.find(i =>
+    i.str.startsWith('填表日期') || i.str.startsWith('填報日期')
+  );
   let logDate = null;
   if (dateLabelItem) {
     // Check if the date is embedded in the label itself (e.g. "填表日期：115年3月30日" as one item)
-    const embeddedDate = dateLabelItem.str.match(/(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    const embeddedDate = dateLabelItem.str.match(/(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
     if (embeddedDate) {
       logDate = parseDate(`${embeddedDate[1]}年${embeddedDate[2]}月${embeddedDate[3]}日`);
     }
@@ -152,7 +158,7 @@ async function parseMonitoringPage(page, pageNum) {
         i.x > dateLabelItem.x - 10 &&
         i.x < dateLabelItem.x + 200 &&
         i.str !== dateLabelItem.str &&
-        (/\d{2,3}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,3}\s*年/.test(i.str))
+        (/\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
       );
       if (near.length) logDate = parseDate(near[0].str);
     }
@@ -160,7 +166,7 @@ async function parseMonitoringPage(page, pageNum) {
   // Fallback: any date-like string in the page
   if (!logDate) {
     // Try 年月日 format first
-    const cjkDateItems = items.filter(i => /\d{2,3}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(i.str));
+    const cjkDateItems = items.filter(i => /\d{2,4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(i.str));
     if (cjkDateItems.length) {
       logDate = parseDate(cjkDateItems[0].str);
     }
@@ -168,7 +174,7 @@ async function parseMonitoringPage(page, pageNum) {
   if (!logDate) {
     // Try slash format, prefer items near the top of the page (y > 700)
     const dateItems = items.filter(i =>
-      /^\d{2,3}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
+      /^\d{2,4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
     );
     // Pick the one closest to the label's y coordinate, or the first one
     const labelY = dateLabelItem?.y ?? 770;
