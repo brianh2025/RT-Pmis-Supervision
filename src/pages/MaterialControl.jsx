@@ -65,8 +65,9 @@ const TST_COLS = [
 const TNAMES = ['材料進場紀錄', '檢試驗管制表'];
 const VER_COLORS = ['#1565C0', '#0a8a4a', '#c2410c', '#6d28d9', '#0f766e', '#b45309'];
 
-const RESULT_CYCLE = ['合格', '不合格', ''];
+const RESULT_CYCLE = ['待查驗', '合格', '不合格', ''];
 const RESULT_CFG = {
+  '待查驗': { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
   '合格':  { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
   '不合格': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
 };
