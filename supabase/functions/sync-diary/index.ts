@@ -582,7 +582,7 @@ async function syncFile(
         const { error: e2 } = await supabase.from("progress_records").update({
           planned_progress: parsed.plannedProgress ?? 0,
           actual_progress: parsed.actualProgress ?? 0,
-          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+          notes: null,
         }).eq("id", existProg.id);
         if (e2) console.warn("progress_records:", e2.message);
       } else {
@@ -590,7 +590,7 @@ async function syncFile(
           project_id: projectId, report_date: logDate,
           planned_progress: parsed.plannedProgress ?? 0,
           actual_progress: parsed.actualProgress ?? 0,
-          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+          notes: null,
         });
         if (e2) console.warn("progress_records:", e2.message);
       }
@@ -602,7 +602,7 @@ async function syncFile(
         const { error: e2 } = await supabase.from("progress_records").insert({
           project_id: projectId, report_date: logDate,
           planned_progress: 0, actual_progress: 0,
-          notes: parsed.workItemsText ? parsed.workItemsText.split("\n")[0] : null,
+          notes: null,
         });
         if (e2) console.warn("progress_records insert:", e2.message);
       }
