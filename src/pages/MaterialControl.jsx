@@ -484,6 +484,24 @@ export function MaterialControl() {
   async function handleMaterialResult(row) {
     const cur = row.result || '';
     const next = RESULT_CYCLE[(RESULT_CYCLE.indexOf(cur) + 1) % RESULT_CYCLE.length];
+
+    // 切換到「合格」時，檢查試驗報告判讀狀態
+    if (next === '合格' && row.name) {
+      const name4 = row.name.trim().slice(0, 4);
+      const matched = tstRows.find(t => t.name && t.name.includes(name4));
+      if (matched) {
+        if (matched.result === '不合格') {
+          alert(`「${row.name}」的試驗報告判定為不合格，無法標記為合格。`);
+          return;
+        }
+        if (!matched.result || !matched.result.trim()) {
+          if (!confirm(`「${row.name}」的試驗報告尚未填寫判讀結果，確定要標記為合格嗎？`)) return;
+        }
+      } else {
+        if (!confirm(`「${row.name}」尚無試驗報告記錄，建議先至「檢試驗管制表」建立報告再結案。確定要標記為合格嗎？`)) return;
+      }
+    }
+
     const patch = { result: next || null };
     setEntries(prev => prev.map(r => r.id === row.id ? { ...r, result: next || null } : r));
     await supabase.from('material_entries').update(patch).eq('id', row.id);
