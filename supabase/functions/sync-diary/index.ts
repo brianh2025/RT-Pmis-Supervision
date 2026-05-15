@@ -143,16 +143,10 @@ async function listDiaryFiles(
 }
 
 async function getDiaryFolderId(projectFolderId: string, token: string): Promise<string> {
-  const q = encodeURIComponent(
-    `'${projectFolderId}' in parents and name='施工日誌' and mimeType='application/vnd.google-apps.folder' and trashed=false`
-  );
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const data = await res.json();
-  if (data.files?.length) return data.files[0].id;
-  return projectFolderId;
+  const FOLDER = "application/vnd.google-apps.folder";
+  const children = await listFolderChildren(projectFolderId, token);
+  const sub = children.find(c => c.mimeType === FOLDER && c.name === "施工日誌");
+  return sub ? sub.id : projectFolderId;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -292,6 +286,10 @@ const BOILERPLATE = [
   /^(工程項目|施工項目|工程施工項目|單位|契約數量|今日完成|本日完成|累計完成|發包工程費|備註)/,
   /總表\[|標單\]|\[標單/, /本日無施工數據/,
   /^工程名稱$/, /^承攬廠商/, /^契約工期$/, /^開工日期$/, /^預定完工日期$/, /^累計工期$/,
+  // 施工日誌範本固定注意事項（第2~6條）
+  /本工日誌格式僅供參考/, /依營造業法第\d+條/, /上開重要事項記錄/,
+  /職業安全衛生管理辦法/, /廠商非屬營造業者/, /由工地負責人簽章/,
+  /主辦機關及監造單位指示/, /督察按圖施工/, /本表原則應按日/,
 ];
 function isBoilerplate(s: string): boolean {
   return BOILERPLATE.some((rx) => rx.test(s.trim()));
