@@ -128,6 +128,10 @@ export function Quality() {
   const [tests, setTests] = useState([]);
   const [testFilter, setTestFilter] = useState('all');
 
+  // 手機快速查驗
+  const [showQuickMobile, setShowQuickMobile] = useState(false);
+  const [quickForm, setQuickForm] = useState({ work_item: '', result: '待複驗', location: '' });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(new Set());
@@ -425,6 +429,41 @@ export function Quality() {
     return Object.values(map).sort((a, b) => (b.pass + b.fail + b.pending) - (a.pass + a.fail + a.pending));
   }, [inspections]);
   const openIssues = (issueStats.open || 0) + (issueStats.in_progress || 0);
+
+  async function saveQuickInsp() {
+    if (!quickForm.work_item || !supabase) return;
+    setSaving(true);
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase.from('construction_inspections').insert([{
+      project_id: projectId, created_by: user?.id,
+      inspect_date: today,
+      work_item: quickForm.work_item,
+      location: quickForm.location,
+      inspect_type: '查驗',
+      result: quickForm.result,
+      inspector: '',
+    }]).select().single();
+    setSaving(false);
+    if (error || !data) { alert('儲存失敗，請重試'); return; }
+    setInspections(prev => [data, ...prev]);
+    if (quickForm.result === '不合格') {
+      if (window.confirm(`「${quickForm.work_item}」不合格，是否自動建立缺失改善單？`)) {
+        await supabase.from('quality_issues').insert([{
+          project_id: projectId, created_by: user?.id,
+          inspection_date: today,
+          item: quickForm.work_item, location: quickForm.location,
+          severity: 'major', status: 'open',
+          source_table: 'construction_inspections', source_record_id: data.id,
+        }]);
+        const [ins, iss] = await Promise.all([loadInspections(), loadIssues()]);
+        setInspections(ins); setIssues(iss);
+      }
+    }
+    setShowQuickMobile(false);
+    if (window.confirm('查驗記錄已建立，是否立即前往拍照？')) {
+      navigate(`/projects/${projectId}/photos?src_table=construction_inspections&src_id=${data.id}&src_name=${encodeURIComponent(quickForm.work_item + (quickForm.location ? ' ' + quickForm.location : ''))}`);
+    }
+  }
 
   if (loading) return (
     <div className="mcs-loading"><Loader2 size={20} className="animate-spin" /><span>載入品質管理資料中…</span></div>
@@ -1026,6 +1065,58 @@ export function Quality() {
               <button className="btn-secondary" onClick={() => setShowIssueModal(false)}>取消</button>
               <button className="btn-primary" onClick={addIssue} disabled={saving || !issueForm.item.trim()}>
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} 新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 手機現場一條龍 FAB */}
+      {isMobile && tab === 0 && (
+        <button className="mcs-quick-fab" onClick={() => { setQuickForm({ work_item: '', result: '待複驗', location: '' }); setShowQuickMobile(true); }} title="快速新增查驗">
+          <Plus size={22} />
+        </button>
+      )}
+
+      {/* 快速查驗 Modal */}
+      {showQuickMobile && (
+        <div className="modal-backdrop" onClick={() => setShowQuickMobile(false)}>
+          <div className="modal-content" style={{ maxWidth: 360, margin: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, fontSize: 15 }}>快速查驗記錄</h3>
+              <button className="modal-close" onClick={() => setShowQuickMobile(false)}><X size={16} /></button>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>查驗工項</div>
+                <select value={quickForm.work_item} onChange={e => setQuickForm(f => ({ ...f, work_item: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 8px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }}>
+                  <option value="">— 選擇工項 —</option>
+                  {WORK_ITEMS_PRESET.map(w => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>查驗部位</div>
+                <input value={quickForm.location} onChange={e => setQuickForm(f => ({ ...f, location: e.target.value }))}
+                  placeholder="如：B1 柱位 C3" style={{ width: '100%', padding: '7px 8px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>查驗結果</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['合格', '不合格', '待複驗'].map(r => {
+                    const cfg = INSPECT_RESULT[r] || {};
+                    return (
+                      <button key={r} onClick={() => setQuickForm(f => ({ ...f, result: r }))}
+                        style={{ flex: 1, padding: '9px 0', borderRadius: 6, border: `2px solid ${quickForm.result === r ? cfg.color : 'var(--color-border)'}`, background: quickForm.result === r ? cfg.bg : 'transparent', color: quickForm.result === r ? cfg.color : 'var(--color-text-muted)', fontWeight: quickForm.result === r ? 700 : 400, cursor: 'pointer', fontSize: 13 }}>
+                        {r}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button onClick={saveQuickInsp} disabled={!quickForm.work_item || saving}
+                style={{ padding: '11px', borderRadius: 8, background: quickForm.work_item ? 'var(--color-primary)' : 'var(--color-border)', color: quickForm.work_item ? '#fff' : 'var(--color-text-muted)', border: 'none', fontWeight: 600, fontSize: 15, cursor: quickForm.work_item ? 'pointer' : 'default' }}>
+                {saving ? '儲存中…' : '建立查驗記錄 →'}
               </button>
             </div>
           </div>

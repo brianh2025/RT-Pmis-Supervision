@@ -248,7 +248,7 @@ export function ProgressManagement() {
               {records.length > 0 ? records.map((r) => {
                 const planned = calcPlanned(r.report_date);
                 const diff = planned !== null
-                  ? (Number(r.actual_progress) - planned).toFixed(3)
+                  ? (Number(r.actual_progress) - planned).toFixed(1)
                   : '—';
                 const ahead = diff !== '—' && parseFloat(diff) >= 0;
                 return (
@@ -257,8 +257,8 @@ export function ProgressManagement() {
                     onMouseLeave={e => e.currentTarget.style.background = ''}
                   >
                     <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500 }}>{r.report_date}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{planned !== null ? parseFloat(planned.toFixed(3)) + '%' : '—'}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.actual_progress).toFixed(3))}%</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{planned !== null ? parseFloat(planned.toFixed(1)) + '%' : '—'}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.actual_progress).toFixed(1))}%</td>
                     <td style={{ padding: '10px 16px' }}>
                       {diff === '—' ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
                       <span style={{

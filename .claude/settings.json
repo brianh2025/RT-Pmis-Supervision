@@ -13,7 +13,10 @@
       "Bash(grep -E \"\\\\.\\(jsx|js|sql|json\\)$\")",
       "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(git cherry-pick *)",
+      "WebFetch(domain:api.open-meteo.com)"
     ]
   }
 }

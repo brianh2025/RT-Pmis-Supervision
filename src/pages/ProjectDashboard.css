@@ -126,8 +126,6 @@
   background: rgba(239,68,68,0.1); color: #dc2626;
   border: 1px solid rgba(239,68,68,0.25);
 }
-[data-theme="dark"]  .task-missing-date-chip { color: #fca5a5; }
-[data-theme="light"] .task-missing-date-chip { color: #b91c1c; }
 
 .task-emergency-btn {
   display: inline-flex;
@@ -326,7 +324,6 @@
 .status-badge.active    { background: rgba(16,185,129,0.1);  color: var(--color-success); }
 .status-badge.completed { background: rgba(100,116,139,0.1); color: #64748b; }
 .status-badge.suspended { background: rgba(245,158,11,0.1);  color: var(--color-warning); }
-[data-theme="light"] .status-badge.active { color: #047857; }
 
 /* Diff Badge */
 .diff-badge {

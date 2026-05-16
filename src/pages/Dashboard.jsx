@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useAutoHideScrollbar } from '../hooks/useAutoHideScrollbar';
@@ -10,20 +10,42 @@ import { supabase } from '../lib/supabaseClient';
 import { AddProjectModal } from '../components/AddProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ExcelImportModal } from '../components/ExcelImportModal';
-import { InfoTicker } from '../components/InfoTicker';
-import { useReportReminder } from '../hooks/useReportReminder';
 import { CardContextMenu } from '../components/CardContextMenu';
 import { WelcomeModal, HelpModal } from '../components/TutorialModals';
 import { HELP_CONTENT } from '../config/helpContent';
 import { Sidebar } from '../components/Sidebar';
+import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut, Star,
+  GripHorizontal, LogOut,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
 import '../components/Modal.css';
+
+const WMO = {
+  0:'晴', 1:'晴時多雲', 2:'多雲', 3:'陰',
+  45:'霧', 48:'霧',
+  51:'毛毛雨', 53:'毛毛雨', 55:'毛毛雨',
+  61:'小雨', 63:'中雨', 65:'大雨',
+  80:'陣雨', 82:'大陣雨', 95:'雷雨',
+};
+
+function buildProjectMsg(project, wx) {
+  const nm = project.name.length > 10 ? project.name.slice(0, 10) + '…' : project.name;
+  const isHeavyRain = wx.precipMm >= 80;
+  const isRain      = wx.precipMm >= 10;
+  if (isHeavyRain)
+    return `今日豪雨特報，${nm}今天暫停施工，請加強防汛作業，嚴加戒備！`;
+  if (project.status === 'suspended')
+    return `今日天氣${wx.condition}，${nm}目前暫停施工。`;
+  if (isRain) {
+    const slot = wx.afternoonRainAvg >= 50 ? '下午' : '傍晚';
+    return `今日天氣${wx.condition}，${nm}正常施工，預計${slot}將有陣雨，預估雨量 ${wx.precipMm}mm。`;
+  }
+  return `今日天氣${wx.condition}，${nm}正常施工，天氣良好，氣溫 ${wx.temp}°C。`;
+}
 
 /* ── 跨工程待辦彙總區 ── */
 function AlertsPanel({ alerts, navigate }) {
@@ -223,13 +245,14 @@ export function Dashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [wx, setWx] = useState(null);
+  const [reportSlide, setReportSlide] = useState(null);
+  const [carouselIdx, setCarouselIdx] = useState(0);
+  const [carouselVisible, setCarouselVisible] = useState(true);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
   const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
-  const [alerts,          setAlerts]          = useState([]);
-  const [dismissReminder, setDismissReminder] = useState(false);
-  const reminderBanner = useReportReminder(projects.length > 0 ? projects[0]?.id : null);
+  const [alerts,       setAlerts]       = useState([]);
   const [contextMenu,  setContextMenu]  = useState(null); // { x, y, project }
   const [matWarnMap,   setMatWarnMap]   = useState({});    // projectId -> 未登錄檢驗筆數
   const [cardOrder,    setCardOrder]    = useState(() => {
@@ -249,12 +272,72 @@ export function Dashboard() {
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
-    const welcomeTimer = setTimeout(() => setShowWelcome(false), 5000);
-    return () => {
-      clearInterval(timer);
-      clearTimeout(welcomeTimer);
-    };
+    return () => clearInterval(timer);
   }, []);
+
+  // 天氣：Open-Meteo，雲林縣固定座標
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=23.7&longitude=120.4&current=temperature_2m,weather_code&daily=precipitation_sum&hourly=precipitation_probability&timezone=Asia%2FTaipei&forecast_days=1')
+      .then(r => r.json())
+      .then(d => {
+        const prob = d.hourly.precipitation_probability.slice(12, 18);
+        const afternoonRainAvg = prob.reduce((a, b) => a + b, 0) / prob.length;
+        setWx({
+          temp: Math.round(d.current.temperature_2m),
+          condition: WMO[d.current.weather_code] ?? '—',
+          precipMm: Math.round(d.daily.precipitation_sum[0] ?? 0),
+          afternoonRainAvg,
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  // 月報提醒（整合進輪播）
+  useEffect(() => {
+    if (!projects.length) return;
+    const now = new Date();
+    const day = now.getDate();
+    if (day > 5 && day < 25) { setReportSlide(null); return; }
+    if (day >= 25) {
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+      setReportSlide({ message: `本月監造月報需於 ${next.getFullYear()}/${String(next.getMonth()+1).padStart(2,'0')}/05 前提送，請提前準備。`, urgent: false });
+      return;
+    }
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthStr = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+    supabase.from('supervision_reports')
+      .select('id,status').eq('project_id', projects[0].id).eq('report_month', monthStr).maybeSingle()
+      .then(({ data }) => {
+        if (!data || data.status === 'pending') {
+          const deadline = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/05`;
+          setReportSlide({ message: `⚠ ${monthStr} 監造月報尚未提送！截止日期：${deadline}`, urgent: true });
+        }
+      });
+  }, [projects]);
+
+  // 輪播 slides
+  const slides = useMemo(() => {
+    const s = [{ type: 'welcome' }];
+    if (wx) {
+      s.push({ type: 'weather', wx });
+      projects.filter(p => p.status !== 'pending').forEach(p => s.push({ type: 'project', project: p, wx }));
+    }
+    if (reportSlide) s.push({ type: 'report', ...reportSlide });
+    return s;
+  }, [wx, projects, reportSlide]);
+
+  // 輪播自動推進
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const tick = setInterval(() => {
+      setCarouselVisible(false);
+      setTimeout(() => {
+        setCarouselIdx(i => (i + 1) % slides.length);
+        setCarouselVisible(true);
+      }, 300);
+    }, 5000);
+    return () => clearInterval(tick);
+  }, [slides.length]);
 
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
@@ -381,16 +464,9 @@ export function Dashboard() {
   const handleDrop = useCallback((e, targetId) => {
     e.preventDefault();
     const srcId = dragSrcId.current;
-    if (!srcId || srcId === targetId) { e.stopPropagation(); setDragOverId(null); return; }
+    if (!srcId || srcId === targetId) { setDragOverId(null); return; }
     setCardOrder(prev => {
-      const projectIds = projects.map(p => p.id);
-      // 確保新增的專案（不在舊 cardOrder 裡）也能參與排序
-      const base = prev
-        ? [
-            ...prev.filter(id => projectIds.includes(id)),
-            ...projectIds.filter(id => !prev.includes(id))
-          ]
-        : projectIds;
+      const base = prev || projects.map(p => p.id);
       const from = base.indexOf(srcId);
       const to   = base.indexOf(targetId);
       if (from === -1 || to === -1) return prev;
@@ -401,8 +477,7 @@ export function Dashboard() {
       return next;
     });
     setDragOverId(null);
-    // 不在此清除 dragSrcId，讓事件冒泡到父層（dash-project-grid）
-    // 由父層判斷是否需要取消收藏，dragSrcId 由 handleDragEnd 統一清除
+    dragSrcId.current = null;
   }, [projects, user]);
 
   const handleDragEnd = useCallback(() => { setDragOverId(null); dragSrcId.current = null; }, []);
@@ -434,20 +509,14 @@ export function Dashboard() {
   const acceptedCount  = projects.filter(p => p.status === 'accepted').length;
   const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
-  // 當目前篩選標籤數量歸零（如刪除最後一個）自動重設為全部
-  useEffect(() => {
-    const counts = { starred: starredCount, pending: pendingCount, active: activeCount, behind: behindCount, completed: completedCount, accepted: acceptedCount, suspended: suspendedCount };
-    if (statusFilter in counts && counts[statusFilter] === 0) setStatusFilter('all');
-  }, [statusFilter, starredCount, pendingCount, activeCount, behindCount, completedCount, acceptedCount, suspendedCount]);
-
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
-    ...(starredCount   > 0 ? [{ key: 'starred',   label: '常用',   count: starredCount,   color: '#f59e0b' }] : []),
-    ...(pendingCount   > 0 ? [{ key: 'pending',   label: '未發包', count: pendingCount,   color: '#94a3b8' }] : []),
-    ...(activeCount    > 0 ? [{ key: 'active',    label: '執行中', count: activeCount,    color: 'var(--color-primary-light)' }] : []),
-    ...(behindCount    > 0 ? [{ key: 'behind',    label: '落後',   count: behindCount,    color: 'var(--color-danger)' }] : []),
-    ...(completedCount > 0 ? [{ key: 'completed', label: '已竣工', count: completedCount, color: 'var(--color-success)' }] : []),
-    ...(acceptedCount  > 0 ? [{ key: 'accepted',  label: '已竣工', count: acceptedCount,  color: '#10b981' }] : []),
+    ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
+    ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
+    { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
+    { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
+    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
+    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
@@ -476,17 +545,6 @@ export function Dashboard() {
       }
       return true;
     });
-
-  const tickerItems = React.useMemo(() => {
-    const items = [];
-    if (showWelcome) items.push({ key: 'welcome', type: 'welcome', icon: '👋', message: '歡迎進行監造作業。' });
-    if (reminderBanner && !dismissReminder) items.push({
-      key: 'reminder', type: reminderBanner.type, dismissible: true,
-      icon: reminderBanner.type === 'urgent' ? '⚠️' : '📋',
-      message: reminderBanner.message,
-    });
-    return items;
-  }, [showWelcome, reminderBanner, dismissReminder]);
 
   const starredProjects  = filteredProjects.filter(p => p.is_starred);
   const regularProjects  = filteredProjects.filter(p => !p.is_starred);
@@ -566,25 +624,11 @@ export function Dashboard() {
               </span>
             )}
             <button
-              className={`card-star-btn${p.is_starred ? ' starred' : ''}`}
-              title={p.is_starred ? '移出常用' : '加入常用'}
-              onClick={e => { e.stopPropagation(); toggleStar(e, p); }}
-            >
-              <Star size={12} fill={p.is_starred ? '#f59e0b' : 'none'} color={p.is_starred ? '#f59e0b' : 'currentColor'} />
-            </button>
-            <button
               className="card-edit-btn"
               title="編輯工程資料"
               onClick={e => { e.stopPropagation(); setEditTarget(p); }}
             >
               <Pencil size={12} />
-            </button>
-            <button
-              className="card-delete-btn"
-              title="刪除工程"
-              onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
-            >
-              <Trash2 size={12} />
             </button>
           </div>
         </div>
@@ -615,6 +659,8 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
+        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
+        <Topbar isGlobalDashboard={true} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
@@ -670,13 +716,25 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 動態翻頁提示列 */}
-            {tickerItems.length > 0 && (
-              <InfoTicker
-                items={tickerItems}
-                onDismiss={key => { if (key === 'reminder') setDismissReminder(true); }}
-              />
-            )}
+            {/* 情境輪播橫幅 */}
+            <div className="dash-info-strip">
+              <span className={`info-carousel-slide${carouselVisible ? '' : ' fade-out'}`}>
+                {(() => {
+                  const s = slides[carouselIdx];
+                  if (!s) return null;
+                  if (s.type === 'welcome') return '歡迎進行監造作業。';
+                  if (s.type === 'weather') return `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`;
+                  if (s.type === 'project') return buildProjectMsg(s.project, s.wx);
+                  if (s.type === 'report') return <span style={{ color: s.urgent ? 'var(--color-danger, #ef4444)' : 'var(--color-warning, #f59e0b)' }}>{s.message}</span>;
+                  return null;
+                })()}
+              </span>
+              {slides.length > 1 && (
+                <span className="carousel-dots">
+                  {slides.map((_, i) => <span key={i} className={`cdot${i === carouselIdx ? ' active' : ''}`} />)}
+                </span>
+              )}
+            </div>
 
             {/* 跨工程待辦彙總 */}
             <AlertsPanel alerts={alerts} navigate={navigate} />

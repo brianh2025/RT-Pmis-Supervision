@@ -2,7 +2,7 @@
 
 ## 專案背景
 雲林縣公共工程監造管理系統，React 19 + Vite 8 + Supabase。
-GitHub 帳號：brianh2025，repo 為 public。
+GitLab 帳號：BrianH3，repo URL：https://gitlab.com/BrianH3/rt-pmis-supervison
 主要工作分支：`main`（`預覽版本v1` 已合併）。
 
 ## 語言
@@ -40,3 +40,35 @@ GitHub 帳號：brianh2025，repo 為 public。
 
 ## 已知技術債
 （無 xlsx CVE，已於 2026-04-25 完成 exceljs 遷移）
+
+## 目前開發狀態（2026-05-14 更新）
+
+### 近期完成功能
+- **施工抽查單**：填寫介面、照片 Drive 資料夾重構、列印格式、儲存至管制表（自動計算整體結果寫入 `construction_inspections`）
+- **施工日誌整合**：一鍵建立抽查 + 材料進場 Modal；五組功能整合（subtitle 持久化、抽查導入照片、材料完成狀態、PDF 定項）
+- **PDF 匯入**：修正每字獨立問題（compactText）、合併同列相鄰 item、加寬標題識別、支援西元年日期格式、本地化 pdfjs CMap 路徑
+- **監造報表**：新增月報稽核 Tab
+- **照片記錄**：編輯頁改為雙欄並排，照片預覽放大至中線
+- **Topbar**：返回按鈕改為純箭頭、移除重複按鈕（說明、匯入、登出）、移除監造人員顯示
+- **Sidebar**：修正天氣圖示重複與未登入顯示錯誤
+- **訊息橫幅**：改為天氣 + 施工狀況情境輪播（串接 Open-Meteo API）
+- **Drive 同步**：修正施工日誌在子資料夾時無法找到檔案的問題（getDiaryFolderId 改用 listFolderChildren）
+- **抽查單 UI**：配色對齊設計系統 token、深色主題表頭可見性修正、標題欄防重疊、手寫字型套用
+- **查驗任務看板**：ProjectDashboard Bento Grid 已有完整燈號任務清單（urgent/warning），涵蓋：施工日誌缺填、品管缺失未結案、送審待處理、進度落後、工期倒數、施工檢驗不合格/待複驗、材料未回填、施工項目未查驗；Dashboard 亦有跨工程彙總
+- **完成度追蹤（部分）**：ProjectDashboard 已顯示「施工項目未查驗 N 項」（從 daily_report_items 比對 construction_inspections）
+- **試驗報告管制（部分）**：Quality.jsx Tab 2 有試驗報告管制表（mcs_test），可編輯欄位
+
+### 基礎建設
+- Git remote 從 GitHub 遷移至 GitLab
+- 移除 `.agents`、`.continue`、`.trae` 等其他 AI 工具暫存目錄
+- Open-Meteo API 網域加入允許清單
+
+### 近期完成（2026-05-14 補充）
+- **試驗報告連動**：material_entries 判定合格前檢查 mcs_test 判讀結果，不合格阻擋、未填寫警告
+- **廠商查驗申請**：material_entries.result 新增「待查驗」狀態，Dashboard 顯示待查驗件數燈號
+- **完成度追蹤深化**：施工項目改為查驗次數 vs 施工天數比例（每3天至少1次），chip 顯示明細
+- **手機現場一條龍**：Quality 手機版 FAB → 快速填工項+部位+結果 → 不合格自動建缺失單 → 直達拍照
+- **推播式任務驅動**：所有儀表板任務附期限日期，逾期自動從 warning 升級為 urgent
+
+### 待辦
+（目前無明確待辦，依使用回饋再安排）

@@ -65,6 +65,9 @@ export function ReportReminderBanner({ projectId }) {
         {isUrgent ? <AlertTriangle size={18} /> : <Bell size={18} />}
       </div>
       <div className="banner-content">
+        <span className="banner-label">
+          {isUrgent ? '⚠️ 緊急提醒' : '📋 提前預警'}
+        </span>
         <span className="banner-message">{banner.message}</span>
       </div>
       <button

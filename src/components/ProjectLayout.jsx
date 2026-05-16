@@ -82,7 +82,7 @@ export function ProjectLayout() {
         <Topbar
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
-          onHelp={helpContent ? () => setShowHelp(true) : undefined}
+          pageLabel={relPath === 'dashboard' ? 'PROJECT DASHBOARD' : relPath === 'photos' ? 'PHOTO RECORDS' : null}
         />
         
         <main ref={contentRef} className="pl-content-area custom-scrollbar">

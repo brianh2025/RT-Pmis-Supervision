@@ -28,17 +28,7 @@ allowed-tools: Read, Edit, Write, Grep, Glob, Bash
 - 嘗試失敗 3 次後必須停止，擬定解決方案再執行排除問題
 - 嚴禁重複作業超過 5 次，達上限時須告知使用者原因，經允許後才可繼續，否則停止
 
-## 6. 彈窗 / Overlay 背景不得透明
-- 所有 Modal、Picker、Popover 的內容卡片背景**一律使用 `var(--color-surface)`**，禁止使用 `var(--color-bg)` 或 `rgba(...)` 帶透明度的背景
-- 遮罩（backdrop）透明度統一 `rgba(0,0,0,0.65)` 以上
-- 內容卡片加 `border: 1px solid var(--color-block-border)` 強化邊界感
-- **典型錯誤（已發生多次）**：`background: var(--color-bg)` → 深色模式下卡片幾乎透明，使用者看不清內容
-- 正確範例：
-  ```jsx
-  <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-block-border)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-  ```
-
-## 7. 字體規格違規的唯一合規解法
+## 6. 字體規格違規的唯一合規解法
 - 字體不得小於 10pt（≈13.33px），這是不可協商的底線
 - 遇到「容器太小放不下合規字體」時，**唯一正確做法是擴大容器**
 - **嚴禁以刪除內容、隱藏元素、建議移除文字來迴避規格問題**

@@ -44,8 +44,8 @@ export function ProjectDashboard() {
     qualityCount: 0, qualityOpen: 0,
     archiveCount: 0,
     inspTotal: 0, inspPending: 0, inspFail: 0,
-    matUnregistered: 0,
-    constrUnInspected: 0, constrUninspectedItems: [],
+    matUnregistered: 0, matPending: 0,
+    constrUnInspected: 0, constrUninspectedItems: [], constrItemStats: [],
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -96,16 +96,17 @@ export function ProjectDashboard() {
       const pendingLogs = missingDates.length;
       const latestProgress = progressRes.data?.[0];
 
-      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes] = await Promise.all([
+      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes, matPendingRes] = await Promise.all([
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId).neq('result', '同意備查'),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result, work_item').eq('project_id', projectId),
-        supabase.from('daily_report_items').select('item_name').eq('project_id', projectId)
+        supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId)
           .or('item_name.ilike.%混凝土%,item_name.ilike.%鋼筋%,item_name.ilike.%瀝青%,item_name.ilike.%模板%,item_name.ilike.%地工織布%,item_name.ilike.%基樁%,item_name.ilike.%植筋%'),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('result', '待查驗'),
       ]);
 
       const inspData = inspRes.data || [];
@@ -116,12 +117,29 @@ export function ProjectDashboard() {
       const matUnregistered =
         matEntryData.length > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
 
-      const inspectedItems = new Set(inspData.map(r => r.work_item).filter(Boolean));
-      const dailyItems = [...new Set(matEntryData.map(r => r.item_name).filter(Boolean))];
-      const constrUninspectedItems = dailyItems.filter(
-        name => ![...inspectedItems].some(w => w.includes(name.split(/[\s,，-]/)[0]) || name.includes(w))
-      );
-      const constrUnInspected = constrUninspectedItems.length > 0 ? 1 : 0;
+      // 每工項施工天數（log_date 去重計數）
+      const itemWorkDaysMap = {};
+      for (const r of matEntryData) {
+        if (!r.item_name) continue;
+        if (!itemWorkDaysMap[r.item_name]) itemWorkDaysMap[r.item_name] = new Set();
+        itemWorkDaysMap[r.item_name].add(r.log_date);
+      }
+      // 每工項查驗次數（模糊比對 work_item）
+      const itemInspCountMap = {};
+      for (const r of inspData) {
+        if (!r.work_item) continue;
+        itemInspCountMap[r.work_item] = (itemInspCountMap[r.work_item] || 0) + 1;
+      }
+      const constrItemStats = Object.entries(itemWorkDaysMap).map(([name, dates]) => {
+        const workDays = dates.size;
+        const keyword = name.split(/[\s,，-]/)[0];
+        const inspCount = Object.entries(itemInspCountMap)
+          .filter(([w]) => w.includes(keyword) || name.includes(w))
+          .reduce((sum, [, cnt]) => sum + cnt, 0);
+        return { name, workDays, inspCount };
+      }).filter(s => s.inspCount < Math.ceil(s.workDays / 3));
+      const constrUnInspected = constrItemStats.length > 0 ? 1 : 0;
+      const constrUninspectedItems = constrItemStats.map(s => s.name);
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -142,8 +160,10 @@ export function ProjectDashboard() {
         inspPending,
         inspFail,
         matUnregistered,
+        matPending: matPendingRes.count || 0,
         constrUnInspected,
         constrUninspectedItems,
+        constrItemStats,
       });
       setStatsLoading(false);
     }
@@ -175,63 +195,91 @@ export function ProjectDashboard() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()}`;
   })();
 
-  const tasks = statsLoading ? [] : [
+  const todayStr = new Date().toISOString().split('T')[0];
+  const addDays = (n) => {
+    const d = new Date(); d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+  };
+
+  const rawTasks = statsLoading ? [] : [
     stats.pendingLogs > 0 && {
       id: 'diary', level: stats.pendingLogs >= 3 ? 'urgent' : 'warning', icon: BookOpen,
       title: `施工日誌未補 ${stats.pendingLogs} 天`,
       desc: `本月已匯入 ${stats.thisMonthLogs} 筆，以下日期缺少日誌`,
-      due: `補至 ${monthEnd}`, path: 'journal', action: '前往補填', dates: stats.missingDates,
+      dueDate: monthEnd, due: `補至 ${monthEnd}`,
+      path: 'journal', action: '前往補填', dates: stats.missingDates,
     },
     stats.qualityOpen > 0 && {
       id: 'quality', level: 'urgent', icon: AlertCircle,
       title: `品管缺失未結案 ${stats.qualityOpen} 件`,
       desc: `共 ${stats.qualityCount} 件缺失，${stats.qualityOpen} 件待改善`,
-      due: '請儘速結案', path: 'quality', action: '查看缺失',
+      dueDate: addDays(7), due: `限 ${addDays(7)} 前結案`,
+      path: 'quality', action: '查看缺失',
     },
     stats.submissionPending > 0 && {
       id: 'submission', level: 'warning', icon: Clock,
       title: `送審件待處理 ${stats.submissionPending} 件`,
       desc: `共 ${stats.submissionCount} 件送審，${stats.submissionPending} 件待送出`,
+      dueDate: addDays(14), due: `請於 ${addDays(14)} 前送出`,
       path: 'submission', action: '前往送審',
     },
     diff < -5 && {
       id: 'progress', level: 'urgent', icon: TrendingUp,
       title: `進度落後 ${Math.abs(diff).toFixed(1)}%，需提出趕工計畫`,
       desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%`,
-      due: '請儘速更新', path: 'progress', action: '更新進度',
+      dueDate: project.end_date, due: `完工期限 ${project.end_date}`,
+      path: 'progress', action: '更新進度',
     },
     daysRemaining !== null && daysRemaining <= 30 && daysRemaining >= 0 && {
       id: 'deadline', level: daysRemaining <= 14 ? 'urgent' : 'warning', icon: Calendar,
       title: `工程剩餘工期 ${daysRemaining} 天`,
       desc: `完工期限：${project.end_date}，請確認驗收作業準備`,
-      due: project.end_date, path: 'progress', action: '查看進度',
+      dueDate: project.end_date, due: project.end_date,
+      path: 'progress', action: '查看進度',
     },
     stats.inspFail > 0 && {
       id: 'insp-fail', level: 'urgent', icon: AlertCircle,
       title: `施工檢驗不合格 ${stats.inspFail} 項，需複驗`,
       desc: `共 ${stats.inspTotal} 項檢驗，${stats.inspFail} 不合格`,
+      dueDate: addDays(3), due: `限 ${addDays(3)} 前複驗`,
       path: 'quality', action: '前往複驗',
     },
     stats.inspFail === 0 && stats.inspPending > 0 && {
       id: 'insp-pending', level: 'warning', icon: Clock,
       title: `施工檢驗待複驗 ${stats.inspPending} 項`,
       desc: `共 ${stats.inspTotal} 項檢驗，請安排複驗`,
+      dueDate: addDays(14), due: `請於 ${addDays(14)} 前安排`,
       path: 'quality', action: '查看檢驗',
+    },
+    stats.matPending > 0 && {
+      id: 'mat-pending', level: 'warning', icon: Package,
+      title: `材料待查驗 ${stats.matPending} 件`,
+      desc: '廠商已申請查驗，請至材料管制頁確認並填寫查驗結果',
+      dueDate: addDays(5), due: `請於 ${addDays(5)} 前查驗`,
+      path: 'material', action: '前往查驗',
     },
     stats.matUnregistered > 0 && project?.status === 'active' && {
       id: 'mat-unregistered', level: 'warning', icon: Package,
       title: '材料進場管制尚未回填',
       desc: '廠商日誌已有記錄，請至材料管制頁回填進場資料',
+      dueDate: addDays(14), due: `請於 ${addDays(14)} 前回填`,
       path: 'material', action: '前往回填',
     },
     stats.constrUnInspected > 0 && project?.status === 'active' && {
       id: 'constr-uninspected', level: 'warning', icon: ShieldCheck,
-      title: `施工項目未查驗 ${stats.constrUninspectedItems.length} 項`,
-      desc: '以下施工工項在日誌中有記錄，但尚未執行施工抽查',
-      chips: stats.constrUninspectedItems,
+      title: `施工項目查驗不足 ${stats.constrItemStats.length} 項`,
+      desc: '以下工項查驗次數未達施工天數 1/3（每3天至少1次）',
+      itemStats: stats.constrItemStats,
       path: 'quality', action: '前往抽查',
     },
   ].filter(Boolean);
+
+  // 逾期升級：dueDate < 今天且非 urgent → 強制升為 urgent
+  const tasks = rawTasks.map(t =>
+    t.dueDate && t.dueDate < todayStr && t.level !== 'urgent'
+      ? { ...t, level: 'urgent', due: `⚠ 逾期（${t.dueDate}）` }
+      : t
+  );
 
   const allDone = !statsLoading && tasks.length === 0;
 
@@ -329,6 +377,18 @@ export function ProjectDashboard() {
                     ))}
                   </div>
                 )}
+                {task.itemStats?.length > 0 && (
+                  <div className="task-missing-dates">
+                    {task.itemStats.map(s => (
+                      <span key={s.name} className="task-missing-date-chip" style={{
+                        color: s.inspCount === 0 ? '#ef4444' : '#f59e0b',
+                        borderColor: s.inspCount === 0 ? '#ef444440' : '#f59e0b40',
+                      }}>
+                        {s.name}（施工{s.workDays}天·查驗{s.inspCount}次）
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               {task.due && <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>}
               <div className="task-item-action">{task.action}<ChevronRight size={13} /></div>
@@ -417,11 +477,7 @@ export function ProjectDashboard() {
               承包商：{project.contractor}
             </span>
           )}
-          {project.supervisor_name && (
-            <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              監造：{project.supervisor_name.split('\n').filter(Boolean).join('、')}
-            </span>
-          )}
+
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <span className={`status-badge ${project.status === 'active' ? 'active' : project.status === 'completed' ? 'completed' : project.status === 'accepted' ? 'completed' : project.status === 'pending' ? 'suspended' : 'suspended'}`}>
