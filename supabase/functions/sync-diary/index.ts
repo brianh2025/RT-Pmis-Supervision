@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v35
+// Supabase Edge Function: sync-diary v37
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -168,6 +168,18 @@ async function listDiaryFiles(
   relaxed = false
 ): Promise<{ id: string; name: string }[]> {
   let files = await listDiaryFilesRecursive(folderId, token, 0, relaxed);
+
+  // 去重複：同一 file ID 或同一檔名只保留一筆
+  // （Drive 多層資料夾可能掃到同 ID；廠商也可能上傳同名副本到不同資料夾）
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  files = files.filter((f) => {
+    if (seenIds.has(f.id) || seenNames.has(f.name)) return false;
+    seenIds.add(f.id);
+    seenNames.add(f.name);
+    return true;
+  });
+
   if (startDate || endDate) {
     files = files.filter((f) => {
       const dStart = parseDateFromFileName(f.name);
