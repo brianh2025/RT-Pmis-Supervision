@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v23
+// Supabase Edge Function: sync-diary v35
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -32,15 +32,52 @@ function parseDate(raw: unknown): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
 }
 
-// ── 從檔名解析日期 ─────────────────────────────────────────────
+// ── 從檔名解析日期（連續日期取開始日）────────────────────────
 function parseDateFromFileName(name: string): string | null {
-  const m = name.match(/施工日誌[-_](\d{5,7})/);
-  if (!m) return null;
-  const raw = m[1];
-  if (raw.length === 7) {
-    return `${parseInt(raw.substring(0, 3)) + 1911}-${raw.substring(3, 5)}-${raw.substring(5, 7)}`;
+  // 格式1：施工日誌-1150514（7位民國連續，標準命名）
+  const m1 = name.match(/施工日誌[-_ ](\d{7})/);
+  if (m1) {
+    const r = m1[1];
+    return `${parseInt(r.substring(0, 3)) + 1911}-${r.substring(3, 5)}-${r.substring(5, 7)}`;
+  }
+  // 格式2：施工日誌-115-05-14 或 施工日誌-115.05.14（民國年帶分隔符）
+  const m2 = name.match(/施工日誌[-_ ](\d{2,3})[-.](\d{1,2})[-.](\d{1,2})/);
+  if (m2) {
+    const y = parseInt(m2[1]);
+    if (y < 200) return `${y + 1911}-${m2[2].padStart(2, "0")}-${m2[3].padStart(2, "0")}`;
+  }
+  // 格式3：施工日誌-20260514（8位西元年連續）
+  const m3 = name.match(/施工日誌[-_ ](\d{4})(\d{2})(\d{2})/);
+  if (m3 && parseInt(m3[1]) >= 2000) {
+    return `${m3[1]}-${m3[2]}-${m3[3]}`;
+  }
+  // 格式4：任何位置的 7 位民國年日期（向後相容非標準命名，如 UUID-____1150503.xlsx）
+  const m4 = name.match(/(\d{7})/);
+  if (m4) {
+    const r = m4[1];
+    const y = parseInt(r.substring(0, 3));
+    const mo = parseInt(r.substring(3, 5));
+    const dd = parseInt(r.substring(5, 7));
+    if (y >= 100 && y <= 200 && mo >= 1 && mo <= 12 && dd >= 1 && dd <= 31) {
+      return `${y + 1911}-${r.substring(3, 5)}-${r.substring(5, 7)}`;
+    }
   }
   return null;
+}
+
+// ── 從檔名解析結束日期（連續日期如 施工日誌-1150508-1150511）──
+function parseDateEndFromFileName(name: string): string | null {
+  const range = name.match(/施工日誌[-_ ]\d{7}[-](\d{7})/);
+  if (range) {
+    const r = range[1];
+    const y = parseInt(r.substring(0, 3));
+    const mo = parseInt(r.substring(3, 5));
+    const dd = parseInt(r.substring(5, 7));
+    if (y >= 100 && y <= 200 && mo >= 1 && mo <= 12 && dd >= 1 && dd <= 31) {
+      return `${y + 1911}-${r.substring(3, 5)}-${r.substring(5, 7)}`;
+    }
+  }
+  return parseDateFromFileName(name);
 }
 
 // ── Google Service Account JWT ─────────────────────────────────
@@ -106,12 +143,13 @@ async function listFolderChildren(
 async function listDiaryFilesRecursive(
   folderId: string, token: string, depth = 0, relaxed = false
 ): Promise<{ id: string; name: string }[]> {
-  if (depth > 5) return [];
+  if (depth > 6) return [];
   const FOLDER = "application/vnd.google-apps.folder";
   const children = await listFolderChildren(folderId, token);
   const results: { id: string; name: string }[] = [];
   for (const item of children) {
     if (item.mimeType === FOLDER) {
+      if (item.name === "p") continue;
       const sub = await listDiaryFilesRecursive(item.id, token, depth + 1, relaxed);
       results.push(...sub);
     } else if (
@@ -132,10 +170,12 @@ async function listDiaryFiles(
   let files = await listDiaryFilesRecursive(folderId, token, 0, relaxed);
   if (startDate || endDate) {
     files = files.filter((f) => {
-      const d = parseDateFromFileName(f.name);
-      if (!d) return true;
-      if (startDate && d < startDate) return false;
-      if (endDate && d > endDate) return false;
+      const dStart = parseDateFromFileName(f.name);
+      if (!dStart) return false; // 無法解析日期時跳過
+      const dEnd = parseDateEndFromFileName(f.name) ?? dStart;
+      // 日期重疊篩選（支援連續日期檔名，如 施工日誌-1150508-1150511）
+      if (startDate && dEnd < startDate) return false;
+      if (endDate && dStart > endDate) return false;
       return true;
     });
   }
@@ -204,13 +244,22 @@ function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
   for (const sk of sheetKeys) {
     const xml = dec.decode(zipped[sk]);
 
-    // 檢查此 sheet 是否含日誌關鍵字（透過 shared string 引用）
+    // 檢查此 sheet 是否含日誌關鍵字（shared string 引用 + inline string 直接掃描）
     let hasDiary = false;
+    // 1. shared string 引用（整數 index）
     const vRx = /<v>(\d+)<\/v>/g;
     let vm: RegExpExecArray | null;
     while ((vm = vRx.exec(xml)) !== null) {
       const idx = parseInt(vm[1]);
       if (DIARY_MARKERS.test(ss[idx] ?? "")) { hasDiary = true; break; }
+    }
+    // 2. inline string / 直接寫入文字（部分 xlsx 不使用 sharedStrings）
+    if (!hasDiary) {
+      const tRx = /<t[^>]*>([^<]+)<\/t>/g;
+      let tm: RegExpExecArray | null;
+      while ((tm = tRx.exec(xml)) !== null) {
+        if (DIARY_MARKERS.test(tm[1])) { hasDiary = true; break; }
+      }
     }
     if (!hasDiary) continue;
 
@@ -290,6 +339,8 @@ const BOILERPLATE = [
   /本工日誌格式僅供參考/, /依營造業法第\d+條/, /上開重要事項記錄/,
   /職業安全衛生管理辦法/, /廠商非屬營造業者/, /由工地負責人簽章/,
   /主辦機關及監造單位指示/, /督察按圖施工/, /本表原則應按日/,
+  // 合約預算表節標頭（第N號明細表）
+  /^第[壹貳參肆伍陸柒捌玖一二三四五六七八九十\d]+號明細表/,
 ];
 function isBoilerplate(s: string): boolean {
   return BOILERPLATE.some((rx) => rx.test(s.trim()));
@@ -445,6 +496,8 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
       const unit = (unitCol !== undefined
         ? cells.find((c) => c.row === row && c.col === unitCol)?.val
         : undefined) ?? "";
+      // 跳過總價式/全/項工項中的比例值（非實際數量）
+      if (/^(式|全|項|天|月|筆)$/.test(unit) && qty < 1) continue;
       const cumQty = parseFloat(
         (cumCol !== undefined
           ? cells.find((c) => c.row === row && c.col === cumCol)?.val
@@ -679,7 +732,13 @@ Deno.serve(async (req) => {
       // 找到專屬的施工日誌子資料夾時，放寬篩選接受所有 xlsx
       const relaxed = diaryFolderId !== proj.drive_folder_id;
       const sd = startDate ?? proj.start_date ?? undefined;
-      const files = await listDiaryFiles(diaryFolderId, token, sd, endDate, relaxed);
+      let files = await listDiaryFiles(diaryFolderId, token, sd, endDate, relaxed);
+      // relaxed 模式下過濾掉無法解析日期且名稱不含「施工日誌」的 xlsx（範本/彙整表）
+      if (relaxed) {
+        files = files.filter(f =>
+          f.name.includes("施工日誌") || parseDateFromFileName(f.name) !== null
+        );
+      }
       files.sort((a, b) => {
         const da = parseDateFromFileName(a.name) ?? "9999";
         const db = parseDateFromFileName(b.name) ?? "9999";
@@ -695,8 +754,12 @@ Deno.serve(async (req) => {
     if (mode === "sync_one") {
       const { projectId, fileId, fileName } = body;
       if (!projectId || !fileId || !fileName) return json({ error: "缺少 projectId / fileId / fileName" }, 400);
-      const r = await syncFile(fileId, fileName, projectId, token);
-      return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount });
+      try {
+        const r = await syncFile(fileId, fileName, projectId, token);
+        return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount });
+      } catch (err) {
+        return json({ success: false, file: fileName, error: String(err) });
+      }
     }
 
     // ── legacy: batch ── 保留向下相容（小量資料）

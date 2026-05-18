@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, CheckCircle2, AlertTriangle, Loader2, CloudDownload } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
@@ -84,11 +84,19 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
     }
   };
 
+  // 同步中禁止意外離頁（beforeunload）
+  useEffect(() => {
+    if (!running) return;
+    const handler = e => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [running]);
+
   const successCount = progress?.results?.filter(r => r.success).length ?? 0;
   const failCount    = progress?.results?.filter(r => !r.success).length ?? 0;
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={e => { if (!running && e.target === e.currentTarget) onClose(); }}>
       <div className="modal-panel animate-slide-up" style={{ maxWidth: 540 }}>
 
         {/* Header */}
@@ -180,7 +188,7 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                         <th style={{ padding: '5px 8px', textAlign: 'left', fontWeight: 600 }}>檔案</th>
                         <th style={{ padding: '5px 8px', textAlign: 'center' }}>日期數</th>
                         <th style={{ padding: '5px 8px', textAlign: 'center' }}>工項</th>
-                        <th style={{ padding: '5px 8px', textAlign: 'center' }}>狀態</th>
+                        <th style={{ padding: '5px 8px', textAlign: 'left' }}>狀態／錯誤</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -189,8 +197,8 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                           <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.file}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.dates?.length ?? (r.date ? 1 : 0)}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.itemCount ?? 0}</td>
-                          <td style={{ padding: '4px 8px', textAlign: 'center', color: r.success ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {r.success ? '✓' : '✗'}
+                          <td style={{ padding: '4px 8px', color: r.success ? 'var(--color-success)' : 'var(--color-danger)', fontSize: '0.72rem', wordBreak: 'break-all' }}>
+                            {r.success ? `✓ ${r.dates?.join(', ') ?? r.date ?? ''}` : `✗ ${r.error ?? ''}`}
                           </td>
                         </tr>
                       ))}
