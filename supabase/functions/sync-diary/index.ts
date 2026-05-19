@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v38
+// Supabase Edge Function: sync-diary v39
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -126,10 +126,10 @@ async function downloadDriveFile(fileId: string, token: string): Promise<ArrayBu
 // 列出單一資料夾的直接子項
 async function listFolderChildren(
   folderId: string, token: string
-): Promise<{ id: string; name: string; mimeType: string }[]> {
+): Promise<{ id: string; name: string; mimeType: string; size?: string }[]> {
   const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType,size)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) throw new Error(`列出 Drive 子項失敗: ${await res.text()}`);
@@ -142,11 +142,11 @@ async function listFolderChildren(
 // relaxed=false：從專案根目錄搜尋，只接受檔名含「施工日誌」的檔案
 async function listDiaryFilesRecursive(
   folderId: string, token: string, depth = 0, relaxed = false
-): Promise<{ id: string; name: string }[]> {
+): Promise<{ id: string; name: string; size: number }[]> {
   if (depth > 6) return [];
   const FOLDER = "application/vnd.google-apps.folder";
   const children = await listFolderChildren(folderId, token);
-  const results: { id: string; name: string }[] = [];
+  const results: { id: string; name: string; size: number }[] = [];
   for (const item of children) {
     if (item.mimeType === FOLDER) {
       if (item.name === "p") continue;
@@ -157,7 +157,7 @@ async function listDiaryFilesRecursive(
         ? /\.(xlsx|xlsm|xls)$/i.test(item.name)
         : item.name.includes("施工日誌")
     ) {
-      results.push({ id: item.id, name: item.name });
+      results.push({ id: item.id, name: item.name, size: parseInt(item.size ?? "0") || 0 });
     }
   }
   return results;
@@ -166,7 +166,7 @@ async function listDiaryFilesRecursive(
 async function listDiaryFiles(
   folderId: string, token: string, startDate?: string, endDate?: string,
   relaxed = false
-): Promise<{ id: string; name: string }[]> {
+): Promise<{ id: string; name: string; size: number }[]> {
   let files = await listDiaryFilesRecursive(folderId, token, 0, relaxed);
 
   // 去重複：同 file ID 或同底稿名只保留一筆
@@ -764,14 +764,30 @@ Deno.serve(async (req) => {
       });
       return json({
         mode: "list", total: files.length,
-        files: files.map((f) => ({ id: f.id, name: f.name, parsedDate: parseDateFromFileName(f.name) })),
+        files: files.map((f) => ({ id: f.id, name: f.name, parsedDate: parseDateFromFileName(f.name), size: f.size })),
       });
     }
 
     // ── mode: sync_one ── 同步單一檔案（由前端逐一呼叫）
     if (mode === "sync_one") {
-      const { projectId, fileId, fileName } = body;
+      const { projectId, fileId, fileName, fileSize } = body;
       if (!projectId || !fileId || !fileName) return json({ error: "缺少 projectId / fileId / fileName" }, 400);
+
+      // 大檔案（>4MB）跳過 Excel 解析，直接用檔名日期建立骨架紀錄，避免 CPU/記憶體超限（HTTP 546）
+      const MAX_BYTES = 4 * 1024 * 1024;
+      if (fileSize && fileSize > MAX_BYTES) {
+        const logDate = parseDateFromFileName(fileName);
+        if (!logDate) return json({ success: false, file: fileName, error: "檔案過大且無法從檔名解析日期" });
+        const now = new Date().toISOString();
+        const { error: e1 } = await supabase.from("daily_logs").upsert(
+          { project_id: projectId, log_date: logDate, sync_source: "google_drive", synced_at: now },
+          { onConflict: "project_id,log_date" }
+        );
+        if (e1) return json({ success: false, file: fileName, error: "daily_logs 寫入失敗: " + e1.message });
+        return json({ success: true, file: fileName, date: logDate, dates: [logDate], itemCount: 0,
+          warning: `檔案過大(${(fileSize / 1024 / 1024).toFixed(1)}MB)，僅建立日期紀錄` });
+      }
+
       try {
         const r = await syncFile(fileId, fileName, projectId, token);
         return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount });
