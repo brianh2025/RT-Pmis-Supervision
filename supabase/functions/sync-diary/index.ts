@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v37
+// Supabase Edge Function: sync-diary v38
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -169,14 +169,20 @@ async function listDiaryFiles(
 ): Promise<{ id: string; name: string }[]> {
   let files = await listDiaryFilesRecursive(folderId, token, 0, relaxed);
 
-  // 去重複：同一 file ID 或同一檔名只保留一筆
-  // （Drive 多層資料夾可能掃到同 ID；廠商也可能上傳同名副本到不同資料夾）
+  // 去重複：同 file ID 或同底稿名只保留一筆
+  // 底稿名 = 去掉副檔名（xlsx/xlsm/xls），相同底稿名 xlsx 優先、xlsm 次之
+  // 適用場景：同一份日誌存在多個資料夾副本、或同時有 .xlsx 和 .xlsm 版本
+  files.sort((a, b) => {
+    const extOrder = (n: string) => /\.xlsx$/i.test(n) ? 0 : /\.xlsm$/i.test(n) ? 1 : 2;
+    return extOrder(a.name) - extOrder(b.name);
+  });
   const seenIds = new Set<string>();
-  const seenNames = new Set<string>();
+  const seenBases = new Set<string>();
   files = files.filter((f) => {
-    if (seenIds.has(f.id) || seenNames.has(f.name)) return false;
+    const base = f.name.replace(/\.(xlsx|xlsm|xls)$/i, "");
+    if (seenIds.has(f.id) || seenBases.has(base)) return false;
     seenIds.add(f.id);
-    seenNames.add(f.name);
+    seenBases.add(base);
     return true;
   });
 
