@@ -70,5 +70,9 @@ GitLab 帳號：BrianH3，repo URL：https://gitlab.com/BrianH3/rt-pmis-supervis
 - **手機現場一條龍**：Quality 手機版 FAB → 快速填工項+部位+結果 → 不合格自動建缺失單 → 直達拍照
 - **推播式任務驅動**：所有儀表板任務附期限日期，逾期自動從 warning 升級為 urgent
 
+### 近期完成（2026-05-19 補充）
+- **Drive 同步 v35**：修正單日選擇卻跑全量檔案（109 個）的過濾 bug；支援連續日期檔名（施工日誌-1150508-1150511）日期重疊篩選；parseDateFromFileName 加入格式 4 向後相容非標準命名；readAllDiarySheets 加入 inline string 偵測（相容部分廠商 xlsx）；BOILERPLATE 加入第N號明細表過濾；工項解析跳過總價式比例值
+- **DriveSyncModal UX**：同步中監聽 beforeunload 防意外離頁；overlay 點擊若正在同步則不關閉 Modal
+
 ### 待辦
 （目前無明確待辦，依使用回饋再安排）

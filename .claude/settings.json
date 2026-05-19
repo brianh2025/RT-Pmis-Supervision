@@ -16,7 +16,14 @@
       "Bash(git stash *)",
       "Bash(git checkout *)",
       "Bash(git cherry-pick *)",
-      "WebFetch(domain:api.open-meteo.com)"
+      "WebFetch(domain:api.open-meteo.com)",
+      "Bash(supabase --version)",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(curl -s -X POST https://xbdchvmxgmypcyawavju.supabase.co/functions/v1/sync-diary -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__get_logs"
     ]
   }
 }
