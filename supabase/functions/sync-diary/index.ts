@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v40
+// Supabase Edge Function: sync-diary v41
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -234,11 +234,12 @@ function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
   } catch { return []; }
   const dec = new TextDecoder("utf-8");
 
-  // 1. Shared strings
+  // 1. Shared strings（限前 512 KB：共用標籤字串在最前面，避免大型 sharedStrings OOM）
   const ss: string[] = [];
   const ssRaw = zipped["xl/sharedStrings.xml"];
   if (ssRaw) {
-    const ssXml = dec.decode(ssRaw);
+    const MAX_SS = 512 * 1024;
+    const ssXml = dec.decode(ssRaw.length > MAX_SS ? ssRaw.slice(0, MAX_SS) : ssRaw);
     const siRx = /<si>([\s\S]*?)<\/si>/g;
     let sm: RegExpExecArray | null;
     while ((sm = siRx.exec(ssXml)) !== null) {
@@ -266,7 +267,10 @@ function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
   const result: RawCell[][] = [];
 
   for (const sk of sheetKeys) {
-    const xml = dec.decode(zipped[sk]);
+    // 只取 worksheet XML 末 256 KB（累積式 xlsm 最新日誌在尾端）；避免超大 sheet OOM/逾時
+    const MAX_SHEET = 256 * 1024;
+    const rawSheet = zipped[sk];
+    const xml = dec.decode(rawSheet.length > MAX_SHEET ? rawSheet.slice(rawSheet.length - MAX_SHEET) : rawSheet);
 
     // 檢查此 sheet 是否含日誌關鍵字（shared string 引用 + inline string 直接掃描）
     let hasDiary = false;
