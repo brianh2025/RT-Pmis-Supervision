@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v39
+// Supabase Edge Function: sync-diary v40
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -225,7 +225,13 @@ const DIARY_MARKERS = /填表日期|填報日期|本日完成|本日天氣|施�
 // 傳回每個 sheet 的 cells 陣列（支援多工作表、大量列）
 function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
   let zipped: Record<string, Uint8Array>;
-  try { zipped = unzipSync(new Uint8Array(buf)); } catch { return []; }
+  try {
+    // 只解壓縮必要的 XML 檔案，跳過 media/drawing/chart 等圖片資源
+    // 避免大型 xlsm（含嵌入圖片）耗盡 CPU/記憶體導致 HTTP 546
+    zipped = unzipSync(new Uint8Array(buf), {
+      filter: (f) => /^xl\/(worksheets\/sheet\d+|sharedStrings|workbook)\.xml$/.test(f.name),
+    });
+  } catch { return []; }
   const dec = new TextDecoder("utf-8");
 
   // 1. Shared strings
@@ -772,21 +778,6 @@ Deno.serve(async (req) => {
     if (mode === "sync_one") {
       const { projectId, fileId, fileName, fileSize } = body;
       if (!projectId || !fileId || !fileName) return json({ error: "缺少 projectId / fileId / fileName" }, 400);
-
-      // 大檔案（>4MB）跳過 Excel 解析，直接用檔名日期建立骨架紀錄，避免 CPU/記憶體超限（HTTP 546）
-      const MAX_BYTES = 4 * 1024 * 1024;
-      if (fileSize && fileSize > MAX_BYTES) {
-        const logDate = parseDateFromFileName(fileName);
-        if (!logDate) return json({ success: false, file: fileName, error: "檔案過大且無法從檔名解析日期" });
-        const now = new Date().toISOString();
-        const { error: e1 } = await supabase.from("daily_logs").upsert(
-          { project_id: projectId, log_date: logDate, sync_source: "google_drive", synced_at: now },
-          { onConflict: "project_id,log_date" }
-        );
-        if (e1) return json({ success: false, file: fileName, error: "daily_logs 寫入失敗: " + e1.message });
-        return json({ success: true, file: fileName, date: logDate, dates: [logDate], itemCount: 0,
-          warning: `檔案過大(${(fileSize / 1024 / 1024).toFixed(1)}MB)，僅建立日期紀錄` });
-      }
 
       try {
         const r = await syncFile(fileId, fileName, projectId, token);

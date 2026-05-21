@@ -197,8 +197,8 @@ export function DriveSyncModal({ projectId, startDate, onClose, onSuccess }) {
                           <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.file}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.dates?.length ?? (r.date ? 1 : 0)}</td>
                           <td style={{ padding: '4px 8px', textAlign: 'center' }}>{r.itemCount ?? 0}</td>
-                          <td style={{ padding: '4px 8px', color: r.warning ? 'var(--color-warning, #f59e0b)' : r.success ? 'var(--color-success)' : 'var(--color-danger)', fontSize: '0.72rem', wordBreak: 'break-all' }}>
-                            {r.warning ? `⚠ ${r.warning}` : r.success ? `✓ ${r.dates?.join(', ') ?? r.date ?? ''}` : `✗ ${r.error ?? ''}`}
+                          <td style={{ padding: '4px 8px', color: r.success ? 'var(--color-success)' : 'var(--color-danger)', fontSize: '0.72rem', wordBreak: 'break-all' }}>
+                            {r.success ? `✓ ${r.dates?.join(', ') ?? r.date ?? ''}` : `✗ ${r.error ?? ''}`}
                           </td>
                         </tr>
                       ))}
