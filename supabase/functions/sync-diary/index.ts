@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v41
+// Supabase Edge Function: sync-diary v42
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -267,10 +267,10 @@ function readAllDiarySheets(buf: ArrayBuffer, maxRow = 100000): RawCell[][] {
   const result: RawCell[][] = [];
 
   for (const sk of sheetKeys) {
-    // 只取 worksheet XML 末 256 KB（累積式 xlsm 最新日誌在尾端）；避免超大 sheet OOM/逾時
+    // 只取 worksheet XML 前 256 KB（日誌資料從頭部開始；尾端可能是空白模板列）；避免超大 sheet OOM/逾時
     const MAX_SHEET = 256 * 1024;
     const rawSheet = zipped[sk];
-    const xml = dec.decode(rawSheet.length > MAX_SHEET ? rawSheet.slice(rawSheet.length - MAX_SHEET) : rawSheet);
+    const xml = dec.decode(rawSheet.length > MAX_SHEET ? rawSheet.slice(0, MAX_SHEET) : rawSheet);
 
     // 檢查此 sheet 是否含日誌關鍵字（shared string 引用 + inline string 直接掃描）
     let hasDiary = false;
@@ -622,6 +622,17 @@ async function syncFile(
 ): Promise<{ date: string | null; dates: string[]; itemCount: number }> {
   const buf = await downloadDriveFile(fileId, token);
   let diaries = parseAllDiaries(buf);
+
+  // 日期合理性過濾：若檔名含日期，捨棄距離超過 60 天的解析結果（防止截取到模板列）
+  const fileNameDate = parseDateFromFileName(fileName);
+  if (fileNameDate && diaries.length > 0) {
+    const fnTime = new Date(fileNameDate).getTime();
+    const filtered = diaries.filter((d) => {
+      if (!d.logDate) return false;
+      return Math.abs(new Date(d.logDate).getTime() - fnTime) <= 60 * 86400000;
+    });
+    if (filtered.length > 0) diaries = filtered;
+  }
 
   // Fallback：無法解析任何日誌時，從檔名取得日期
   if (diaries.length === 0) {
