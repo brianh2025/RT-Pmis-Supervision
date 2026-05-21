@@ -23,7 +23,8 @@
       "Bash(python3 -c ' *)",
       "Bash(node -e ' *)",
       "mcp__claude_ai_Supabase__list_projects",
-      "mcp__claude_ai_Supabase__get_logs"
+      "mcp__claude_ai_Supabase__get_logs",
+      "mcp__claude_ai_Supabase__deploy_edge_function"
     ]
   }
 }
