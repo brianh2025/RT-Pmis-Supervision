@@ -2,7 +2,8 @@
 
 ## 專案背景
 雲林縣公共工程監造管理系統，React 19 + Vite 8 + Supabase。
-GitLab 帳號：BrianH3，repo URL：https://gitlab.com/BrianH3/rt-pmis-supervison
+GitHub（主要 origin）：https://github.com/brianh2025/RT-Pmis-Supervision
+GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supervison
 主要工作分支：`main`（`預覽版本v1` 已合併）。
 
 ## 語言

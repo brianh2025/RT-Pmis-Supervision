@@ -24,7 +24,11 @@
       "Bash(node -e ' *)",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__get_logs",
-      "mcp__claude_ai_Supabase__deploy_edge_function"
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "Bash(git config *)",
+      "Bash(start https://github.com/brianh2025/RT-Pmis-Supervision)",
+      "Bash(gh repo *)",
+      "Bash(start https://vscode.dev/github/brianh2025/RT-Pmis-Supervision)"
     ]
   }
 }
