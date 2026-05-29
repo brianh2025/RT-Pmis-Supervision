@@ -462,14 +462,14 @@ function DiaryJournalInner() {
         <button onClick={prevMonth}><ChevronLeft size={16} /></button>
         <span className="dj-month-label">{year} 年 {month + 1} 月</span>
         <button onClick={nextMonth}><ChevronRight size={16} /></button>
-        {autoSyncing
-          ? <span className="dj-sync-status"><Loader2 size={11} className="animate-spin" />同步中</span>
-          : project?.drive_folder_id && (
-            <button className="dj-sync-btn" onClick={() => { setSyncFilled(0); setShowDriveSync(true); }}>
-              <RefreshCcw size={11} />同步
-            </button>
-          )
-        }
+        {autoSyncing && (
+          <span className="dj-sync-status"><Loader2 size={11} className="animate-spin" />同步中</span>
+        )}
+        {project?.drive_folder_id && (
+          <button className="dj-sync-btn" onClick={() => { setSyncFilled(0); setShowDriveSync(true); }}>
+            <RefreshCcw size={11} />同步
+          </button>
+        )}
         {syncFilled > 0 && (
           <span className="dj-sync-filled" title={`補漏同步新增 ${syncFilled} 個日期`}>
             +{syncFilled}
