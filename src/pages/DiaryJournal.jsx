@@ -131,6 +131,7 @@ function DiaryJournalInner() {
   const [matCollapsed,     setMatCollapsed]     = useState(true);
   const [inspections,      setInspections]      = useState([]);
   const [inspCollapsed,    setInspCollapsed]    = useState(true);
+  const [scheduleItems,    setScheduleItems]    = useState([]);
   const [showInspModal,    setShowInspModal]    = useState(false);
   const [inspEditing,      setInspEditing]      = useState(null);
   const [inspPrefill,      setInspPrefill]      = useState('');
@@ -154,12 +155,16 @@ function DiaryJournalInner() {
     supervisorName: '',
   };
 
-  // ── 取工程資訊 ────────────────────────────────────────────────
+  // ── 取工程資訊 + 排程工項 ───────────────────────────────────────
   useEffect(() => {
     supabase.from('projects')
       .select('drive_folder_id, start_date, name, contractor')
       .eq('id', projectId).single()
       .then(({ data }) => { if (data) setProject(data); });
+    supabase.from('schedule_items')
+      .select('start_date, end_date, weight')
+      .eq('project_id', projectId)
+      .then(({ data }) => { if (data) setScheduleItems(data); });
   }, [projectId]);
 
   // ── 進頁自動背景同步（僅近 3 天，避免重載所有歷史檔案）──────
@@ -407,9 +412,33 @@ function DiaryJournalInner() {
     );
   }
 
+  // ── 從排程工項推算預定進度（同 ProgressManagement calcPlanned）──
+  const calcPlanned = (dateStr) => {
+    if (!scheduleItems.length || !dateStr) return null;
+    const d = new Date(dateStr).getTime();
+    const val = scheduleItems.reduce((sum, item) => {
+      if (!item.start_date || !item.end_date) return sum;
+      const s = new Date(item.start_date).getTime();
+      const e = new Date(item.end_date).getTime();
+      const ratio = e === s ? (d >= e ? 1 : 0) : Math.min(1, Math.max(0, (d - s) / (e - s)));
+      return sum + parseFloat(item.weight ?? 0) * ratio;
+    }, 0);
+    return val;
+  };
+
   // ── 摘要相關運算 ──────────────────────────────────────────────
-  const selActual  = summary?.progress?.actual_progress  ?? summary?.log?.actual_progress  ?? null;
-  const selPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
+  const hasProgressRecord = !!summary?.progress;
+  const storedPlanned = summary?.progress?.planned_progress ?? summary?.log?.planned_progress ?? null;
+  const storedActual  = summary?.progress?.actual_progress  ?? summary?.log?.actual_progress  ?? null;
+  const calcPlannedVal = selectedKey ? calcPlanned(selectedKey) : null;
+  // 若儲存值為 0 或 null，改用 schedule_items 計算值
+  const selPlanned = (storedPlanned !== null && storedPlanned !== 0)
+    ? storedPlanned
+    : (calcPlannedVal || null);
+  // 若無 progress_records 且 daily_logs 是 0（同步未填），顯示 null（"—"）
+  const selActual = (storedActual !== null && storedActual !== 0)
+    ? storedActual
+    : (hasProgressRecord ? storedActual : null);
   const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
   const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);

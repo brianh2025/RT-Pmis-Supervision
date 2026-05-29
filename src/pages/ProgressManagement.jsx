@@ -265,7 +265,11 @@ export function ProgressManagement() {
             </thead>
             <tbody>
               {records.length > 0 ? records.map((r) => {
-                const planned = calcPlanned(r.report_date);
+                const calcVal = calcPlanned(r.report_date);
+                // calcPlanned=0 表示排程未開始，fallback 到資料庫儲存值
+                const planned = (calcVal !== null && calcVal > 0)
+                  ? calcVal
+                  : (r.planned_progress > 0 ? r.planned_progress : calcVal);
                 const diff = planned !== null
                   ? (Number(r.actual_progress) - planned)
                   : null;
