@@ -475,7 +475,7 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
       .sort((a, b) => a.row - b.row);
     for (const c of [...right, ...below]) {
       const v = parseFloat(c.val.replace(/[%％]/g, ""));
-      if (!isNaN(v) && v > 0) return v;
+      if (!isNaN(v) && v > 0 && v <= 100) return v;
     }
     return null;
   }
@@ -620,6 +620,15 @@ async function syncFile(
 ): Promise<{ date: string | null; dates: string[]; itemCount: number }> {
   const buf = await downloadDriveFile(fileId, token);
   let diaries = parseAllDiaries(buf);
+
+  // 日期對齊（單日檔案）：若解析出唯一一筆日誌且日期與檔名差 ≤ 1 天，以檔名為準
+  const fileNameDate = parseDateFromFileName(fileName);
+  if (fileNameDate && diaries.length === 1 && diaries[0].logDate) {
+    const diffMs = Math.abs(new Date(diaries[0].logDate).getTime() - new Date(fileNameDate).getTime());
+    if (diffMs > 0 && diffMs <= 86400000) {
+      diaries[0].logDate = fileNameDate;
+    }
+  }
 
   // 過濾未來日期：捨棄填表日期晚於今天的列（空白模板列的特徵）
   const today = new Date().toISOString().split('T')[0];
