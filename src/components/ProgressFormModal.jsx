@@ -3,7 +3,7 @@ import { X, Save } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import './Modal.css';
 
-export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, plannedProgress }) {
+export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, plannedProgress, calcPlannedFn }) {
   const isEdit = !!initialData;
   const [form, setForm] = useState({
     report_date:     initialData?.report_date     ?? '',
@@ -12,8 +12,14 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, 
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState(null);
+  const [localPlanned, setLocalPlanned] = useState(plannedProgress ?? null);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm(f => ({ ...f, [k]: v }));
+    if (k === 'report_date' && v && calcPlannedFn) {
+      setLocalPlanned(calcPlannedFn(v));
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.report_date || form.actual_progress === '') {
@@ -28,6 +34,7 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, 
       project_id:      projectId,
       report_date:     form.report_date,
       actual_progress: parseFloat(form.actual_progress),
+      planned_progress: localPlanned !== null ? parseFloat(localPlanned.toFixed(4)) : null,
       notes:           form.notes || null,
     };
 
@@ -51,9 +58,8 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, 
     }
   };
 
-  // 差異：用傳入的計算值 plannedProgress
-  const diff = form.actual_progress !== '' && plannedProgress !== null && plannedProgress !== undefined
-    ? (parseFloat(form.actual_progress) - plannedProgress).toFixed(2)
+  const diff = form.actual_progress !== '' && localPlanned !== null && localPlanned !== undefined
+    ? (parseFloat(form.actual_progress) - localPlanned).toFixed(2)
     : null;
 
   return (
@@ -96,10 +102,9 @@ export function ProgressFormModal({ projectId, initialData, onClose, onSuccess, 
               />
             </div>
 
-            {/* 預定進度（唯讀，由工程計畫推算） */}
-            {plannedProgress !== null && plannedProgress !== undefined && (
+            {localPlanned !== null && localPlanned !== undefined && (
               <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', padding: '6px 12px', background: 'var(--color-bg2)', borderRadius: '8px' }}>
-                預定進度（計算值）：<strong style={{ color: 'var(--color-text1)' }}>{plannedProgress.toFixed(2)}%</strong>
+                預定進度（計算值）：<strong style={{ color: 'var(--color-text1)' }}>{localPlanned.toFixed(2)}%</strong>
               </div>
             )}
 

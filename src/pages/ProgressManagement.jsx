@@ -380,6 +380,7 @@ export function ProgressManagement() {
           onClose={() => setIsFormModalOpen(false)}
           onSuccess={() => { setIsFormModalOpen(false); fetchRecords(); }}
           plannedProgress={editingRecord ? calcPlanned(editingRecord.report_date) : null}
+          calcPlannedFn={scheduleItems.length > 0 ? calcPlanned : null}
         />
       )}
 
