@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ProgressFormModal } from '../components/ProgressFormModal';
 import { ProgressExcelImportModal } from '../components/ProgressExcelImportModal';
 import { ScheduleImportModal } from '../components/ScheduleImportModal';
+import { fmtPct } from '../utils/format';
 
 export function ProgressManagement() {
   const { id } = useParams();
@@ -198,8 +199,8 @@ export function ProgressManagement() {
               color: latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
             }}>
               {latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              實際 {Number(latest.actual_progress).toFixed(2)}% {latestDiff >= 0 ? '超前' : '落後'} {Math.abs(latestDiff).toFixed(1)}%
-              {latestPlanned !== null && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {latestPlanned.toFixed(1)}%）</span>}
+              實際 {fmtPct(latest.actual_progress)} {latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}
+              {latestPlanned !== null && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
             </span>
           )}
           <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
@@ -266,27 +267,27 @@ export function ProgressManagement() {
               {records.length > 0 ? records.map((r) => {
                 const planned = calcPlanned(r.report_date);
                 const diff = planned !== null
-                  ? (Number(r.actual_progress) - planned).toFixed(1)
-                  : '—';
-                const ahead = diff !== '—' && parseFloat(diff) >= 0;
+                  ? (Number(r.actual_progress) - planned)
+                  : null;
+                const ahead = diff !== null && diff >= 0;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--color-block-border)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg2)'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}
                   >
                     <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500 }}>{r.report_date}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{planned !== null ? parseFloat(planned.toFixed(1)) + '%' : '—'}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{parseFloat(Number(r.actual_progress).toFixed(1))}%</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(planned)}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(r.actual_progress)}</td>
                     <td style={{ padding: '10px 16px' }}>
-                      {diff === '—' ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
+                      {diff === null ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
                         padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
                         background: ahead ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
                         color: ahead ? '#10b981' : '#ef4444',
                       }}>
-                        {ahead ? <TrendingUp size={11} /> : parseFloat(diff) === 0 ? <Minus size={11} /> : <TrendingDown size={11} />}
-                        {parseFloat(diff) > 0 ? '+' : ''}{diff}%
+                        {ahead ? <TrendingUp size={11} /> : diff === 0 ? <Minus size={11} /> : <TrendingDown size={11} />}
+                        {diff > 0 ? '+' : ''}{fmtPct(Math.abs(diff))}
                       </span>
                       )}
                     </td>

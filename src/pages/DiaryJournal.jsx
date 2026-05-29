@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Cloud, ChevronDown, ChevronUp, RefreshCcw, Loader2, Trash2, ExternalLink, Plus, FileText, Package, ClipboardCheck, AlertTriangle, Edit3 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DriveSyncModal } from '../components/DriveSyncModal';
+import { fmtPct } from '../utils/format';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DailyReportForm } from './DailyReport/DailyReportForm';
@@ -91,13 +92,6 @@ function cleanNotes(raw) {
   const lines = raw.split('\n');
   const cutIdx = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
   return (cutIdx === -1 ? lines : lines.slice(0, cutIdx)).join('\n').trim();
-}
-
-function fmtPct(v) {
-  if (v == null) return '—';
-  const n = parseFloat(v);
-  if (isNaN(n)) return '—';
-  return parseFloat(n.toFixed(2)) + '%';
 }
 
 function progressColor(actual, planned) {

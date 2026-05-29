@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card, SH, I, Badge, ProgressBar, weatherIcon, C } from './utils';
+import { fmtPct } from '../../utils/format';
 
 function cleanNotes(raw) {
     if (!raw) return '';
@@ -11,11 +12,6 @@ function fmtNum(v) {
     if (v == null || v === '') return '—';
     const n = parseFloat(v);
     return isNaN(n) ? String(v) : String(parseFloat(n.toFixed(2)));
-}
-function fmtPct(v) {
-    if (v == null) return '—';
-    const n = parseFloat(v);
-    return isNaN(n) ? '—' : parseFloat(n.toFixed(2)) + '%';
 }
 
 export function DailyReportView({ report, onBack, onEdit, supervision = false }) {

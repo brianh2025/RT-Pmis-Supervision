@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen, Loader2, ClipboardCheck, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { C } from './DailyReport/utils';
+import { fmtPct } from '../utils/format';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DiaryImportModal } from '../components/DiaryImportModal';
@@ -67,11 +68,6 @@ function cleanNotes(raw) {
   const lines = raw.split('\n');
   const cut = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
   return (cut === -1 ? lines : lines.slice(0, cut)).join('\n').trim();
-}
-function fmtPct(v) {
-  if (v == null) return '—';
-  const n = parseFloat(v);
-  return isNaN(n) ? '—' : parseFloat(n.toFixed(2)) + '%';
 }
 function progressColor(actual, planned) {
   if (actual == null) return 'var(--color-primary)';
