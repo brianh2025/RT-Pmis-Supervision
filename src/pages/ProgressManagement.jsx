@@ -132,9 +132,27 @@ export function ProgressManagement() {
     }, 0);
   };
 
-  // Chart data：合併 schedule 關鍵日期 + 實際紀錄日期（過濾 null）
+  // S-Curve 日期：每月一點（從排程首日到末日）+ 實際紀錄日期
+  const scheduleStart = scheduleItems.length > 0
+    ? scheduleItems.map(i => i.start_date).filter(Boolean).sort()[0]
+    : null;
+  const scheduleEnd = scheduleItems.length > 0
+    ? scheduleItems.map(i => i.end_date).filter(Boolean).sort().at(-1)
+    : null;
+  const monthlyDates = (() => {
+    if (!scheduleStart || !scheduleEnd) return [];
+    const dates = [];
+    const d = new Date(scheduleStart);
+    const end = new Date(scheduleEnd);
+    while (d <= end) {
+      dates.push(d.toISOString().slice(0, 10));
+      d.setMonth(d.getMonth() + 1);
+    }
+    dates.push(scheduleEnd);
+    return dates;
+  })();
   const chartDates = [...new Set([
-    ...scheduleItems.flatMap(i => [i.start_date, i.end_date]).filter(Boolean),
+    ...monthlyDates,
     ...records.map(r => r.report_date),
   ])].sort();
 
@@ -180,7 +198,7 @@ export function ProgressManagement() {
               color: latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
             }}>
               {latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              實際 {latest.actual_progress}% {latestDiff >= 0 ? '超前' : '落後'} {Math.abs(latestDiff).toFixed(1)}%
+              實際 {Number(latest.actual_progress).toFixed(2)}% {latestDiff >= 0 ? '超前' : '落後'} {Math.abs(latestDiff).toFixed(1)}%
               {latestPlanned !== null && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {latestPlanned.toFixed(1)}%）</span>}
             </span>
           )}
