@@ -206,7 +206,7 @@ export function ProgressManagement() {
     <div style={{ padding: '8px 24px', width: '100%' }}>
       {/* Page Header */}
       <header className="page-section-header" style={{ marginBottom: '8px' }}>
-        <div className="header-left" style={{ alignSelf: 'flex-start' }}>
+        <div className="header-left">
           <span className="section-label">進度管理</span>
         </div>
         <div className="header-actions">
