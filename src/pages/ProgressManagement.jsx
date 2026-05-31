@@ -19,6 +19,7 @@ export function ProgressManagement() {
   const [editingRecord, setEditingRecord] = useState(null);
   const [scheduleItems, setScheduleItems] = useState([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [projectName, setProjectName] = useState('');
 
   const fetchRecords = async () => {
     if (!id) return;
@@ -46,6 +47,10 @@ export function ProgressManagement() {
     async function init() {
       await fetchRecords();
       await fetchScheduleItems();
+      if (id) {
+        const { data } = await supabase.from('projects').select('name').eq('id', id).single();
+        if (data?.name) setProjectName(data.name);
+      }
     }
     init();
   }, [id]);
@@ -186,8 +191,15 @@ export function ProgressManagement() {
 
   // Latest record summary
   const latest = records[records.length - 1];
-  const latestPlanned = latest ? calcPlanned(latest.report_date) : null;
-  const latestDiff = latest && latestPlanned !== null ? (latest.actual_progress - latestPlanned) : null;
+  const _calcLatest = latest ? calcPlanned(latest.report_date) : null;
+  const latestPlanned = latest ? (
+    (_calcLatest !== null && _calcLatest > 0)
+      ? _calcLatest
+      : (Number(latest.planned_progress) > 0 ? Number(latest.planned_progress) : _calcLatest)
+  ) : null;
+  const latestDiff = latest && latestPlanned !== null && latestPlanned > 0
+    ? (Number(latest.actual_progress) - latestPlanned)
+    : null;
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--color-text-muted)' }}>
@@ -201,17 +213,18 @@ export function ProgressManagement() {
       <header className="page-section-header" style={{ marginBottom: '20px' }}>
         <div className="header-left">
           <span className="section-label">進度管理</span>
-          <span className="section-sub-label">S-CURVE &amp; PROGRESS TRACKING</span>
+          {projectName && <span className="section-sub-label">{projectName.slice(0, 3)}</span>}
         </div>
         <div className="header-actions">
           {latest && (
             <span className="status-badge" style={{
-              background: latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-              color: latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
+              background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
+              color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
             }}>
-              {latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              實際 {fmtPct(latest.actual_progress)} {latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}
-              {latestPlanned !== null && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
+              {latestDiff !== null ? (latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />) : null}
+              實際 {fmtPct(latest.actual_progress)}
+              {latestDiff !== null && <>{' '}{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
+              {latestPlanned !== null && latestPlanned > 0 && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
             </span>
           )}
           <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
@@ -298,7 +311,7 @@ export function ProgressManagement() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg2)'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}
                   >
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500 }}>{r.report_date}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.report_date}</td>
                     <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(planned)}</td>
                     <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(r.actual_progress)}</td>
                     <td style={{ padding: '10px 16px' }}>
