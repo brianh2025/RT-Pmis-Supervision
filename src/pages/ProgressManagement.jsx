@@ -230,9 +230,15 @@ export function ProgressManagement() {
         <div style={{ padding: '20px' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" />
-                <XAxis dataKey="displayDate" stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="displayDate"
+                  stroke="var(--color-text-muted)"
+                  tick={{ fontSize: 10, angle: -35, textAnchor: 'end', dy: 4 }}
+                  interval={Math.max(0, Math.floor(chartData.length / 7) - 1)}
+                  height={44}
+                />
                 <YAxis stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
                 <Tooltip
                   contentStyle={{ background: 'var(--color-bg1)', border: '1px solid var(--color-block-border)', borderRadius: '8px', fontSize: '12px' }}
@@ -266,10 +272,10 @@ export function ProgressManagement() {
             <tbody>
               {records.length > 0 ? records.map((r) => {
                 const calcVal = calcPlanned(r.report_date);
-                // calcPlanned=0 表示排程未開始，fallback 到資料庫儲存值
-                const planned = (calcVal !== null && calcVal > 0)
-                  ? calcVal
-                  : (r.planned_progress > 0 ? r.planned_progress : calcVal);
+                // 優先使用資料庫儲存的預定進度（Excel 匯入值）；無資料才用計算值
+                const planned = (r.planned_progress != null && r.planned_progress > 0)
+                  ? r.planned_progress
+                  : (calcVal !== null && calcVal > 0 ? calcVal : null);
                 const diff = planned !== null
                   ? (Number(r.actual_progress) - planned)
                   : null;
