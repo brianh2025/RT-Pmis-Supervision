@@ -203,7 +203,7 @@ export function ProgressManagement() {
   );
 
   return (
-    <div style={{ padding: '24px', width: '100%' }}>
+    <div style={{ padding: '16px 8px', width: '100%' }}>
       {/* Page Header */}
       <header className="page-section-header" style={{ marginBottom: '20px' }}>
         <div className="header-left" style={{ alignSelf: 'flex-start' }}>
