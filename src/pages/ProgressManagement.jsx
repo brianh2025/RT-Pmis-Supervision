@@ -214,19 +214,10 @@ export function ProgressManagement() {
             <span className="status-badge" style={{
               background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
               color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
-              display: 'inline-flex', alignItems: 'center', gap: '10px',
             }}>
-              <span>
-                實際 {fmtPct(latest.actual_progress)}
-                {latestPlanned !== null && latestPlanned > 0 && (
-                  <span style={{ marginLeft: '6px' }}>預定 {fmtPct(latestPlanned)}</span>
-                )}
-              </span>
-              {latestDiff !== null && (
-                <span style={{ fontSize: '1.5em', fontWeight: 700, marginLeft: 'auto' }}>
-                  {latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}
-                </span>
-              )}
+              實際 {fmtPct(latest.actual_progress)}<br />
+              {latestPlanned !== null && latestPlanned > 0 && <>預定 {fmtPct(latestPlanned)}{' '}</>}
+              {latestDiff !== null && <>{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
             </span>
           )}
           <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
