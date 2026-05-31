@@ -19,7 +19,6 @@ export function ProgressManagement() {
   const [editingRecord, setEditingRecord] = useState(null);
   const [scheduleItems, setScheduleItems] = useState([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [projectName, setProjectName] = useState('');
 
   const fetchRecords = async () => {
     if (!id) return;
@@ -47,10 +46,6 @@ export function ProgressManagement() {
     async function init() {
       await fetchRecords();
       await fetchScheduleItems();
-      if (id) {
-        const { data } = await supabase.from('projects').select('name').eq('id', id).single();
-        if (data?.name) setProjectName(data.name);
-      }
     }
     init();
   }, [id]);
@@ -213,7 +208,7 @@ export function ProgressManagement() {
       <header className="page-section-header" style={{ marginBottom: '8px' }}>
         <div className="header-left">
           <span className="section-label">進度管理</span>
-          {projectName && <span className="section-sub-label">{projectName.slice(0, 3)}</span>}
+          <span className="section-sub-label">S 曲線進度追蹤</span>
         </div>
         <div className="header-actions">
           {latest && (
