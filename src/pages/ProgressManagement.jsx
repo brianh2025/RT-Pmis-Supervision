@@ -208,7 +208,6 @@ export function ProgressManagement() {
       <header className="page-section-header" style={{ marginBottom: '20px' }}>
         <div className="header-left">
           <span className="section-label">進度管理</span>
-          <span className="section-sub-label">S-CURVE &amp; PROGRESS TRACKING</span>
         </div>
         <div className="header-actions">
           {latest && (
