@@ -21,6 +21,10 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 版面嚴禁貼著視窗邊線
 - **新版本不得省略舊版本任何內容**（最重要規則）
 
+## 部署方式
+- **所有修改直接推送 `main` 分支**，不建立 feature branch、不開 PR
+- Vercel 自動從 main 部署到 production，無需預覽流程
+
 ## 工作紀律
 - 嘗試失敗 3 次後停止，擬定方案再繼續
 - 重複作業達 5 次須告知使用者並等待指示
