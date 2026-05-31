@@ -253,10 +253,10 @@ export function ProgressManagement() {
         </div>
 
         {/* S-Curve 圖表 */}
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '20px 4px' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: chartDates.length > 12 ? 20 : 5 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 8, left: 0, bottom: chartDates.length > 12 ? 20 : 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" />
                 <XAxis
                   dataKey="displayDate"
@@ -267,7 +267,7 @@ export function ProgressManagement() {
                   textAnchor={chartDates.length > 12 ? 'end' : 'middle'}
                   height={chartDates.length > 12 ? 45 : 30}
                 />
-                <YAxis stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
+                <YAxis stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} domain={[0, dataMax => Math.max(10, Math.ceil(dataMax * 1.2))]} unit="%" />
                 <Tooltip
                   contentStyle={{ background: 'var(--color-bg1)', border: '1px solid var(--color-block-border)', borderRadius: '8px', fontSize: '12px' }}
                   formatter={(v) => v !== null ? fmtPct(v) : '—'}
