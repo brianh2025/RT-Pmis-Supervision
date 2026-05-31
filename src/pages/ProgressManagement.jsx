@@ -231,7 +231,7 @@ export function ProgressManagement() {
         {/* 區塊標題 */}
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '3px', height: '18px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block' }} />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)' }}>S-Curve 進度曲線 &amp; 歷史紀錄</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)' }}>進度曲線 &amp; 歷史紀錄</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{records.length} 筆</span>
             <button className="btn-dash-action" onClick={() => setIsExcelModalOpen(true)} style={{ padding: '3px 10px', fontSize: '11px' }}>
