@@ -212,15 +212,26 @@ export function ProgressManagement() {
         </div>
         <div className="header-actions">
           {latest && (
-            <span className="status-badge" style={{
-              background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-              color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
-            }}>
-              {latestDiff !== null ? (latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />) : null}
-              實際 {fmtPct(latest.actual_progress)}
-              {latestDiff !== null && <>{' '}{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
-              {latestPlanned !== null && latestPlanned > 0 && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text2)' }}>
+                實際 {fmtPct(latest.actual_progress)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                {latestPlanned !== null && latestPlanned > 0 && (
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                    預定 {fmtPct(latestPlanned)}
+                  </span>
+                )}
+                {latestDiff !== null && (
+                  <span style={{
+                    fontSize: '24px', fontWeight: 700, letterSpacing: '-0.01em',
+                    color: latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
+                  }}>
+                    {latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
           <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
             <Plus size={14} /><span>新增進度</span>
