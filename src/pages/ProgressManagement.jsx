@@ -121,8 +121,11 @@ export function ProgressManagement() {
   };
 
   // 從 schedule_items 推算任意日期的預定進度（線性插值，跳過無日期的工項）
+  // weight 全為 0（如尚未匯入計畫）時回傳 null，讓呼叫端 fallback 到儲存值
   const calcPlanned = (dateStr) => {
     if (!scheduleItems.length) return null;
+    const totalWeight = scheduleItems.reduce((s, i) => s + parseFloat(i.weight ?? 0), 0);
+    if (totalWeight === 0) return null;
     const d = new Date(dateStr).getTime();
     return scheduleItems.reduce((sum, item) => {
       if (!item.start_date || !item.end_date) return sum;
@@ -158,14 +161,22 @@ export function ProgressManagement() {
   ])].sort();
 
   const actualMap = Object.fromEntries(records.map(r => [r.report_date, Number(r.actual_progress)]));
+  const plannedMap = Object.fromEntries(records.map(r => [r.report_date, Number(r.planned_progress)]));
 
   const chartData = scheduleItems.length > 0
-    ? chartDates.map(date => ({
-        displayDate: date.slice(5),
-        report_date: date,
-        預定進度: parseFloat(calcPlanned(date).toFixed(2)),
-        實際進度: actualMap[date] ?? null,
-      }))
+    ? chartDates.map(date => {
+        const calcVal = calcPlanned(date);
+        const stored = plannedMap[date];
+        const planned = (calcVal !== null && calcVal > 0)
+          ? parseFloat(calcVal.toFixed(2))
+          : (stored > 0 ? parseFloat(Number(stored).toFixed(2)) : null);
+        return {
+          displayDate: date.slice(5),
+          report_date: date,
+          預定進度: planned,
+          實際進度: actualMap[date] ?? null,
+        };
+      })
     : records.map(r => ({
         displayDate: r.report_date.slice(5),
         report_date: r.report_date,
@@ -230,17 +241,25 @@ export function ProgressManagement() {
         <div style={{ padding: '20px' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: chartDates.length > 12 ? 20 : 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" />
-                <XAxis dataKey="displayDate" stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="displayDate"
+                  stroke="var(--color-text-muted)"
+                  tick={{ fontSize: 11 }}
+                  interval={chartDates.length > 20 ? Math.ceil(chartDates.length / 10) - 1 : 'preserveStartEnd'}
+                  angle={chartDates.length > 12 ? -35 : 0}
+                  textAnchor={chartDates.length > 12 ? 'end' : 'middle'}
+                  height={chartDates.length > 12 ? 45 : 30}
+                />
                 <YAxis stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
                 <Tooltip
                   contentStyle={{ background: 'var(--color-bg1)', border: '1px solid var(--color-block-border)', borderRadius: '8px', fontSize: '12px' }}
-                  formatter={(v) => `${v}%`}
+                  formatter={(v) => v !== null ? fmtPct(v) : '—'}
                 />
                 <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '12px' }} />
-                <Line type="monotone" dataKey="預定進度" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 5 }} strokeDasharray="4 2" />
-                <Line type="monotone" dataKey="實際進度" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} />
+                <Line type="monotone" dataKey="預定進度" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} strokeDasharray="4 2" />
+                <Line type="monotone" dataKey="實際進度" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

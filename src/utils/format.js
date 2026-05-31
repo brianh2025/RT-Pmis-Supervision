@@ -4,7 +4,7 @@
  *  0      → "0%"
  *  0.005  → "0.01%"   (1位小數顯示0，自動找到2位)
  *  0.056  → "0.1%"    (1位小數夠用)
- *  1.5    → "1.5%"
+ *  6.74   → "6.74%"   (≥1 顯示2位小數)
  *  null   → fallback（預設 "—"）
  */
 export function fmtPct(val, fallback = '—') {
@@ -12,6 +12,7 @@ export function fmtPct(val, fallback = '—') {
   const n = Number(val);
   if (isNaN(n)) return fallback;
   if (n === 0) return '0%';
+  if (Math.abs(n) >= 1) return parseFloat(n.toFixed(2)) + '%';
   if (parseFloat(n.toFixed(1)) !== 0) return parseFloat(n.toFixed(1)) + '%';
   for (let dp = 2; dp <= 4; dp++) {
     if (parseFloat(n.toFixed(dp)) !== 0) return n.toFixed(dp) + '%';
