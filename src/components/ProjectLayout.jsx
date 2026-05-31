@@ -82,7 +82,7 @@ export function ProjectLayout() {
         <Topbar
           setIsMobileOpen={setIsMobileOpen}
           backInfo={backInfo}
-          pageLabel={project?.name ? project.name.slice(0, 11) : null}
+          pageLabel={relPath === 'dashboard' ? '睿泰雲林監造' : (project?.name ? project.name.slice(0, 11) : null)}
         />
         
         <main ref={contentRef} className="pl-content-area custom-scrollbar">
