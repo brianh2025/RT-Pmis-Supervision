@@ -203,9 +203,9 @@ export function ProgressManagement() {
   );
 
   return (
-    <div style={{ padding: '16px 8px', width: '100%' }}>
+    <div style={{ padding: '8px 24px', width: '100%' }}>
       {/* Page Header */}
-      <header className="page-section-header" style={{ marginBottom: '20px' }}>
+      <header className="page-section-header" style={{ marginBottom: '8px' }}>
         <div className="header-left" style={{ alignSelf: 'flex-start' }}>
           <span className="section-label">進度管理</span>
         </div>
@@ -227,9 +227,9 @@ export function ProgressManagement() {
       </header>
 
       {/* S-Curve + Records — 合併區塊 */}
-      <div className="b-content-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '16px' }}>
+      <div className="b-content-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '8px' }}>
         {/* 區塊標題 */}
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '3px', height: '18px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block' }} />
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)' }}>進度曲線 &amp; 歷史紀錄</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -244,7 +244,7 @@ export function ProgressManagement() {
         </div>
 
         {/* S-Curve 圖表 */}
-        <div style={{ padding: '20px 4px' }}>
+        <div style={{ padding: '8px 4px' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 5, right: 8, left: 0, bottom: chartDates.length > 12 ? 20 : 5 }}>
