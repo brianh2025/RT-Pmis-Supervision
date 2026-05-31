@@ -283,7 +283,7 @@ export function ProgressManagement() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: 'var(--color-bg2)' }}>
-                {['報告日期', '預定進度', '實際進度', '差異', '備註', '操作'].map(h => (
+                {['報告日期', '預定進度', '實際進度', '差異', '操作'].map(h => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-block-border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -320,9 +320,7 @@ export function ProgressManagement() {
                       </span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.notes || '—'}
-                    </td>
+
                     <td style={{ padding: '10px 16px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px', borderRadius: '4px', transition: 'color 0.2s' }}
@@ -343,7 +341,7 @@ export function ProgressManagement() {
                 );
               }) : (
                 <tr>
-                  <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                  <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
                     尚無進度資料，請點擊「新增進度」或「匯入 Excel」
                   </td>
                 </tr>
