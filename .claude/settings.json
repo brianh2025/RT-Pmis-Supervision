@@ -28,7 +28,8 @@
       "Bash(git config *)",
       "Bash(start https://github.com/brianh2025/RT-Pmis-Supervision)",
       "Bash(gh repo *)",
-      "Bash(start https://vscode.dev/github/brianh2025/RT-Pmis-Supervision)"
+      "Bash(start https://vscode.dev/github/brianh2025/RT-Pmis-Supervision)",
+      "Bash(git fetch *)"
     ]
   }
 }
