@@ -216,15 +216,18 @@ async function listDriveFolder(folderId, token) {
   };
 }
 
-/** 從資料夾路徑陣列推算 date / workItem / category */
+/** 從資料夾路徑陣列推算 date / workItem / category
+ *  E0-x 開頭 → 類別資料夾：含「材料」→ 材料進場；否則 → 施工抽查
+ *  YYYYMMDD  → 日期；其餘 → 工項名稱
+ */
 function parsePathMeta(path) {
   let driveDate = '', driveWorkItem = '', driveCategory = '';
   for (const seg of path) {
     if (/^\d{8}$/.test(seg.name)) {
       driveDate = `${seg.name.slice(0,4)}-${seg.name.slice(4,6)}-${seg.name.slice(6,8)}`;
-    } else if (/^E0-2/i.test(seg.name)) {
-      driveCategory = '材料進場';
-    } else if (!/^E0-\d/i.test(seg.name)) {
+    } else if (/^E0-\d/i.test(seg.name)) {
+      driveCategory = /材料/.test(seg.name) ? '材料進場' : '施工抽查';
+    } else {
       driveWorkItem = seg.name;
     }
   }
