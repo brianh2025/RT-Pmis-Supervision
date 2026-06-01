@@ -178,6 +178,29 @@ async function getGoogleToken() {
   });
 }
 
+/** 取得唯讀 token，供從 Drive 匯入既有照片使用 */
+async function getGoogleReadToken() {
+  await ensureGIS();
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GCLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.readonly',
+      callback: resp => resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token),
+    });
+    client.requestAccessToken({ prompt: '' });
+  });
+}
+
+/** 從 Drive 下載檔案內容為 Blob */
+async function downloadDriveFile(fileId, token) {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`下載失敗（${res.status}）`);
+  return res.blob();
+}
+
 /** 開啟 Google Picker，viewId 可為 DOCS_IMAGES 或 PHOTOS */
 async function openGooglePicker(viewId, token) {
   await ensureGapiPicker();
@@ -191,7 +214,10 @@ async function openGooglePicker(viewId, token) {
       .setDeveloperKey(GAPI_KEY)
       .enableFeature(P.Feature.MULTISELECT_ENABLED)
       .enableFeature(P.Feature.SUPPORT_DRIVES)   // 支援共用雲端硬碟
-      .setCallback(data => { if (data.action === P.Action.PICKED) resolve(data.docs); })
+      .setCallback(data => {
+          if (data.action === P.Action.PICKED) resolve(data.docs);
+          else if (data.action === P.Action.CANCEL) resolve([]);
+        })
       .build()
       .setVisible(true);
   });
@@ -699,9 +725,11 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 /* ── 選取照片（三種來源）── */
 function StepUpload({ onPhotosReady, onBack }) {
   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps }
-  const [items,   setItems]   = useState([]);
-  const [gToken,  setGToken]  = useState(null);
-  const [_gBusy,   setGBusy]   = useState(false);
+  const [items,        setItems]        = useState([]);
+  const [gToken,       setGToken]       = useState(null);
+  const [importToken,  setImportToken]  = useState(null);
+  const [importBusy,   setImportBusy]   = useState(false);
+  const [importStatus, setImportStatus] = useState('');
   const fileInputRef = useRef(null);
 
   /* 本機上傳 */
@@ -716,41 +744,51 @@ function StepUpload({ onPhotosReady, onBack }) {
     }
   }
 
-  /* 取得 Google token（共用） */
+  /* 取得上傳用 token（drive.file scope） */
   async function ensureToken() {
     if (gToken) return gToken;
     if (!GCLIENT_ID) { alert('尚未設定 Google OAuth Client ID（VITE_GOOGLE_CLIENT_ID）'); return null; }
-    setGBusy(true);
     try {
       const token = await getGoogleToken();
       setGToken(token);
       return token;
     } catch (e) { alert(`Google 授權失敗：${e.message}`); return null; }
-    finally { setGBusy(false); }
   }
 
-  /* Google 雲端硬碟 / 相簿：設公開後直接用 thumbnail URL，不下載 blob
-     viewIdKey：字串 key（'DOCS_IMAGES' | 'PHOTOS'），在 ensureGapiPicker 後才解析 */
-  async function handlePickerSource(viewIdKey, errLabel) {
-    const token = await ensureToken();
-    if (!token) return;
-    setGBusy(true);
+  /* 從 Google Drive 匯入照片（drive.readonly scope，下載 blob，保留 EXIF） */
+  async function handleDriveImport() {
+    if (!GCLIENT_ID) { alert('尚未設定 Google OAuth Client ID（VITE_GOOGLE_CLIENT_ID）'); return; }
+    setImportBusy(true);
+    setImportStatus('取得 Google 授權中…');
+    let token = importToken;
     try {
-      await ensureGapiPicker();                          // 確保 Picker 已載入
-      const viewId = window.google.picker.ViewId[viewIdKey]; // 載入後才能存取
+      if (!token) {
+        token = await getGoogleReadToken();
+        setImportToken(token);
+      }
+      await ensureGapiPicker();
+      setImportStatus('請在選擇器中選取照片…');
+      const viewId = window.google.picker.ViewId.DOCS_IMAGES;
       const docs = await openGooglePicker(viewId, token);
-      for (const doc of docs) {
-        const url = await makeFilePublic(doc.id, token);
+      if (!docs.length) return;
+      for (let i = 0; i < docs.length; i++) {
+        setImportStatus(`下載第 ${i + 1} / ${docs.length} 張…`);
+        const blob = await downloadDriveFile(docs[i].id, token);
+        const file = new File([blob], docs[i].name || `photo_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(blob);
+        const { exifDate, exifGps } = await parseExif(file);
         setItems(prev => [...prev, {
-          id: crypto.randomUUID(), previewUrl: url,
-          blob: null, mimeType: null, exifDate: '', exifGps: '',
+          id: crypto.randomUUID(), previewUrl, blob: file,
+          mimeType: file.type, exifDate, exifGps,
         }]);
       }
-    } catch (e) { alert(`${errLabel}失敗：${e.message}`); }
-    finally { setGBusy(false); }
+    } catch (e) {
+      alert(`從 Drive 匯入失敗：${e.message}`);
+    } finally {
+      setImportBusy(false);
+      setImportStatus('');
+    }
   }
-  const _handleDrive  = () => handlePickerSource('DOCS_IMAGES', 'Drive 選取');
-  const _handlePhotos = () => handlePickerSource('PHOTOS',      '相簿選取');
 
   /* 繼續：直接進填資料，不在此上傳（保留 blob 供後續存檔用）*/
   function handleNext() {
@@ -767,10 +805,16 @@ function StepUpload({ onPhotosReady, onBack }) {
 
   return (
     <div className="pt-step-upload">
-      {/* 照片來源：目前僅開放本機上傳 */}
+      {/* 照片來源 */}
       <div className="pt-upload-sources">
         <button className="pt-upload-source-btn" onClick={() => fileInputRef.current?.click()}>
           <Upload size={22} /><span>從電腦 / 手機上傳</span>
+        </button>
+        <button className="pt-upload-source-btn" onClick={handleDriveImport} disabled={importBusy}>
+          {importBusy
+            ? <Loader2 size={22} className="pt-spin" />
+            : <Cloud size={22} />}
+          <span>{importBusy ? (importStatus || 'Drive 匯入中…') : '從 Google Drive 匯入'}</span>
         </button>
         <input ref={fileInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }}
           onChange={e => handleLocalFiles(e.target.files)} />
