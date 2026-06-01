@@ -697,6 +697,115 @@
   border-radius: 10px;
 }
 
+/* ── Drive 資料夾瀏覽器 ── */
+.pt-drive-browser {
+  background: var(--color-bg2);
+  border: 1px solid var(--color-block-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pt-drive-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.pt-drive-breadcrumb button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary-light);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.pt-drive-breadcrumb button:hover { background: var(--color-bg1); }
+.pt-drive-bc-sep { color: var(--color-text-muted); padding: 0 2px; }
+.pt-drive-folder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pt-drive-folder-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text1);
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.pt-drive-folder-btn:hover {
+  border-color: var(--color-primary-light);
+  background: rgba(21,101,192,0.05);
+  color: var(--color-primary-light);
+}
+.pt-drive-import-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(16,185,129,0.07);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--color-text2);
+  flex-wrap: wrap;
+}
+.pt-drive-import-row button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.pt-drive-import-row button:disabled { opacity: 0.65; cursor: not-allowed; }
+.pt-drive-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+}
+.pt-drive-empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 14px;
+}
+.pt-drive-close {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.pt-drive-close:hover { color: var(--color-text1); background: var(--color-bg1); }
+
 .pt-upload-zone {
   border: 2px dashed var(--color-border);
   border-radius: 10px;

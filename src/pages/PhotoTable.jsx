@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud,
+  Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud, FolderOpen,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
   Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine,
 } from 'lucide-react';
@@ -199,6 +199,36 @@ async function downloadDriveFile(fileId, token) {
   );
   if (!res.ok) throw new Error(`下載失敗（${res.status}）`);
   return res.blob();
+}
+
+/** 列出 Drive 資料夾的子資料夾與圖片檔 */
+async function listDriveFolder(folderId, token) {
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType)&orderBy=name&pageSize=200`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`資料夾列出失敗（${res.status}）`);
+  const { files = [] } = await res.json();
+  return {
+    folders: files.filter(f => f.mimeType === 'application/vnd.google-apps.folder'),
+    images:  files.filter(f => f.mimeType?.startsWith('image/')),
+  };
+}
+
+/** 從資料夾路徑陣列推算 date / workItem / category */
+function parsePathMeta(path) {
+  let driveDate = '', driveWorkItem = '', driveCategory = '';
+  for (const seg of path) {
+    if (/^\d{8}$/.test(seg.name)) {
+      driveDate = `${seg.name.slice(0,4)}-${seg.name.slice(4,6)}-${seg.name.slice(6,8)}`;
+    } else if (/^E0-2/i.test(seg.name)) {
+      driveCategory = '材料進場';
+    } else if (!/^E0-\d/i.test(seg.name)) {
+      driveWorkItem = seg.name;
+    }
+  }
+  return { driveDate, driveWorkItem, driveCategory };
 }
 
 /** 開啟 Google Picker，viewId 可為 DOCS_IMAGES 或 PHOTOS */
@@ -722,14 +752,13 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
   );
 }
 
-/* ── 選取照片（三種來源）── */
+/* ── 選取照片（本機 / Google Drive 資料夾瀏覽）── */
 function StepUpload({ onPhotosReady, onBack }) {
-  // item: { id, previewUrl, blob, mimeType, exifDate, exifGps }
-  const [items,        setItems]        = useState([]);
-  const [gToken,       setGToken]       = useState(null);
-  const [importToken,  setImportToken]  = useState(null);
-  const [importBusy,   setImportBusy]   = useState(false);
-  const [importStatus, setImportStatus] = useState('');
+  // item: { id, previewUrl, blob, mimeType, exifDate, exifGps, driveWorkItem, driveCategory }
+  const [items,      setItems]      = useState([]);
+  const [gToken,     setGToken]     = useState(null);
+  // driveBrowse: null = 關閉；開啟時 = { token, loading, path, folders, images, importBusy, importStatus }
+  const [driveBrowse, setDriveBrowse] = useState(null);
   const fileInputRef = useRef(null);
 
   /* 本機上傳 */
@@ -739,7 +768,7 @@ function StepUpload({ onPhotosReady, onBack }) {
       const { exifDate, exifGps } = await parseExif(file);
       setItems(prev => [...prev, {
         id: crypto.randomUUID(), previewUrl, blob: file,
-        mimeType: file.type, exifDate, exifGps,
+        mimeType: file.type, exifDate, exifGps, driveWorkItem: '', driveCategory: '',
       }]);
     }
   }
@@ -748,77 +777,160 @@ function StepUpload({ onPhotosReady, onBack }) {
   async function ensureToken() {
     if (gToken) return gToken;
     if (!GCLIENT_ID) { alert('尚未設定 Google OAuth Client ID（VITE_GOOGLE_CLIENT_ID）'); return null; }
-    try {
-      const token = await getGoogleToken();
-      setGToken(token);
-      return token;
-    } catch (e) { alert(`Google 授權失敗：${e.message}`); return null; }
+    try { const t = await getGoogleToken(); setGToken(t); return t; }
+    catch (e) { alert(`Google 授權失敗：${e.message}`); return null; }
   }
 
-  /* 從 Google Drive 匯入照片（drive.readonly scope，下載 blob，保留 EXIF） */
-  async function handleDriveImport() {
-    if (!GCLIENT_ID) { alert('尚未設定 Google OAuth Client ID（VITE_GOOGLE_CLIENT_ID）'); return; }
-    setImportBusy(true);
-    setImportStatus('取得 Google 授權中…');
-    let token = importToken;
+  /* ── Drive 資料夾瀏覽器 ── */
+  async function openDriveBrowser() {
+    if (!GCLIENT_ID)      { alert('尚未設定 VITE_GOOGLE_CLIENT_ID');      return; }
+    if (!DRIVE_FOLDER_ID) { alert('尚未設定 VITE_GOOGLE_DRIVE_FOLDER_ID'); return; }
+    setDriveBrowse({ token: null, loading: true, path: [], folders: [], images: [], importBusy: false, importStatus: '' });
     try {
-      if (!token) {
-        token = await getGoogleReadToken();
-        setImportToken(token);
-      }
-      await ensureGapiPicker();
-      setImportStatus('請在選擇器中選取照片…');
-      const viewId = window.google.picker.ViewId.DOCS_IMAGES;
-      const docs = await openGooglePicker(viewId, token);
-      if (!docs.length) return;
-      for (let i = 0; i < docs.length; i++) {
-        setImportStatus(`下載第 ${i + 1} / ${docs.length} 張…`);
-        const blob = await downloadDriveFile(docs[i].id, token);
-        const file = new File([blob], docs[i].name || `photo_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+      const token = await getGoogleReadToken();
+      const { folders, images } = await listDriveFolder(DRIVE_FOLDER_ID, token);
+      setDriveBrowse({ token, loading: false, path: [], folders, images, importBusy: false, importStatus: '' });
+    } catch (e) {
+      alert(`無法開啟 Drive：${e.message}`);
+      setDriveBrowse(null);
+    }
+  }
+
+  async function browseTo(folder) {
+    setDriveBrowse(prev => ({ ...prev, loading: true }));
+    try {
+      const { folders, images } = await listDriveFolder(folder.id, driveBrowse.token);
+      setDriveBrowse(prev => ({
+        ...prev, loading: false,
+        path: [...prev.path, folder], folders, images,
+      }));
+    } catch (e) {
+      alert(`無法開啟資料夾：${e.message}`);
+      setDriveBrowse(prev => ({ ...prev, loading: false }));
+    }
+  }
+
+  async function browseBack(toIndex) {
+    // toIndex = -1 → 回根目錄；≥0 → path[0..toIndex]
+    setDriveBrowse(prev => ({ ...prev, loading: true }));
+    try {
+      const newPath = toIndex < 0 ? [] : driveBrowse.path.slice(0, toIndex + 1);
+      const parentId = newPath.length ? newPath[newPath.length - 1].id : DRIVE_FOLDER_ID;
+      const { folders, images } = await listDriveFolder(parentId, driveBrowse.token);
+      setDriveBrowse(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
+    } catch (e) {
+      setDriveBrowse(prev => ({ ...prev, loading: false }));
+    }
+  }
+
+  async function importCurrentFolder() {
+    const imgs = driveBrowse.images;
+    if (!imgs.length) return;
+    const { driveDate, driveWorkItem, driveCategory } = parsePathMeta(driveBrowse.path);
+    setDriveBrowse(prev => ({ ...prev, importBusy: true, importStatus: '' }));
+    try {
+      for (let i = 0; i < imgs.length; i++) {
+        setDriveBrowse(prev => ({ ...prev, importStatus: `下載第 ${i + 1} / ${imgs.length} 張…` }));
+        const blob = await downloadDriveFile(imgs[i].id, driveBrowse.token);
+        const file = new File([blob], imgs[i].name || `photo_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
         const previewUrl = URL.createObjectURL(blob);
         const { exifDate, exifGps } = await parseExif(file);
         setItems(prev => [...prev, {
           id: crypto.randomUUID(), previewUrl, blob: file,
-          mimeType: file.type, exifDate, exifGps,
+          mimeType: file.type,
+          exifDate: driveDate || exifDate,   // 資料夾日期優先
+          exifGps,
+          driveWorkItem,
+          driveCategory,
         }]);
       }
+      setDriveBrowse(null);  // 匯入完成後關閉瀏覽器
     } catch (e) {
-      alert(`從 Drive 匯入失敗：${e.message}`);
-    } finally {
-      setImportBusy(false);
-      setImportStatus('');
+      alert(`匯入失敗：${e.message}`);
+      setDriveBrowse(prev => ({ ...prev, importBusy: false, importStatus: '' }));
     }
   }
 
-  /* 繼續：直接進填資料，不在此上傳（保留 blob 供後續存檔用）*/
+  /* 繼續到填資料步驟 */
   function handleNext() {
-    // 傳 previewUrl 作為 src 供 StepEntry 預覽，blob 留給 StepReport 存檔時上傳
     onPhotosReady(items.map(item => ({
-      id:       item.id,
-      src:      item.previewUrl,   // blob URL，僅當次瀏覽器 session 有效
-      blob:     item.blob,
-      mimeType: item.mimeType,
-      exifDate: item.exifDate,
-      exifGps:  item.exifGps,
+      id:            item.id,
+      src:           item.previewUrl,
+      blob:          item.blob,
+      mimeType:      item.mimeType,
+      exifDate:      item.exifDate,
+      exifGps:       item.exifGps,
+      driveWorkItem: item.driveWorkItem || '',
+      driveCategory: item.driveCategory || '',
     })));
   }
 
   return (
     <div className="pt-step-upload">
-      {/* 照片來源 */}
+      {/* 照片來源按鈕 */}
       <div className="pt-upload-sources">
         <button className="pt-upload-source-btn" onClick={() => fileInputRef.current?.click()}>
           <Upload size={22} /><span>從電腦 / 手機上傳</span>
         </button>
-        <button className="pt-upload-source-btn" onClick={handleDriveImport} disabled={importBusy}>
-          {importBusy
-            ? <Loader2 size={22} className="pt-spin" />
-            : <Cloud size={22} />}
-          <span>{importBusy ? (importStatus || 'Drive 匯入中…') : '從 Google Drive 匯入'}</span>
+        <button className="pt-upload-source-btn" onClick={openDriveBrowser}>
+          <Cloud size={22} /><span>從 Google Drive 匯入</span>
         </button>
         <input ref={fileInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }}
           onChange={e => handleLocalFiles(e.target.files)} />
       </div>
+
+      {/* Drive 資料夾瀏覽器 */}
+      {driveBrowse && (
+        <div className="pt-drive-browser">
+          {/* 麵包屑 */}
+          <div className="pt-drive-breadcrumb">
+            <button onClick={() => browseBack(-1)}>根目錄</button>
+            {driveBrowse.path.map((seg, i) => (
+              <span key={seg.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <span className="pt-drive-bc-sep">›</span>
+                <button onClick={() => browseBack(i)}>{seg.name}</button>
+              </span>
+            ))}
+          </div>
+
+          {driveBrowse.loading ? (
+            <div className="pt-drive-loading"><Loader2 size={14} className="pt-spin" />載入中…</div>
+          ) : (
+            <>
+              {/* 子資料夾清單 */}
+              {driveBrowse.folders.length > 0 && (
+                <div className="pt-drive-folder-list">
+                  {driveBrowse.folders.map(f => (
+                    <button key={f.id} className="pt-drive-folder-btn" onClick={() => browseTo(f)}>
+                      <FolderOpen size={15} /><span>{f.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* 圖片匯入列 */}
+              {driveBrowse.images.length > 0 && (
+                <div className="pt-drive-import-row">
+                  <span>此資料夾有 <strong>{driveBrowse.images.length}</strong> 張照片</span>
+                  <button onClick={importCurrentFolder} disabled={driveBrowse.importBusy}>
+                    {driveBrowse.importBusy
+                      ? <><Loader2 size={13} className="pt-spin" />{driveBrowse.importStatus || '匯入中…'}</>
+                      : <>匯入全部 {driveBrowse.images.length} 張</>}
+                  </button>
+                </div>
+              )}
+
+              {driveBrowse.folders.length === 0 && driveBrowse.images.length === 0 && (
+                <div className="pt-drive-empty">此資料夾為空</div>
+              )}
+            </>
+          )}
+
+          <button className="pt-drive-close" onClick={() => setDriveBrowse(null)}>
+            <X size={12} />關閉瀏覽器
+          </button>
+        </div>
+      )}
 
       {/* 已選照片縮圖列 */}
       {items.length > 0 && (
@@ -833,8 +945,9 @@ function StepUpload({ onPhotosReady, onBack }) {
                 #{i + 1}
               </div>
               {item.exifDate && (
-                <div className="pt-thumb-exif" title={`EXIF 日期：${item.exifDate}${item.exifGps ? '\nGPS：' + item.exifGps : ''}`}>
-                  <Zap size={9} />{item.exifGps ? 'GPS+日' : '日期'}
+                <div className="pt-thumb-exif"
+                  title={`日期：${item.exifDate}${item.driveWorkItem ? '\n工項：' + item.driveWorkItem : ''}${item.exifGps ? '\nGPS：' + item.exifGps : ''}`}>
+                  <Zap size={9} />{item.driveWorkItem ? 'Drive' : item.exifGps ? 'GPS+日' : '日期'}
                 </div>
               )}
             </div>
@@ -902,9 +1015,15 @@ function parseWhiteboardText(text) {
 
 function StepEntry({ photos, onComplete, onBack }) {
   const [index, setIndex] = useState(0);
-  const [photoCategory, setPhotoCategory] = useState('');
+  const [photoCategory, setPhotoCategory] = useState(() => {
+    const first = photos.find(p => p.driveCategory);
+    return first?.driveCategory || '';
+  });
   const [data, setData] = useState(() => photos.map(p => ({
-    date: p.exifDate || todayISO(), location: '', description: '', gps: p.exifGps || '',
+    date: p.exifDate || todayISO(),
+    location: '',
+    description: p.driveWorkItem || '',
+    gps: p.exifGps || '',
   })));
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState('');
@@ -1002,7 +1121,11 @@ function StepEntry({ photos, onComplete, onBack }) {
           <div>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               拍攝日期
-              {cur.exifDate && <span style={{ fontSize: '13px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}><Zap size={10} />EXIF 自動帶入</span>}
+              {cur.exifDate && (
+                <span style={{ fontSize: '13px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Zap size={10} />{cur.driveWorkItem ? 'Drive 資料夾' : 'EXIF'}自動帶入
+                </span>
+              )}
             </label>
             <input className="form-input" type="date" value={curD.date} onChange={e => update('date', e.target.value)} style={{ marginTop: 4 }} />
           </div>
