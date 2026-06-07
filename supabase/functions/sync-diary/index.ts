@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v43
+// Supabase Edge Function: sync-diary v44
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -367,6 +367,8 @@ const BOILERPLATE = [
   /主辦機關及監造單位指示/, /督察按圖施工/, /本表原則應按日/,
   // 合約預算表節標頭（第N號明細表）
   /^第[壹貳參肆伍陸柒捌玖一二三四五六七八九十\d]+號明細表/,
+  // 合約間接費用（安全衛生、保險、稅金等非施工項目）
+  /^(職業安全衛生|安全衛生費|安全教育訓練|意外傷害救護|環境保護費|品質管理費|保險費|利雜費|營業稅|稅金|工程保險|稅捐)/,
 ];
 function isBoilerplate(s: string): boolean {
   return BOILERPLATE.some((rx) => rx.test(s.trim()));
@@ -485,16 +487,17 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
 
   // ── 4. 工項數量表 ───────────────────────────────────────────
   // 支援「今日完成」「本日完成」「施工項目」「工程項目」等多種欄位名
+  // 先確定 todayHeader 所在列，其餘 header 必須在 ±2 列內，防止跨表欄位錯位
   const todayHeader = cells.find((c) => /今日完成|本日完成數量/.test(c.val));
-  const cumHeader   = cells.find((c) => /累計完成/.test(c.val));
-  const unitHeader  = cells.find((c) => /^單位$/.test(c.val));
-  const nameHeader  = cells.find((c) => /工程項目|工作項目|施工項目|工程施工項目/.test(c.val));
-
-  const todayCol  = todayHeader?.col;
-  const cumCol    = cumHeader?.col;
-  const unitCol   = unitHeader?.col;
-  const headerRow = todayHeader?.row ?? -1;
-  let   nameCol   = nameHeader?.col;
+  const headerRow   = todayHeader?.row ?? -1;
+  const todayCol    = todayHeader?.col;
+  const inHdrRange  = (c: RawCell) => headerRow >= 0 && Math.abs(c.row - headerRow) <= 2;
+  const cumHeader   = cells.find((c) => inHdrRange(c) && /累計完成/.test(c.val));
+  const unitHeader  = cells.find((c) => inHdrRange(c) && /^單位$/.test(c.val));
+  const nameHeader  = cells.find((c) => inHdrRange(c) && /工程項目|工作項目|施工項目|工程施工項目/.test(c.val));
+  const cumCol      = cumHeader?.col;
+  const unitCol     = unitHeader?.col;
+  let   nameCol     = nameHeader?.col;
 
   // 修正 nameCol：若資料列的值多為項次編號（短字串），改用 nameCol+1
   if (nameCol !== undefined && todayCol !== undefined && headerRow >= 0) {
