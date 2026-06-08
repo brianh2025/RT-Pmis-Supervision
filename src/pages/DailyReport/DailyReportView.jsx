@@ -13,6 +13,7 @@ function fmtNum(v) {
     const n = parseFloat(v);
     return isNaN(n) ? String(v) : String(parseFloat(n.toFixed(2)));
 }
+function fmtUnit(u) { return u === '式' ? 'U' : (u || ''); }
 
 export function DailyReportView({ report, onBack, onEdit, supervision = false }) {
     const [tab, setTab] = useState("progress");
@@ -120,23 +121,34 @@ export function DailyReportView({ report, onBack, onEdit, supervision = false })
 
             {tab === 'qty' && (
                 <Card mb={0} p="12px 14px">
-                    <SH icon={I.chart} title="數量計算" />
+                    <SH icon={I.chart} title="施工工項" />
                     {report.quantities.length === 0
-                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>無數量計算資料</div>
-                        : report.quantities.map((q, i) => (
-                            <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < report.quantities.length - 1 ? `1px solid var(--color-border)` : 'none' }}>
-                                <div style={{ fontWeight: 700, fontSize: '0.8rem', color: C.text, marginBottom: 6 }}>{q.item}</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                                    {[['單位', q.unit], ['契約數量', fmtNum(q.contractQty)], ['本日數量', fmtNum(q.todayQty)], ['累計數量', fmtNum(q.cumQty)]].map(([k, v]) => (
-                                        <div key={k} style={{ background: 'var(--color-bg2)', borderRadius: 7, padding: '5px 7px' }}>
-                                            <div style={{ fontSize: '0.6rem', color: C.textMuted }}>{k}</div>
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{v}</div>
-                                        </div>
-                                    ))}
+                        ? <div style={{ textAlign: 'center', color: C.textMuted, padding: '16px 0', fontSize: '0.78rem' }}>無施工工項資料</div>
+                        : (() => {
+                            const construction = report.quantities.filter(q => q.isConstruction !== false);
+                            const overhead     = report.quantities.filter(q => q.isConstruction === false);
+                            const renderGroup = (items, last) => items.map((q, i) => (
+                                <div key={q.item + i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: (!last || i < items.length - 1) ? `1px solid var(--color-border)` : 'none' }}>
+                                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: C.text, marginBottom: 6 }}>{q.item}</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
+                                        {[['單位', fmtUnit(q.unit)], ['契約數量', fmtNum(q.contractQty)], ['本日數量', fmtNum(q.todayQty)], ['累計數量', fmtNum(q.cumQty)]].map(([k, v]) => (
+                                            <div key={k} style={{ background: 'var(--color-bg2)', borderRadius: 7, padding: '5px 7px' }}>
+                                                <div style={{ fontSize: '0.6rem', color: C.textMuted }}>{k}</div>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: C.text }}>{v}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {q.note && <div style={{ fontSize: '0.7rem', color: C.textMuted, marginTop: 4 }}>備註：{q.note}</div>}
                                 </div>
-                                {q.note && <div style={{ fontSize: '0.7rem', color: C.textMuted, marginTop: 4 }}>備註：{q.note}</div>}
-                            </div>
-                        ))
+                            ));
+                            return <>
+                                {renderGroup(construction, overhead.length === 0)}
+                                {overhead.length > 0 && <>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, margin: '10px 0 6px', letterSpacing: '0.04em' }}>合約間接費用</div>
+                                    {renderGroup(overhead, true)}
+                                </>}
+                            </>;
+                        })()
                     }
                 </Card>
             )}

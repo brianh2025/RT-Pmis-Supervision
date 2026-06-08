@@ -225,7 +225,7 @@ function DiaryJournalInner() {
     setLoadingSummary(true);
     Promise.all([
       supabase.from('daily_report_items')
-        .select('item_name, unit, today_qty')
+        .select('item_name, unit, today_qty, cumulative_qty, contract_qty, is_construction')
         .eq('project_id', projectId).eq('log_date', selectedKey),
       supabase.from('daily_logs')
         .select('weather_am, weather_pm, notes, actual_progress, planned_progress, work_items')
@@ -439,7 +439,10 @@ function DiaryJournalInner() {
   const selActual = (storedActual !== null && storedActual !== 0)
     ? storedActual
     : (hasProgressRecord ? storedActual : null);
-  const meaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
+  const allMeaningfulItems = (summary?.workItems || []).filter(wi => wi.today_qty >= 0.1);
+  const meaningfulItems = allMeaningfulItems.filter(wi => wi.is_construction !== false);
+  const overheadItems   = allMeaningfulItems.filter(wi => wi.is_construction === false);
+  const fmtUnit = u => u === '式' ? 'U' : (u || '');
   const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
   const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems)
@@ -569,14 +572,23 @@ function DiaryJournalInner() {
               </button>
             )}
           </div>
-          {meaningfulItems.length > 0 ? (
+          {allMeaningfulItems.length > 0 ? (
             <div className="dj-item-list">
               {meaningfulItems.map((wi, i) => (
                 <div key={i} className="dj-item-row">
                   <span className="dj-item-name">{wi.item_name}</span>
-                  <span className="dj-item-qty">{wi.today_qty} {wi.unit || ''}</span>
+                  <span className="dj-item-qty">{wi.today_qty} {fmtUnit(wi.unit)}</span>
                 </div>
               ))}
+              {overheadItems.length > 0 && <>
+                <div className="dj-item-group-label">合約間接費用</div>
+                {overheadItems.map((wi, i) => (
+                  <div key={i} className="dj-item-row dj-item-row--overhead">
+                    <span className="dj-item-name">{wi.item_name}</span>
+                    <span className="dj-item-qty">{wi.today_qty} {fmtUnit(wi.unit)}</span>
+                  </div>
+                ))}
+              </>}
             </div>
           ) : (
             <div className="dj-empty">
@@ -772,6 +784,15 @@ function DiaryJournalInner() {
           </div>
           {noteText ? (
             <div className="dj-note-text">{noteText}</div>
+          ) : meaningfulItems.length > 0 ? (
+            <div className="dj-item-list">
+              {meaningfulItems.map((wi, i) => (
+                <div key={i} className="dj-item-row">
+                  <span className="dj-item-name">{wi.item_name}</span>
+                  <span className="dj-item-qty">{wi.today_qty} {fmtUnit(wi.unit)}</span>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="dj-empty">
               {hasSup ? '尚無備註' : '監造報表尚未上傳'}

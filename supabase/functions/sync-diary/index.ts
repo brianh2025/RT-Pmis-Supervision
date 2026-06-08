@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v47
+// Supabase Edge Function: sync-diary v48
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -350,7 +350,7 @@ interface ParsedDiary {
   plannedProgress: number | null;
   actualProgress: number | null;
   workItemsText: string;
-  workItems: { itemName: string; unit: string; todayQty: number; cumulativeQty: number }[];
+  workItems: { itemName: string; unit: string; todayQty: number; cumulativeQty: number; contractQty: number; isConstruction: boolean }[];
   notes: string;
 }
 
@@ -494,11 +494,13 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
   const headerRow   = todayHeader?.row ?? -1;
   const todayCol    = todayHeader?.col;
   const inHdrRange  = (c: RawCell) => headerRow >= 0 && Math.abs(c.row - headerRow) <= 2;
-  const cumHeader   = cells.find((c) => inHdrRange(c) && /累計完成/.test(c.val));
-  const unitHeader  = cells.find((c) => inHdrRange(c) && /^單位$/.test(c.val));
-  const nameHeader  = cells.find((c) => inHdrRange(c) && /工程項目|工作項目|施工項目|工程施工項目/.test(c.val));
-  const cumCol      = cumHeader?.col;
-  const unitCol     = unitHeader?.col;
+  const cumHeader      = cells.find((c) => inHdrRange(c) && /累計完成/.test(c.val));
+  const unitHeader     = cells.find((c) => inHdrRange(c) && /^單位$/.test(c.val));
+  const nameHeader     = cells.find((c) => inHdrRange(c) && /工程項目|工作項目|施工項目|工程施工項目/.test(c.val));
+  const contractHeader = cells.find((c) => inHdrRange(c) && /契約數量/.test(c.val));
+  const cumCol         = cumHeader?.col;
+  const unitCol        = unitHeader?.col;
+  const contractCol    = contractHeader?.col;
   let   nameCol     = nameHeader?.col;
 
   // 修正 nameCol：若資料列的值多為項次編號（短字串），改用 nameCol+1
@@ -523,7 +525,7 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
       if (isNaN(qty) || qty <= 0) continue;
       const nameCell = cells.find((c) => c.row === row && c.col === nameCol);
       const itemName = nameCell?.val?.trim() ?? "";
-      if (!itemName || isBoilerplate(itemName) || itemName.length <= 2) continue;
+      if (!itemName || itemName.length <= 2) continue;
       const unit = (unitCol !== undefined
         ? cells.find((c) => c.row === row && c.col === unitCol)?.val
         : undefined) ?? "";
@@ -534,16 +536,22 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
           ? cells.find((c) => c.row === row && c.col === cumCol)?.val
           : undefined) ?? "0"
       ) || 0;
-      workItems.push({ itemName, unit, todayQty: qty, cumulativeQty: cumQty });
+      const contractQty = parseFloat(
+        (contractCol !== undefined
+          ? cells.find((c) => c.row === row && c.col === contractCol)?.val
+          : undefined) ?? "0"
+      ) || 0;
+      const isConstruction = !isBoilerplate(itemName);
+      workItems.push({ itemName, unit, todayQty: qty, cumulativeQty: cumQty, contractQty, isConstruction });
       workItemLines.push(`${itemName}：${qty} ${unit}`.trim());
     }
   }
 
-  // 收集 nameCol 欄所有工項名稱（含今日為零），供備註掃描時排除
+  // 收集 nameCol 欄所有工項名稱（含今日為零、含間接費用），供備註掃描時排除
   const workItemNames = new Set<string>(
     nameCol !== undefined && headerRow >= 0
       ? cells
-          .filter(c => c.row > headerRow && c.col === nameCol && c.val.length > 3 && !isBoilerplate(c.val))
+          .filter(c => c.row > headerRow && c.col === nameCol && c.val.length > 3)
           .map(c => c.val.trim())
       : []
   );
@@ -722,6 +730,7 @@ async function syncFile(
           project_id: projectId, log_date: logDate,
           item_name: wi.itemName, unit: wi.unit || null,
           today_qty: wi.todayQty, cumulative_qty: wi.cumulativeQty || null,
+          contract_qty: wi.contractQty || null, is_construction: wi.isConstruction,
         })),
         { onConflict: "project_id,log_date,item_name" }
       );

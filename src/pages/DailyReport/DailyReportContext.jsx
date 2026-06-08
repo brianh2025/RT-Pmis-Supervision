@@ -23,10 +23,11 @@ function buildReport(date, log, items, progressRec, inspRecords, materialRecords
         id: it.id || i + 1,
         item: it.item_name,
         unit: it.unit || '',
-        contractQty: 0,
+        contractQty: it.contract_qty != null ? parseFloat(Number(it.contract_qty).toFixed(3)) : 0,
         todayQty: it.today_qty != null ? parseFloat(Number(it.today_qty).toFixed(3)) : 0,
         cumQty: it.cumulative_qty != null ? parseFloat(Number(it.cumulative_qty).toFixed(3)) : 0,
         note: it.note || '',
+        isConstruction: it.is_construction !== false,
     }));
 
     // If no daily_report_items but daily_logs has work_items text, parse it

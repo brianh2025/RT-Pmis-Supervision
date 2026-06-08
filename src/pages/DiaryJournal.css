@@ -255,6 +255,8 @@
 .dj-item-row  { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; }
 .dj-item-name { color: var(--color-text1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dj-item-qty  { color: var(--color-text-muted); flex-shrink: 0; }
+.dj-item-group-label { font-size: 0.68rem; font-weight: 700; color: var(--color-text-muted); letter-spacing: 0.04em; margin: 6px 0 2px; opacity: 0.7; }
+.dj-item-row--overhead .dj-item-name { color: var(--color-text-muted); }
 
 /* Notes */
 .dj-note-text { font-size: 0.8rem; color: var(--color-text1); white-space: pre-wrap; line-height: 1.6; }
