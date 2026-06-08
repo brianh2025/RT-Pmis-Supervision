@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v48
+// Supabase Edge Function: sync-diary v49
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -437,11 +437,14 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
   }
 
   // ── 2. 天氣 ────────────────────────────────────────────────
+  // 天氣標籤只存在於 block 頂部，限制在前 15 列內搜尋，避免讀到其他 sheet 段落
   let weatherAm: string | null = null;
   let weatherPm: string | null = null;
 
-  const amCell = cells.find((c) => /上午/.test(c.val));
-  const pmCell = cells.find((c) => /下午/.test(c.val));
+  const blockMinRow = cells.length > 0 ? Math.min(...cells.map(c => c.row)) : 0;
+  const weatherCells = cells.filter(c => c.row <= blockMinRow + 15);
+  const amCell = weatherCells.find((c) => /上午/.test(c.val));
+  const pmCell = weatherCells.find((c) => /下午/.test(c.val));
 
   function extractWeather(cell: RawCell | undefined): string | null {
     if (!cell) return null;
@@ -724,15 +727,17 @@ async function syncFile(
       }
     }
 
+    // 先刪除既有工項（含舊版本遺留的今日為零殘留項），再整批插入
+    await supabase.from("daily_report_items")
+      .delete().eq("project_id", projectId).eq("log_date", logDate);
     if (parsed.workItems.length > 0) {
-      const { error: e3 } = await supabase.from("daily_report_items").upsert(
+      const { error: e3 } = await supabase.from("daily_report_items").insert(
         parsed.workItems.map((wi) => ({
           project_id: projectId, log_date: logDate,
           item_name: wi.itemName, unit: wi.unit || null,
           today_qty: wi.todayQty, cumulative_qty: wi.cumulativeQty || null,
           contract_qty: wi.contractQty || null, is_construction: wi.isConstruction,
-        })),
-        { onConflict: "project_id,log_date,item_name" }
+        }))
       );
       if (e3) console.warn("daily_report_items:", e3.message);
     }

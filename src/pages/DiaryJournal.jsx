@@ -782,9 +782,7 @@ function DiaryJournalInner() {
               </button>
             )}
           </div>
-          {noteText ? (
-            <div className="dj-note-text">{noteText}</div>
-          ) : meaningfulItems.length > 0 ? (
+          {meaningfulItems.length > 0 ? (
             <div className="dj-item-list">
               {meaningfulItems.map((wi, i) => (
                 <div key={i} className="dj-item-row">
@@ -795,7 +793,7 @@ function DiaryJournalInner() {
             </div>
           ) : (
             <div className="dj-empty">
-              {hasSup ? '尚無備註' : '監造報表尚未上傳'}
+              {hasSup ? '尚無施工紀錄' : '監造報表尚未上傳'}
             </div>
           )}
         </div>
