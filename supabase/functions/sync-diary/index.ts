@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v44
+// Supabase Edge Function: sync-diary v47
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -369,6 +369,8 @@ const BOILERPLATE = [
   /^第[壹貳參肆伍陸柒捌玖一二三四五六七八九十\d]+號明細表/,
   // 合約間接費用（安全衛生、保險、稅金等非施工項目）
   /^(職業安全衛生|安全衛生費|安全教育訓練|意外傷害救護|環境保護費|品質管理費|保險費|利雜費|營業稅|稅金|工程保險|稅捐)/,
+  // 施工日誌分節標頭（一、工程進行情況… 等）
+  /^[一二三四五六七八九十]、/,
 ];
 function isBoilerplate(s: string): boolean {
   return BOILERPLATE.some((rx) => rx.test(s.trim()));
@@ -537,6 +539,15 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
     }
   }
 
+  // 收集 nameCol 欄所有工項名稱（含今日為零），供備註掃描時排除
+  const workItemNames = new Set<string>(
+    nameCol !== undefined && headerRow >= 0
+      ? cells
+          .filter(c => c.row > headerRow && c.col === nameCol && c.val.length > 3 && !isBoilerplate(c.val))
+          .map(c => c.val.trim())
+      : []
+  );
+
   // ── 5. 本日工作項目備註 ─────────────────────────────────────
   // 優先抓「本日工作項目」或「本日施作」標籤後的文字
   let notes = "";
@@ -565,6 +576,7 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
         !/^\d+(\.\d+)?([eE][+-]?\d+)?$/.test(c.val) &&
         !/填表日期|填報日期|工程名稱|承攬廠商|契約工期|開工日期|契約金額/.test(c.val) &&
         !workItemLines.some((l) => l.includes(c.val)) &&
+        !workItemNames.has(c.val.trim()) &&
         c.row > minRow + 5  // 跳過表頭區域
       )
       .map((c) => c.val.trim())
