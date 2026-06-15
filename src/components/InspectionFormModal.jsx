@@ -103,7 +103,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
         ${td1}
         <td class="item-cell">${it.key ? '★' : ''}${it.name}</td>
         <td class="std-cell">${it.standard}</td>
-        <td class="actual-cell">${(res.actual || it.standard).replace(/\n/g, '<br>')}</td>
+        <td class="actual-cell">${(res.actual || '').replace(/\n/g, '<br>')}</td>
         <td class="result-cell">${sym}</td>
       </tr>`;
     }).join('');
@@ -129,11 +129,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .title-row .serial { min-width:90px; font-size:10pt; text-align:right; white-space:nowrap; }
   .serial-blank { display:inline-block; width:60px; border-bottom:1px solid #333; vertical-align:bottom; margin-left:2px; }
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
-  th, td { border:1px solid #000; padding:3px 6px; vertical-align:middle; }
+  th, td { border:1px solid #000; padding:5px 7px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
   .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; overflow:hidden; }
-  .std-cell { font-size:10pt; }
-  .actual-cell { font-size:10pt; font-family:'Ma Shan Zheng','標楷體','DFKai-SB',cursive; }
+  .std-cell { font-size:11pt; line-height:1.5; }
+  .actual-cell { font-size:11pt; line-height:1.5; font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
