@@ -354,11 +354,8 @@ export function ProjectDashboard() {
           </div>
         )}
 
-        {tasks.map(task => {
-          const Icon = task.icon;
-          return (
+        {tasks.map(task => (
             <div key={task.id} className={`task-item task-item-${task.level}`} onClick={() => navigate(`/projects/${projectId}/${task.path}`)}>
-              <div className="task-item-icon"><Icon size={15} /></div>
               <div className="task-item-body">
                 <div className="task-item-title">{task.title}</div>
                 <div className="task-item-desc">{task.desc}</div>
@@ -393,8 +390,7 @@ export function ProjectDashboard() {
               {task.due && <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>}
               <div className="task-item-action">{task.action}<ChevronRight size={13} /></div>
             </div>
-          );
-        })}
+        ))}
       </div>
     );
 

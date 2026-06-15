@@ -208,6 +208,7 @@ export function ProgressManagement() {
       <header className="page-section-header" style={{ marginBottom: '8px' }}>
         <div className="header-left">
           <span className="section-label">進度管理</span>
+          <span className="section-sub-label">S 曲線進度追蹤</span>
         </div>
         <div className="header-actions">
           {latest && (
@@ -215,9 +216,10 @@ export function ProgressManagement() {
               background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
               color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
             }}>
-              實際 {fmtPct(latest.actual_progress)}<br />
-              {latestPlanned !== null && latestPlanned > 0 && <>預定 {fmtPct(latestPlanned)}{' '}</>}
-              {latestDiff !== null && <>{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
+              {latestDiff !== null ? (latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />) : null}
+              實際 {fmtPct(latest.actual_progress)}
+              {latestDiff !== null && <>{' '}{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
+              {latestPlanned !== null && latestPlanned > 0 && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
             </span>
           )}
           <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>

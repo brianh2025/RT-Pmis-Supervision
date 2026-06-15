@@ -176,19 +176,15 @@
 }
 
 .pl-nav-link.active {
-  background: rgba(21, 101, 192, 0.12);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(96, 165, 250, 0.08));
   color: var(--color-primary-light);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+  border-left: 3px solid var(--color-primary-light);
+  box-shadow: inset 0 0 12px rgba(96, 165, 250, 0.06);
+  padding-left: 9px;
 }
 
 .pl-nav-link.active::before {
-  content: '';
-  position: absolute;
-  left: -4px; top: 20%; bottom: 20%;
-  width: 3px;
-  background: var(--color-primary-light);
-  border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 10px var(--color-primary-light);
+  display: none;
 }
 
 .pl-nav-icon {

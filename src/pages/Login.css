@@ -224,7 +224,7 @@
 .glass-input:focus {
   outline: none;
   border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(15, 82, 186, 0.15);
+  box-shadow: 0 0 0 2px #60A5FA;
   background: var(--color-background-base);
 }
 
@@ -247,7 +247,7 @@
 .btn-submit {
   width: 100%;
   padding: 0.75rem; /* High density */
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-md);
@@ -260,13 +260,13 @@
   margin-top: 0.25rem;
   cursor: pointer;
   transition: all var(--transition-normal);
-  box-shadow: 0 4px 15px rgba(15, 82, 186, 0.3);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: linear-gradient(135deg, var(--color-primary-dark), #1a44c8);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(15, 82, 186, 0.4);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
 }
 
 .btn-submit:active:not(:disabled) {
