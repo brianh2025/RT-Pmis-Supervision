@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../hooks/useProject';
@@ -105,6 +105,7 @@ export function Quality() {
   const { id: projectId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { project } = useProject(projectId);
   const [printRow, setPrintRow] = useState(null);
   const [formRow,  setFormRow]  = useState(null);
@@ -191,6 +192,14 @@ export function Quality() {
   useEffect(() => {
     if (editCell) setTimeout(() => editInputRef.current?.focus(), 10);
   }, [editCell]);
+
+  // 從任務看板「前往抽查」帶入：自動開啟抽查單並預填第一個待查驗工項
+  useEffect(() => {
+    if (location.state?.addInsp) {
+      const firstItem = location.state.items?.[0] || '';
+      setFormRow({ work_item: firstItem });
+    }
+  }, []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);

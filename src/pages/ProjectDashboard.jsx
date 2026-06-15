@@ -271,6 +271,7 @@ export function ProjectDashboard() {
       desc: '以下工項查驗次數未達施工天數 1/3（每3天至少1次）',
       itemStats: stats.constrItemStats,
       path: 'quality', action: '前往抽查',
+      navState: { addInsp: true, items: stats.constrItemStats.map(s => s.name) },
     },
   ].filter(Boolean);
 
@@ -355,7 +356,7 @@ export function ProjectDashboard() {
         )}
 
         {tasks.map(task => (
-            <div key={task.id} className={`task-item task-item-${task.level}`} onClick={() => navigate(`/projects/${projectId}/${task.path}`)}>
+            <div key={task.id} className={`task-item task-item-${task.level}`} onClick={() => navigate(`/projects/${projectId}/${task.path}`, task.navState ? { state: task.navState } : undefined)}>
               <div className="task-item-body">
                 <div className="task-item-title">{task.title}</div>
                 <div className="task-item-desc">{task.desc}</div>
