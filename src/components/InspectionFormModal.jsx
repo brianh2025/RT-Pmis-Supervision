@@ -120,7 +120,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 <html><head><meta charset="utf-8">
 <title>${template.label}施工抽查紀錄表</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <style>
   body { font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; margin:1.5cm; font-size:11pt; color:#000; }
   .title-row { display:flex; align-items:center; margin-bottom:6px; }
@@ -133,7 +133,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
   .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; overflow:hidden; }
   .std-cell { font-size:11pt; line-height:1.5; }
-  .actual-cell { font-size:11pt; line-height:1.5; font-family:'標楷體','DFKai-SB','BiauKai','Noto Serif TC',serif; }
+  .actual-cell { font-size:11pt; line-height:1.5; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
   .note-row td { font-size:10pt; }
@@ -149,11 +149,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </div>
 <table>
   <colgroup>
-    <col style="width:58px">
-    <col style="width:130px">
+    <col style="width:55px">
+    <col style="width:170px">
     <col>
-    <col style="width:150px">
-    <col style="width:48px">
+    <col style="width:185px">
+    <col style="width:52px">
   </colgroup>
   <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
