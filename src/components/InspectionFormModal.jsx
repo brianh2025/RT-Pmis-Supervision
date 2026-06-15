@@ -131,8 +131,9 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:5px 7px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
-  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; overflow:hidden; }
-  .std-cell { font-size:11pt; line-height:1.5; }
+  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; }
+  .item-cell { word-break:break-word; line-height:1.5; }
+  .std-cell { font-size:11pt; line-height:1.5; word-break:break-word; }
   .actual-cell { font-size:11pt; line-height:1.5; }
   .result-cell { text-align:center; font-family:'Caveat','Comic Sans MS',cursive; font-size:18pt; font-weight:600; }
   .defect-row td { font-size:10pt; }
@@ -149,11 +150,11 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </div>
 <table>
   <colgroup>
-    <col style="width:55px">
-    <col style="width:170px">
-    <col>
-    <col style="width:185px">
-    <col style="width:52px">
+    <col style="width:7%">
+    <col style="width:24%">
+    <col style="width:35%">
+    <col style="width:27%">
+    <col style="width:7%">
   </colgroup>
   <tr><td class="hdr-label">工程名稱</td><td colspan="4">${projectName || ''}</td></tr>
   <tr><td class="hdr-label">承包廠商</td><td colspan="4">${contractor || ''}</td></tr>
