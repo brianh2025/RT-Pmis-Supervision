@@ -2,11 +2,14 @@
 
 :root {
   /* Core Colors - Vibrant & Premium */
-  --color-primary: #1565C0;
-  --color-primary-light: #64B5F6;
-  --color-primary-dark: #0D47A1;
+  --color-primary: #2563EB;
+  --color-primary-light: #60A5FA;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-glow: rgba(37, 99, 235, 0.35);
 
   --color-secondary: #FFC107;
+  --color-secondary-light: rgba(255, 193, 7, 0.6);
+  --color-secondary-glow: rgba(255, 193, 7, 0.25);
 
   /* Font Scaling System — 7 levels, consistently used */
   --fs-2xs: 0.65rem;   /* 10.4px - 最小標注、hint */
@@ -24,8 +27,8 @@
   --fw-bold:   700;
 
   /* Neutrals: Deep Graphite & Stronger Glass for better contrast */
-  --color-background-base: #020408;
-  --color-surface: rgba(15, 23, 42, 0.85);
+  --color-background-base: #060C1A;
+  --color-surface: rgba(8, 16, 36, 0.92);
   --color-surface-hover: rgba(30, 41, 59, 0.95);
   --color-surface-border: rgba(255, 255, 255, 0.15);
   --color-surface-translucent: rgba(15, 23, 42, 0.75);
@@ -43,10 +46,12 @@
   --radius-2xl:  2rem;
   --radius-full: 9999px;
 
-  --shadow-glow: 0 0 24px rgba(21, 101, 192, 0.35);
-  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-sm:   0 1px 4px rgba(0, 0, 0, 0.12);
   --shadow-md:   0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-lg:   0 8px 24px rgba(0, 0, 0, 0.25);
   --shadow-xl:   0 16px 48px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 24px rgba(37, 99, 235, 0.35);
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.5);
   --transition-fast:   0.15s ease;
   --transition-normal: 0.25s ease;
 
