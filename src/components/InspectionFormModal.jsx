@@ -131,7 +131,7 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   th, td { border:1px solid #000; padding:5px 7px; vertical-align:middle; }
   .hdr-label { font-weight:bold; background:#f5f5f5; text-align:center; white-space:nowrap; }
-  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; word-break:break-all; }
+  .phase-cell { text-align:center; font-weight:bold; background:#f5f5f5; white-space:nowrap; }
   .item-cell { word-break:break-word; line-height:1.5; }
   .std-cell { font-size:11pt; line-height:1.5; word-break:break-word; }
   .actual-cell { font-size:11pt; line-height:1.5; }
@@ -150,8 +150,8 @@ function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc
 </div>
 <table>
   <colgroup>
-    <col style="width:7%">
-    <col style="width:23%">
+    <col style="width:9%">
+    <col style="width:21%">
     <col style="width:32%">
     <col style="width:27%">
     <col style="width:11%">
