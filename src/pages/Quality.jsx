@@ -4,8 +4,9 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
+import { InspectionImportModal } from '../components/InspectionImportModal';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -117,6 +118,7 @@ export function Quality() {
   const [inspFilter, setInspFilter] = useState('all');
   const [inspItemFilter, setInspItemFilter] = useState(null);
   const [showInspModal, setShowInspModal] = useState(false);
+  const [showInspImportModal, setShowInspImportModal] = useState(false);
   const [inspForm, setInspForm] = useState({ ...EMPTY_INSPECT });
 
   // Tab 1: quality_issues
@@ -543,6 +545,11 @@ export function Quality() {
           {tab === 0 && (
             <button className="mcs-btn mcs-btn-add" onClick={() => setFormRow({})}>
               <FileText size={12} /> 新增抽查單
+            </button>
+          )}
+          {tab === 0 && (
+            <button className="mcs-btn mcs-btn-add" onClick={() => setShowInspImportModal(true)}>
+              <Upload size={12} /> 匯入抽查單
             </button>
           )}
         </div>
@@ -1022,6 +1029,15 @@ export function Quality() {
           project={project}
           onClose={() => setFormRow(null)}
           onSave={newRecord => setInspections(prev => [newRecord, ...prev])}
+        />
+      )}
+
+      {/* Excel 匯入抽查單 */}
+      {showInspImportModal && (
+        <InspectionImportModal
+          projectId={projectId}
+          onClose={() => setShowInspImportModal(false)}
+          onSuccess={() => loadInspections().then(setInspections)}
         />
       )}
 
