@@ -65,6 +65,7 @@ async function extractPageItems(page) {
 
 // 合併同列相鄰 item（處理 pdfjs 將每個漢字拆成獨立 item 的 PDF）
 // gap ≤ 12px 視為相鄰字元，> 12px 視為不同欄位
+// 同列 items 的 y 會統一為該列的「群組 key y」，避免後續以 y 排序時亂序
 function mergeAdjacentItems(rawItems) {
   if (!rawItems.length) return rawItems;
   const lines = new Map();
@@ -77,17 +78,17 @@ function mergeAdjacentItems(rawItems) {
     lines.get(key).push(item);
   }
   const result = [];
-  for (const lineItems of lines.values()) {
+  for (const [keyY, lineItems] of lines.entries()) {
     lineItems.sort((a, b) => a.x - b.x);
-    let cur = { ...lineItems[0] };
+    let cur = { ...lineItems[0], y: keyY };
     for (let i = 1; i < lineItems.length; i++) {
       const next = lineItems[i];
       const curEnd = cur.x + (cur.w || cur.str.length * 10);
       if (next.x - curEnd <= 12) {
-        cur = { str: cur.str + next.str, x: cur.x, y: cur.y, w: (next.x + (next.w || 0)) - cur.x };
+        cur = { str: cur.str + next.str, x: cur.x, y: keyY, w: (next.x + (next.w || 0)) - cur.x };
       } else {
         result.push(cur);
-        cur = { ...next };
+        cur = { ...next, y: keyY };
       }
     }
     result.push(cur);
@@ -120,249 +121,246 @@ function parseDate(raw) {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Parse one PDF page into a structured log record
-// Returns null if this page is not a 監造報表 daily log page
-// ---------------------------------------------------------------------------
-async function parseMonitoringPage(page, pageNum) {
-  const items = mergeAdjacentItems(await extractPageItems(page));
-  const allText = items.map(i => i.str).join(' ');
-  const compactText = allText.replace(/\s/g, '');
+// 由 開工日期 + 累計天數 推算當日日期
+function dateFromStartPlusCumul(startStr, cumulDays) {
+  const startISO = parseDate(startStr);
+  if (!startISO || !Number.isFinite(cumulDays) || cumulDays < 1) return null;
+  const d = new Date(startISO + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + cumulDays - 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-  // 接受標準公文格式或任何含有日誌欄位關鍵字的頁面
-  const hasDiaryMarker =
-    compactText.includes('公共工程監造報表') ||
-    compactText.includes('施工日誌') ||
-    compactText.includes('監造週報') ||
-    compactText.includes('監造日誌') ||
-    compactText.includes('填表日期') ||
-    compactText.includes('填報日期') ||
-    compactText.includes('本日天氣');
-  if (!hasDiaryMarker) return null;
+// 在 items 中找出區段 (一/二/三/四/五) 的索引 (依閱讀順序)
+function findSectionIdxs(items) {
+  const result = { '一': -1, '二': -1, '三': -1, '四': -1, '五': -1 };
+  for (let i = 0; i < items.length; i++) {
+    for (const ch of Object.keys(result)) {
+      if (result[ch] !== -1) continue;
+      if (new RegExp(`^${ch}\\s*[、,，]`).test(items[i].str)) {
+        result[ch] = i;
+      }
+    }
+  }
+  return result;
+}
+
+// 判斷兩個 item 是否在同一邏輯列 (同頁 + y 差 ≤ tol)
+function sameRow(a, b, tol = 5) {
+  return a.pageNum === b.pageNum && Math.abs(a.y - b.y) <= tol;
+}
+
+// ---------------------------------------------------------------------------
+// 將一份「監造報表」(可能跨頁) 的 item 串流解析為結構化記錄
+// items: 已按閱讀順序排序、含 pageNum 的 item 陣列
+// ---------------------------------------------------------------------------
+function parseReport(items) {
+  if (!items.length) return null;
+
+  const sectionIdxs = findSectionIdxs(items);
+  const signIdx = items.findIndex(i => i.str.includes('監造單位簽章'));
 
   // --- 1. Report Date ---
+  let logDate = null;
   const dateLabelItem = items.find(i =>
     i.str.startsWith('填表日期') || i.str.startsWith('填報日期')
   );
-  let logDate = null;
   if (dateLabelItem) {
-    // Check if the date is embedded in the label itself (e.g. "填表日期：115年3月30日" as one item)
     const embeddedDate = dateLabelItem.str.match(/(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
     if (embeddedDate) {
       logDate = parseDate(`${embeddedDate[1]}年${embeddedDate[2]}月${embeddedDate[3]}日`);
     }
     if (!logDate) {
-      // Look for date items near the label (same y ± 8, to the right)
       const near = items.filter(i =>
-        Math.abs(i.y - dateLabelItem.y) <= 8 &&
+        sameRow(i, dateLabelItem, 8) &&
         i.x > dateLabelItem.x - 10 &&
         i.x < dateLabelItem.x + 200 &&
-        i.str !== dateLabelItem.str &&
+        i !== dateLabelItem &&
         (/\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
       );
       if (near.length) logDate = parseDate(near[0].str);
     }
   }
-  // Fallback: any date-like string in the page
+
+  // Fallback 1: 累計日期 + 開工日期
   if (!logDate) {
-    // Try 年月日 format first
-    const cjkDateItems = items.filter(i => /\d{2,4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(i.str));
-    if (cjkDateItems.length) {
-      logDate = parseDate(cjkDateItems[0].str);
+    const contractRow = items.find(i => i.str === '契約工期' || i.str.startsWith('契約工期'));
+    if (contractRow) {
+      const rowItems = items
+        .filter(i => sameRow(i, contractRow, 3))
+        .sort((a, b) => a.x - b.x);
+      const startIdx = rowItems.findIndex(i => i.str.includes('開工日期'));
+      const cumulIdx = rowItems.findIndex(i =>
+        i.str.includes('累計日期') || i.str.includes('累計工期') || i.str.includes('累計天數')
+      );
+      const startStr = startIdx >= 0 ? rowItems[startIdx + 1]?.str : null;
+      const cumulStr = cumulIdx >= 0 ? rowItems[cumulIdx + 1]?.str : null;
+      const cumulDays = cumulStr ? parseInt(String(cumulStr).replace(/[^\d]/g, ''), 10) : NaN;
+      logDate = dateFromStartPlusCumul(startStr, cumulDays);
     }
-  }
-  if (!logDate) {
-    // Try slash format, prefer items near the top of the page (y > 700)
-    const dateItems = items.filter(i =>
-      /^\d{2,4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(i.str)
-    );
-    // Pick the one closest to the label's y coordinate, or the first one
-    const labelY = dateLabelItem?.y ?? 770;
-    const sorted = dateItems.sort((a, b) => Math.abs(a.y - labelY) - Math.abs(b.y - labelY));
-    if (sorted.length) logDate = parseDate(sorted[0].str);
   }
   if (!logDate) return null;
 
   // --- 2. Weather ---
-  const VALID_WEATHER = ['晴', '多雲', '陰', '小雨', '中雨', '大雨', '颱風', '豪雨'];
+  const VALID_WEATHER = ['晴', '多雲', '陰', '豪雨', '大雨', '中雨', '小雨', '颱風', '雨'];
+  const WEATHER_RX_ALT = VALID_WEATHER.join('|');
   let weatherAm = null;
   let weatherPm = null;
 
-  // Find items containing '上午' and '下午'
   const amItem = items.find(i => i.str.includes('上午'));
   const pmItem = items.find(i => i.str.includes('下午'));
 
   if (amItem) {
-    // Check if weather is embedded (e.g. "上午：晴")
-    const embeddedMatch = amItem.str.match(/(?:上午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
-    if (embeddedMatch) {
-      weatherAm = embeddedMatch[1];
+    const m = amItem.str.match(new RegExp(`(?:上午)[:：\\s]*(${WEATHER_RX_ALT})`));
+    if (m) {
+      weatherAm = m[1];
     } else {
-      // Look for the weather word to the right (same y ± 5)
-      const afterAm = items.filter(i => Math.abs(i.y - amItem.y) <= 5 && i.x > amItem.x).sort((a,b) => a.x - b.x);
-      weatherAm = afterAm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
+      const after = items
+        .filter(i => sameRow(i, amItem) && i.x > amItem.x)
+        .sort((a, b) => a.x - b.x);
+      weatherAm = after.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
     }
   }
-
   if (pmItem) {
-    const embeddedMatch = pmItem.str.match(/(?:下午)[:：\s]*(晴|多雲|陰|小雨|中雨|大雨|颱風|豪雨)/);
-    if (embeddedMatch) {
-      weatherPm = embeddedMatch[1];
+    const m = pmItem.str.match(new RegExp(`(?:下午)[:：\\s]*(${WEATHER_RX_ALT})`));
+    if (m) {
+      weatherPm = m[1];
     } else {
-      const afterPm = items.filter(i => Math.abs(i.y - pmItem.y) <= 5 && i.x > pmItem.x).sort((a,b) => a.x - b.x);
-      weatherPm = afterPm.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
+      const after = items
+        .filter(i => sameRow(i, pmItem) && i.x > pmItem.x)
+        .sort((a, b) => a.x - b.x);
+      weatherPm = after.find(i => VALID_WEATHER.includes(i.str))?.str ?? null;
     }
   }
 
   // --- 3. Progress ---
   let plannedProgress = null;
   let actualProgress = null;
-  
-  // Find labels for progress anywhere on the page
-  // Prioritize exact '預定進度'/'實際進度' matches; exclude date-related '預定完工日期'
+
   const predLabel = items.find(i => i.str.includes('預定進度'))
     || items.find(i => i.str.includes('預定') && !i.str.includes('完工') && !i.str.includes('日期'));
   const actLabel = items.find(i => i.str.includes('實際進度'))
     || items.find(i => i.str.includes('實際') && !i.str.includes('完工') && !i.str.includes('日期'));
 
   if (predLabel) {
-    // Look for numbers on the same line (y ± 5)
-    const nums = items.filter(i => Math.abs(i.y - predLabel.y) <= 5 && /^[\d.]+$/.test(i.str));
+    const nums = items.filter(i => sameRow(i, predLabel) && /^[\d.]+$/.test(i.str));
     if (nums.length) {
-      // Pick the number closest to the label to its right, or to its left if none on right
-      const rightNums = nums.filter(i => i.x > predLabel.x).sort((a,b) => a.x - b.x);
-      const leftNums = nums.filter(i => i.x < predLabel.x).sort((a,b) => predLabel.x - a.x);
-      plannedProgress = parseFloat((rightNums[0] || leftNums[0])?.str) || null;
+      const r = nums.filter(i => i.x > predLabel.x).sort((a, b) => a.x - b.x);
+      const l = nums.filter(i => i.x < predLabel.x).sort((a, b) => predLabel.x - a.x);
+      plannedProgress = parseFloat((r[0] || l[0])?.str) || null;
     }
   }
-
   if (actLabel) {
-    const nums = items.filter(i => Math.abs(i.y - actLabel.y) <= 5 && /^[\d.]+$/.test(i.str));
+    const nums = items.filter(i => sameRow(i, actLabel) && /^[\d.]+$/.test(i.str));
     if (nums.length) {
-      const rightNums = nums.filter(i => i.x > actLabel.x).sort((a,b) => a.x - b.x);
-      const leftNums = nums.filter(i => i.x < actLabel.x).sort((a,b) => actLabel.x - a.x);
-      actualProgress = parseFloat((rightNums[0] || leftNums[0])?.str) || null;
+      const r = nums.filter(i => i.x > actLabel.x).sort((a, b) => a.x - b.x);
+      const l = nums.filter(i => i.x < actLabel.x).sort((a, b) => actLabel.x - a.x);
+      actualProgress = parseFloat((r[0] || l[0])?.str) || null;
     }
   }
 
-  // --- 4. Work Items (Table section) ---
-  // A coordinate-agnostic approach:
-  // 1. Filter out boilerplate headers and footers (y > 740 or y < 50)
-  // 2. Group Remaining items by Y coordinate
-  // 3. Keep rows that look like table data (contain at least one non-number string and at least one number)
-  const tableItems = items.filter(i => i.y < 740 && i.y > 50 && !isBoilerplate(i.str));
-  
-  // Group by Y (allow 4px variance for slight misalignments)
+  // --- 4. Work Items: 區段一 ~ 區段二 之間 ---
+  const workArea = (sectionIdxs['一'] >= 0 && sectionIdxs['二'] > sectionIdxs['一'])
+    ? items.slice(sectionIdxs['一'] + 1, sectionIdxs['二'])
+    : [];
+
+  // 嘗試矩陣解析 (依 (pageNum, y) 群組成列)
   const rowsByY = [];
-  tableItems.forEach(item => {
-    // skip section headers
+  workArea.forEach(item => {
+    if (isBoilerplate(item.str)) return;
     if (/^[壹貳參肆一二三四五六七八九十]$/.test(item.str)) return;
     if (/^(工程項目|單位|契約數量|今日|累計|發包工程費|第.號明細表|約定之重要施工)/.test(item.str)) return;
-    
-    let row = rowsByY.find(r => Math.abs(r.y - item.y) <= 4);
+    let row = rowsByY.find(r => r.pageNum === item.pageNum && Math.abs(r.y - item.y) <= 4);
     if (!row) {
-      row = { y: item.y, items: [] };
+      row = { pageNum: item.pageNum, y: item.y, items: [] };
       rowsByY.push(row);
     }
     row.items.push(item);
   });
 
-  // Find the exact X coordinates for all numeric columns based on the table headers
-  const contractHeader = items.find(i => i.str.includes('契約') || i.str.includes('設計數量'));
+  const colXs = { contract: 250, today: 330, cumul: 410 };
+  const contractHeader = items.find(i => i.str.includes('契約數量') || i.str.includes('設計數量'));
   const todayHeader = items.find(i => (i.str.includes('今日') || i.str.includes('本日')) && i.str.includes('數'));
-  const cumulHeader = items.find(i => i.str.includes('累計'));
-
-  const colXs = {
-    contract: contractHeader ? contractHeader.x : 250,
-    today: todayHeader ? todayHeader.x : 330,
-    cumul: cumulHeader ? cumulHeader.x : 410,
-  };
+  const cumulHeader = items.find(i => i.str.includes('累計') && i.str.includes('數'));
+  if (contractHeader) colXs.contract = contractHeader.x;
+  if (todayHeader) colXs.today = todayHeader.x;
+  if (cumulHeader) colXs.cumul = cumulHeader.x;
 
   const workItemsArr = [];
-  rowsByY.sort((a, b) => b.y - a.y); // top to bottom
+  rowsByY.sort((a, b) => a.pageNum - b.pageNum || b.y - a.y);
 
   for (const row of rowsByY) {
-    if (row.items.length < 2) continue; // skip floating single items
-    row.items.sort((a, b) => a.x - b.x); // left to right
-    
+    if (row.items.length < 2) continue;
+    row.items.sort((a, b) => a.x - b.x);
+
     const texts = row.items.filter(i => /[^\d,.%\-\s]/.test(i.str));
     const nums = row.items.filter(i => /^[\d,.%-]+$/.test(i.str));
-    
+
     if (texts.length > 0 && nums.length > 0) {
       const name = texts[0].str;
       if (name.length <= 1) continue;
-
-      // Skip overhead / pro-rata items commonly found in TW public works
       if (/(清運費|清潔費|清除費|灑水費|環境保護|作業費|搬運費|設施|管理費|利雜費|營業稅|攝影|測量|檢驗費|保險費|工程牌|維持費|應變措施|交通維持|圖說|安衛)/.test(name)) continue;
-      
       const unit = texts.length > 1 ? texts[1].str : '';
-      
-      // Dynamic Nearest-Neighbor Column Mapping
+
       const assignedCols = {};
       for (const num of nums) {
         let bestCol = null;
         let minDistance = 9999;
         for (const [colName, colX] of Object.entries(colXs)) {
           const dist = Math.abs(num.x - colX);
-          // If the text is long, its left X might be skewed. We allow flexible assignment.
-          if (dist < minDistance) {
-            minDistance = dist;
-            bestCol = colName;
-          }
+          if (dist < minDistance) { minDistance = dist; bestCol = colName; }
         }
         if (bestCol && !assignedCols[bestCol]) {
-            assignedCols[bestCol] = num.str;
+          assignedCols[bestCol] = num.str;
         } else if (bestCol && assignedCols[bestCol]) {
-            // Collision fallback: if mapped to same column, fallback to topology
-            assignedCols.today = nums.length >= 3 ? nums[nums.length-2].str : num.str;
+          assignedCols.today = nums.length >= 3 ? nums[nums.length - 2].str : num.str;
         }
       }
 
       let displayNum = assignedCols.today || '-';
+      if (nums.length === 2 && assignedCols.contract && assignedCols.cumul && !assignedCols.today) displayNum = '-';
+      else if (nums.length === 1 && !assignedCols.today) displayNum = '-';
 
-      // Fallback: if 'today' was missing but num length === 2 and one mapped to cumul, the other to contract, today is truly empty.
-      if (nums.length === 2 && assignedCols.contract && assignedCols.cumul && !assignedCols.today) {
-          displayNum = '-';
-      } else if (nums.length === 1 && !assignedCols.today) {
-          displayNum = '-';
-      }
-
-      // Final sanitization
       if (displayNum !== '-' && displayNum !== '0' && displayNum !== '0.00' && displayNum !== '.') {
         workItemsArr.push(`${name}：${displayNum} ${unit}`.trim());
       }
     }
   }
-
   let workItemsStr = workItemsArr.join('\n') || null;
 
-  // --- 5. Notes: section 二 content (excluding boilerplate) ---
-  // Collect text from x<700, y<400 that is not boilerplate and not a table row
-  
-  // Track Y coordinates of ACTUAL table rows (where there are multiple columns)
-  const validRowYs = rowsByY.filter(r => r.items.length >= 2).map(r => r.y);
-  
-  const noteItems = items.filter(i => {
-    // If this item is vertically associated with a valid table row (within 4px), skip it
-    const isTablePart = validRowYs.some(rowY => Math.abs(rowY - i.y) <= 4);
-    
-    return i.y < 700 && i.y > 50 &&
-           !isBoilerplate(i.str) &&
-           !isTablePart &&
-           i.str.length > 2;
-  }).sort((a,b) => b.y - a.y || a.x - b.x);
-  
-  const notes = [...new Set(noteItems.map(i => i.str))]
-    .filter(s => !/^[\d,.%-]+$/.test(s) && !/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s))
-    .filter(s => /^\d+\./.test(s.trim())) // Only accept enumerated list texts (e.g. "1. 進行整地")
-    .slice(0, 10)
-    .join('\n') || null;
-
-  // Narrative Fallback: If the user didn't write ANY valid quantities in the formal matrix table,
-  // but they DID write free text about what they worked on (e.g. "進行整地"), use it as the item!
-  if (!workItemsStr && notes) {
-      workItemsStr = notes;
+  // 敘述式工項擷取 (例：「1.荷苞嶼橋下游段… 2.…混凝土澆置」)
+  if (!workItemsStr) {
+    const narrative = workArea
+      .filter(i => i.str.length >= 4 && !/^[\d,.%-]+$/.test(i.str) && !isBoilerplate(i.str))
+      .map(i => i.str.trim())
+      .join(' ')
+      .trim();
+    if (narrative) workItemsStr = narrative;
   }
+
+  // --- 5. Notes: 區段五 ~ 監造單位簽章 之間 ---
+  const noteEndIdx = signIdx > sectionIdxs['五'] ? signIdx : items.length;
+  const noteArea = sectionIdxs['五'] >= 0
+    ? items.slice(sectionIdxs['五'] + 1, noteEndIdx)
+    : [];
+
+  const noteSeen = new Set();
+  const noteParts = [];
+  for (const item of noteArea) {
+    const s = item.str.trim();
+    if (s.length <= 2) continue;
+    if (isBoilerplate(s)) continue;
+    if (/^[\d,.%-]+$/.test(s)) continue;
+    if (/^[壹貳參肆一二三四五六七八九十A-Za-z]$/.test(s)) continue;
+    if (noteSeen.has(s)) continue;
+    noteSeen.add(s);
+    noteParts.push(s);
+  }
+  let notes = noteParts.join('\n') || null;
+  if (notes && notes.length > 500) notes = notes.slice(0, 500);
 
   return {
     log_date: logDate,
@@ -373,6 +371,25 @@ async function parseMonitoringPage(page, pageNum) {
     work_items: workItemsStr,
     notes: notes,
   };
+}
+
+// ---------------------------------------------------------------------------
+// 將整份 PDF 的 items 依「本日天氣」標記分段為多份報表
+// ---------------------------------------------------------------------------
+function segmentReports(allItems) {
+  const weatherIdxs = [];
+  for (let i = 0; i < allItems.length; i++) {
+    if (allItems[i].str.includes('本日天氣')) weatherIdxs.push(i);
+  }
+  if (!weatherIdxs.length) return [];
+
+  const segments = [];
+  for (let n = 0; n < weatherIdxs.length; n++) {
+    const start = weatherIdxs[n];
+    const end = n + 1 < weatherIdxs.length ? weatherIdxs[n + 1] : allItems.length;
+    segments.push(allItems.slice(start, end));
+  }
+  return segments;
 }
 
 
@@ -421,9 +438,20 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
           standardFontDataUrl: '/standard_fonts/',
         }).promise;
         totalPages += pdf.numPages;
+
+        // 將整份 PDF 的 items 依「閱讀順序」(頁碼遞增、頁內 y 從大到小) 排序
+        const allItems = [];
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
-          const rec = await parseMonitoringPage(page, pageNum);
+          const items = mergeAdjacentItems(await extractPageItems(page));
+          items.forEach(it => allItems.push({ ...it, pageNum }));
+        }
+        allItems.sort((a, b) => a.pageNum - b.pageNum || b.y - a.y);
+
+        // 以「本日天氣」標記分段，每段對應一份每日報表 (可能跨 2 頁)
+        const segments = segmentReports(allItems);
+        for (const seg of segments) {
+          const rec = parseReport(seg);
           if (rec) records.push(rec);
         }
       } catch (err) {
