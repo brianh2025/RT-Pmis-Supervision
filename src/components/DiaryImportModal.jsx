@@ -613,7 +613,8 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
       }
 
       setDone(true);
-      setTimeout(() => { onSuccess?.(); onClose(); }, 1200);
+      const importedDates = mappedRows.map(r => r.log_date);
+      setTimeout(() => { onSuccess?.(importedDates); onClose(); }, 1200);
 
     } catch (err) {
       console.error('Import Exception:', err);

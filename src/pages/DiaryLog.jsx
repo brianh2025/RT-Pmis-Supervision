@@ -672,7 +672,16 @@ function DiaryLogInner() {
         <DiaryImportModal
           projectId={projectId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+          onSuccess={(importedDates) => {
+            // 自動跳到匯入資料的最早月份，避免使用者停留在當月看不到資料
+            if (Array.isArray(importedDates) && importedDates.length) {
+              const earliest = importedDates.slice().sort()[0];
+              const y = parseInt(earliest.slice(0, 4), 10);
+              const m = parseInt(earliest.slice(5, 7), 10) - 1;
+              if (!isNaN(y) && !isNaN(m)) { setYear(y); setMonth(m); }
+            }
+            setRefreshTrigger(prev => prev + 1);
+          }}
         />
       )}
       {showQuickModal && selectedKey && (
