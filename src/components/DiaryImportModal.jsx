@@ -589,25 +589,51 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
       }
 
       // Step 4: Parse work_items text → daily_report_items rows
+      // 支援兩種格式：
+      //   (a) 矩陣式：「name：N unit」(舊版每行一項)
+      //   (b) 敘述式：「1.XXX 2.YYY 3.ZZZ」(監造報表narrative)
       const itemPayload = [];
       for (const r of mappedRows) {
         if (!r.work_items) continue;
-        r.work_items.split('\n').forEach(line => {
-          const trimmed = line.trim();
-          if (!trimmed) return;
-          const m = trimmed.match(/^(.+?)：([\d.]+)\s*(.*)$/);
+        const text = r.work_items.trim();
+        if (text === '本日無施工' || /^1\.?\s*無施工$/.test(text)) continue;
+
+        const matrixLines = text.split('\n').map(s => s.trim()).filter(Boolean);
+        const matrixRows = [];
+        for (const line of matrixLines) {
+          const m = line.match(/^(.+?)：([\d.]+)\s*(.*)$/);
           if (m) {
-            itemPayload.push({
-              project_id: projectId,
-              log_date: r.log_date,
+            matrixRows.push({
+              project_id: projectId, log_date: r.log_date,
               item_name: m[1].trim(),
               unit: m[3].trim() || null,
               today_qty: parseFloat(m[2]) || 0,
-              cumulative_qty: 0,
-              note: null,
+              cumulative_qty: 0, note: null,
             });
           }
-        });
+        }
+        if (matrixRows.length) {
+          itemPayload.push(...matrixRows);
+          continue;
+        }
+
+        // 敘述式：以「(行首或空白)+數字.」為項次分隔符拆出多項
+        // 例：「1.荷苞嶼橋下游段...pc樁打設 2.1K+718~1K+844 140混凝土澆置」
+        //  → ["荷苞嶼橋下游段...pc樁打設", "1K+718~1K+844 140混凝土澆置"]
+        // 註：要求項次符號前有空白或字串開頭，避免把 "1.5公斤" 拆錯
+        const narrative = text.replace(/\n/g, ' ').trim();
+        const parts = narrative.split(/(?:^|\s)\d+[\.\．、]\s*/).map(s => s.trim()).filter(Boolean);
+        if (parts.length === 0) continue;
+        for (const part of parts) {
+          itemPayload.push({
+            project_id: projectId, log_date: r.log_date,
+            item_name: part.length > 200 ? part.slice(0, 200) : part,
+            unit: null,
+            today_qty: 1,
+            cumulative_qty: 0,
+            note: null,
+          });
+        }
       }
       if (itemPayload.length) {
         const { error: itemErr } = await supabase.from('daily_report_items').insert(itemPayload);
