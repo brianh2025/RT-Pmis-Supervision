@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v51
+// Supabase Edge Function: sync-diary v52
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -519,9 +519,21 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
   const workItemLines: string[] = [];
 
   if (todayCol !== undefined && nameCol !== undefined && headerRow >= 0) {
+    // 偵測工項表結束列：在 nameCol 欄位找第一個合計列或財務區段標頭
+    // 不同廠商 Excel 格式的工項表位置不同，但結尾通常是「合計」或「工程金額」一類的列
+    const TABLE_END_LABELS = /^(合計|小計|工程金額|契約金額|原契約|工程造價|發包金額|稅前工程費)$/;
+    const tableEndMarker = cells
+      .filter(c => c.row > headerRow && c.col === nameCol)
+      .sort((a, b) => a.row - b.row)
+      .find(c => TABLE_END_LABELS.test(c.val?.trim() ?? ""));
+    const tableEndRow = tableEndMarker?.row ?? Infinity;
+
     const dataRows = [...new Set(
-      cells.filter((c) => c.row > headerRow && c.col === todayCol).map((c) => c.row)
-    )];
+      cells
+        .filter((c) => c.row > headerRow && c.row < tableEndRow && c.col === todayCol)
+        .map((c) => c.row)
+    )].sort((a, b) => a - b);
+
     for (const row of dataRows) {
       const todayCell = cells.find((c) => c.row === row && c.col === todayCol);
       const qty = parseFloat(todayCell?.val ?? "");
@@ -534,6 +546,8 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
         : undefined) ?? "";
       // 跳過總價式/全/項工項中的比例值（非實際數量）
       if (/^(式|全|項|天|月|筆)$/.test(unit) && qty < 1) continue;
+      // 單位含契約/金額等非計量詞（財務欄誤抓的保險層）
+      if (unit && /契約|金額/.test(unit)) continue;
       const cumQty = parseFloat(
         (cumCol !== undefined
           ? cells.find((c) => c.row === row && c.col === cumCol)?.val
