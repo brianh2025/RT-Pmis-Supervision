@@ -53,9 +53,11 @@ function isBoilerplate(str) {
 // ---------------------------------------------------------------------------
 async function extractPageItems(page) {
   const content = await page.getTextContent();
+  // NFKC 正規化：將 CJK 相容字元（例如 U+F98E「年」）轉為標準字元（U+5E74）
+  // 否則 regex /年/ 無法匹配相容區的「年」，導致日期解析失敗
   return content.items
     .map(item => ({
-      str: item.str.trim(),
+      str: item.str.normalize('NFKC').trim(),
       x: Math.round(item.transform[4]),
       y: Math.round(item.transform[5]),
       w: Math.round(item.width || 0),
