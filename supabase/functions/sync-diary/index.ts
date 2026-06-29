@@ -1,4 +1,4 @@
-// Supabase Edge Function: sync-diary v50
+// Supabase Edge Function: sync-diary v52
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -519,9 +519,21 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
   const workItemLines: string[] = [];
 
   if (todayCol !== undefined && nameCol !== undefined && headerRow >= 0) {
+    // 偵測工項表結束列：在 nameCol 欄位找第一個合計列或財務區段標頭
+    // 不同廠商 Excel 格式的工項表位置不同，但結尾通常是「合計」或「工程金額」一類的列
+    const TABLE_END_LABELS = /^(合計|小計|工程金額|契約金額|原契約|工程造價|發包金額|稅前工程費)$/;
+    const tableEndMarker = cells
+      .filter(c => c.row > headerRow && c.col === nameCol)
+      .sort((a, b) => a.row - b.row)
+      .find(c => TABLE_END_LABELS.test(c.val?.trim() ?? ""));
+    const tableEndRow = tableEndMarker?.row ?? Infinity;
+
     const dataRows = [...new Set(
-      cells.filter((c) => c.row > headerRow && c.col === todayCol).map((c) => c.row)
-    )];
+      cells
+        .filter((c) => c.row > headerRow && c.row < tableEndRow && c.col === todayCol)
+        .map((c) => c.row)
+    )].sort((a, b) => a - b);
+
     for (const row of dataRows) {
       const todayCell = cells.find((c) => c.row === row && c.col === todayCol);
       const qty = parseFloat(todayCell?.val ?? "");
@@ -534,6 +546,8 @@ function parseBlockCells(cells: RawCell[]): ParsedDiary {
         : undefined) ?? "";
       // 跳過總價式/全/項工項中的比例值（非實際數量）
       if (/^(式|全|項|天|月|筆)$/.test(unit) && qty < 1) continue;
+      // 單位含契約/金額等非計量詞（財務欄誤抓的保險層）
+      if (unit && /契約|金額/.test(unit)) continue;
       const cumQty = parseFloat(
         (cumCol !== undefined
           ? cells.find((c) => c.row === row && c.col === cumCol)?.val
@@ -690,14 +704,11 @@ async function syncFile(
     }, { onConflict: "project_id,log_date" });
     if (e1) throw new Error(`daily_logs 寫入失敗 (${logDate}): ` + e1.message);
 
-    // 無論有無進度欄位，均回填 progress_records（確保日期出現在進度管理）
+    // 無論有無進度欄位，均回填 progress_records（Drive 同步為校正用途，一律覆蓋）
     if (parsed.actualProgress !== null || parsed.plannedProgress !== null) {
-      // 保護手動修改：若已存在非零 actual_progress，略過不覆蓋
       const { data: existProg } = await supabase.from("progress_records")
-        .select("id, actual_progress").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
-      if (existProg && Number(existProg.actual_progress) > 0) {
-        // 有手動進度資料，跳過同步覆蓋
-      } else if (existProg) {
+        .select("id").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
+      if (existProg) {
         const { error: e2 } = await supabase.from("progress_records").update({
           planned_progress: parsed.plannedProgress ?? 0,
           actual_progress: parsed.actualProgress ?? 0,
@@ -714,9 +725,9 @@ async function syncFile(
         if (e2) console.warn("progress_records:", e2.message);
       }
     } else {
-      // 進度欄位為空：寫入 0/0，但不覆蓋已有的實際進度資料
+      // 進度欄位為空：僅在尚無紀錄時才新增，避免蓋掉已有的有效數值
       const { data: existing } = await supabase.from("progress_records")
-        .select("id, actual_progress").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
+        .select("id").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
       if (!existing) {
         const { error: e2 } = await supabase.from("progress_records").insert({
           project_id: projectId, report_date: logDate,
