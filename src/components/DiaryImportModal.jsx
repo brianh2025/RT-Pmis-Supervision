@@ -450,6 +450,12 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         }
         allItems.sort((a, b) => a.pageNum - b.pageNum || b.y - a.y);
 
+        // 掃描版 PDF 偵測：純圖片 PDF 的文字 item 為 0，無法解析
+        if (allItems.length === 0 && pdf.numPages > 0) {
+          setErrors(prev => [...prev, `${file.name} 是掃描版（純圖片）PDF，無內嵌文字可擷取。請改用以下方式之一：1) 直接上傳由 Word / Excel 匯出的監造報表 PDF；2) 用 Adobe Acrobat「文字辨識 (OCR)」處理後再上傳；3) 使用具備 OCR 功能的掃描軟體重新掃描。`]);
+          continue;
+        }
+
         // 以「本日天氣」標記分段，每段對應一份每日報表 (可能跨 2 頁)
         const segments = segmentReports(allItems);
         for (const seg of segments) {
@@ -465,7 +471,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
     setParsedRecords(records);
     setParsing(false);
     if (records.length > 0) setStep(2);
-    else if (totalPages > 0) setErrors(prev => [...prev, '未能在上傳的 PDF 中辨識出任何「公共工程監造報表」頁面，請確認 PDF 格式正確']);
+    else if (totalPages > 0 && errors.length === 0) setErrors(prev => [...prev, '未能在上傳的 PDF 中辨識出任何「公共工程監造報表」頁面，請確認 PDF 格式正確']);
   };
 
   // ---------------------------------------------------------------------------
