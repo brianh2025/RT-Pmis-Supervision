@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useProject } from '../hooks/useProject';
+import { INSPECTION_TEMPLATES, guessTemplateCode } from '../config/inspectionFormTemplates';
 import './ProjectDashboard.css';
 
 const SHORTCUTS = [
@@ -96,15 +97,14 @@ export function ProjectDashboard() {
       const pendingLogs = missingDates.length;
       const latestProgress = progressRes.data?.[0];
 
-      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, matEntryRes, matTestRes, matPendingRes] = await Promise.all([
+      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, diaryItemsRes, matEntryCountRes, matPendingRes] = await Promise.all([
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId).neq('result', '同意備查'),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('construction_inspections').select('result, work_item').eq('project_id', projectId),
-        supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId)
-          .or('item_name.ilike.%混凝土%,item_name.ilike.%鋼筋%,item_name.ilike.%瀝青%,item_name.ilike.%模板%,item_name.ilike.%地工織布%,item_name.ilike.%基樁%,item_name.ilike.%植筋%'),
+        supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('result', '待查驗'),
       ]);
@@ -113,30 +113,40 @@ export function ProjectDashboard() {
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
 
-      const matEntryData = matEntryRes.data || [];
+      // 日報工項（全量，後續以 guessTemplateCode 分類）
+      const diaryItems = diaryItemsRes.data || [];
+      // 材料相關工項（僅用於判斷「材料進場管制尚未回填」）
+      const MAT_KEYWORDS = ['混凝土', '鋼筋', '瀝青', '模板', '地工織布', '基樁', '植筋'];
+      const matKeywordItems = diaryItems.filter(r =>
+        r.item_name && MAT_KEYWORDS.some(k => r.item_name.includes(k))
+      );
       const matUnregistered =
-        matEntryData.length > 0 && (matTestRes.count || 0) === 0 ? 1 : 0;
+        matKeywordItems.length > 0 && (matEntryCountRes.count || 0) === 0 ? 1 : 0;
 
-      // 每工項施工天數（log_date 去重計數）
-      const itemWorkDaysMap = {};
-      for (const r of matEntryData) {
-        if (!r.item_name) continue;
-        if (!itemWorkDaysMap[r.item_name]) itemWorkDaysMap[r.item_name] = new Set();
-        itemWorkDaysMap[r.item_name].add(r.log_date);
+      // 以抽查表代碼（template code）作為比對鍵 — 解決日報工項原文（如「1F鋼筋綁紮」）與
+      // 抽查單存的 template label（如「鋼筋工程」）字面對不上的問題
+      const TEMPLATE_LABEL_BY_CODE = Object.fromEntries(
+        INSPECTION_TEMPLATES.map(t => [t.code, t.label])
+      );
+      // 每工項施工天數（按 template code 去重 log_date）
+      const workDaysByCode = {};
+      for (const r of diaryItems) {
+        const code = guessTemplateCode(r.item_name);
+        if (!code) continue;
+        if (!workDaysByCode[code]) workDaysByCode[code] = new Set();
+        workDaysByCode[code].add(r.log_date);
       }
-      // 每工項查驗次數（模糊比對 work_item）
-      const itemInspCountMap = {};
+      // 每工項查驗次數（按 template code 累計）
+      const inspCountByCode = {};
       for (const r of inspData) {
-        if (!r.work_item) continue;
-        itemInspCountMap[r.work_item] = (itemInspCountMap[r.work_item] || 0) + 1;
+        const code = guessTemplateCode(r.work_item);
+        if (!code) continue;
+        inspCountByCode[code] = (inspCountByCode[code] || 0) + 1;
       }
-      const constrItemStats = Object.entries(itemWorkDaysMap).map(([name, dates]) => {
+      const constrItemStats = Object.entries(workDaysByCode).map(([code, dates]) => {
         const workDays = dates.size;
-        const keyword = name.split(/[\s,，-]/)[0];
-        const inspCount = Object.entries(itemInspCountMap)
-          .filter(([w]) => w.includes(keyword) || name.includes(w))
-          .reduce((sum, [, cnt]) => sum + cnt, 0);
-        return { name, workDays, inspCount };
+        const inspCount = inspCountByCode[code] || 0;
+        return { code, name: TEMPLATE_LABEL_BY_CODE[code] || code, workDays, inspCount };
       }).filter(s => s.inspCount < Math.ceil(s.workDays / 3));
       const constrUnInspected = constrItemStats.length > 0 ? 1 : 0;
       const constrUninspectedItems = constrItemStats.map(s => s.name);
