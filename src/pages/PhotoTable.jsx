@@ -70,12 +70,14 @@ async function makeFilePublic(fileId, token) {
  * 結構：根目錄 → E0-1施工 / E0-2材料進場 → 工項 → YYYYMMDD → 檔案
  * category：照片類別（'材料進場' 進 E0-2，其餘進 E0-1）
  * workItem：工項名稱（作為子資料夾，空值則省略）
+ * rootFolderId：指定根資料夾（工程的 drive_folder_id）；空值時回退全域 VITE_GOOGLE_DRIVE_FOLDER_ID
  */
-async function uploadToDrive(blob, mimeType, token, date, category = '', workItem = '') {
-  if (!DRIVE_FOLDER_ID) throw new Error('尚未設定 VITE_GOOGLE_DRIVE_FOLDER_ID');
+async function uploadToDrive(blob, mimeType, token, date, category = '', workItem = '', rootFolderId = '') {
+  const rootId = rootFolderId || DRIVE_FOLDER_ID;
+  if (!rootId) throw new Error('此工程未設定雲端資料夾，且未設定 VITE_GOOGLE_DRIVE_FOLDER_ID');
 
   const catFolderName = category === '材料進場' ? 'E0-2材料進場' : 'E0-1施工';
-  let parentId = await getOrCreateFolder(token, DRIVE_FOLDER_ID, catFolderName);
+  let parentId = await getOrCreateFolder(token, rootId, catFolderName);
   if (workItem) parentId = await getOrCreateFolder(token, parentId, workItem);
   const dateFolder = (date || todayISO()).replace(/-/g, '');
   parentId = await getOrCreateFolder(token, parentId, dateFolder);
@@ -284,7 +286,7 @@ function openPrintWindow(bodyHtml, windowTitle) {
 }
 
 /* ── 記錄詳情 / 編輯 ── */
-function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSaved, onDeleted, onGoReportDB }) {
+function RecordDetail({ record, projectId: _projectId, projectName, driveRootId = '', onBack, onSaved, onDeleted, onGoReportDB }) {
   const locked     = record.tags?.includes('日報已附註');
   const isMaterial = record.source_table === 'material_entries';
   const info       = parseRemark(record.remark);
@@ -330,7 +332,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, onBack, onSa
       }
       const finalPhotos = await Promise.all(photos.map(async p => {
         if (!p._pendingBlob) return p;
-        const url = await uploadToDrive(p._pendingBlob, p._pendingBlob.type, token, p.date);
+        const url = await uploadToDrive(p._pendingBlob, p._pendingBlob.type, token, p.date, '', '', driveRootId);
         const { _pendingBlob: _b, _pendingPreview: _pv, ...rest } = p;
         return { ...rest, url };
       }));
@@ -701,7 +703,9 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 }
 
 /* ── 選取照片（本機 / Google Drive 資料夾瀏覽）── */
-function StepUpload({ onPhotosReady, onBack }) {
+function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
+  // 匯入瀏覽根資料夾：工程指定的 drive_folder_id 優先，未設定時回退全域資料夾
+  const driveRoot = driveRootId || DRIVE_FOLDER_ID;
   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps, driveWorkItem, driveCategory }
   const [items,      setItems]      = useState([]);
   // driveBrowse: null = 關閉；開啟時 = { token, loading, path, folders, images, importBusy, importStatus }
@@ -722,12 +726,12 @@ function StepUpload({ onPhotosReady, onBack }) {
 
   /* ── Drive 資料夾瀏覽器 ── */
   async function openDriveBrowser() {
-    if (!GCLIENT_ID)      { alert('尚未設定 VITE_GOOGLE_CLIENT_ID');      return; }
-    if (!DRIVE_FOLDER_ID) { alert('尚未設定 VITE_GOOGLE_DRIVE_FOLDER_ID'); return; }
+    if (!GCLIENT_ID) { alert('尚未設定 VITE_GOOGLE_CLIENT_ID'); return; }
+    if (!driveRoot)  { alert('此工程未設定雲端資料夾（請於「編輯工程」填入雲端資料夾 ID），且未設定全域 VITE_GOOGLE_DRIVE_FOLDER_ID'); return; }
     setDriveBrowse({ token: null, loading: true, path: [], folders: [], images: [], importBusy: false, importStatus: '' });
     try {
       const token = await getGoogleReadToken();
-      const { folders, images } = await listDriveFolder(DRIVE_FOLDER_ID, token);
+      const { folders, images } = await listDriveFolder(driveRoot, token);
       setDriveBrowse({ token, loading: false, path: [], folders, images, importBusy: false, importStatus: '' });
     } catch (e) {
       alert(`無法開啟 Drive：${e.message}`);
@@ -754,7 +758,7 @@ function StepUpload({ onPhotosReady, onBack }) {
     setDriveBrowse(prev => ({ ...prev, loading: true }));
     try {
       const newPath = toIndex < 0 ? [] : driveBrowse.path.slice(0, toIndex + 1);
-      const parentId = newPath.length ? newPath[newPath.length - 1].id : DRIVE_FOLDER_ID;
+      const parentId = newPath.length ? newPath[newPath.length - 1].id : driveRoot;
       const { folders, images } = await listDriveFolder(parentId, driveBrowse.token);
       setDriveBrowse(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
     } catch {
@@ -1113,7 +1117,7 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 /* ── 報告預覽 ── */
-function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, onBack, onSaved, srcCtx, photoCategory }) {
+function StepReport({ photos, data, projectName, batchTitle, reportNo, setReportNo: _setReportNo, projectId, driveRootId = '', onBack, onSaved, srcCtx, photoCategory }) {
   const isMaterial = srcCtx?.srcTable === 'material_entries';
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
@@ -1175,7 +1179,7 @@ function StepReport({ photos, data, projectName, batchTitle, reportNo, setReport
         let url = p.url || '';
         if (p.blob && token) {
           const effectiveWorkItem = srcCtx?.workItem || srcWorkItem || '';
-          url = await uploadToDrive(p.blob, p.mimeType || 'image/jpeg', token, d.date, photoCategory || '', effectiveWorkItem);
+          url = await uploadToDrive(p.blob, p.mimeType || 'image/jpeg', token, d.date, photoCategory || '', effectiveWorkItem, driveRootId);
         }
         return { location: d.location, description: d.description, date: d.date, gps: d.gps, url };
       }));
@@ -1370,6 +1374,7 @@ export function PhotoTable() {
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}
+          driveRootId={project?.drive_folder_id || ''}
           onBack={() => { setView('list'); refresh(); }}
           onSaved={() => { setView('list'); refresh(); }}
           onDeleted={() => { setView('list'); refresh(); }}
@@ -1377,7 +1382,8 @@ export function PhotoTable() {
         />
       )}
       {view === 'upload' && (
-        <StepUpload onPhotosReady={ps => { setPhotos(ps); setView('entry'); }} onBack={() => setView('list')} />
+        <StepUpload onPhotosReady={ps => { setPhotos(ps); setView('entry'); }} onBack={() => setView('list')}
+          driveRootId={project?.drive_folder_id || ''} />
       )}
       {view === 'entry' && (
         <StepEntry photos={photos} onComplete={(data, cat) => { setPhotoData(data); setPhotoCategory(cat); setView('report'); }} onBack={() => setView('upload')} />
@@ -1385,7 +1391,8 @@ export function PhotoTable() {
       {view === 'report' && (
         <StepReport photos={photos} data={photoData} projectName={project?.name}
           batchTitle={batchTitle} reportNo={reportNo} setReportNo={setReportNo}
-          projectId={projectId} onBack={() => setView('entry')} onSaved={handleSaved}
+          projectId={projectId} driveRootId={project?.drive_folder_id || ''}
+          onBack={() => setView('entry')} onSaved={handleSaved}
           srcCtx={srcCtx.srcTable ? srcCtx : null} photoCategory={photoCategory} />
       )}
     </div>
