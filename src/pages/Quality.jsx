@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
 import { InspectionImportModal } from '../components/InspectionImportModal';
+import { guessTemplateCode } from '../config/inspectionFormTemplates';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -148,6 +149,11 @@ export function Quality() {
   // 施工抽查照片計數
   const [inspPhotoMap, setInspPhotoMap] = useState({});
 
+  // 依施工日誌 / 材料進場產生的待建立查驗
+  const [diaryItems, setDiaryItems] = useState([]);
+  const [matEntries, setMatEntries] = useState([]);
+  const [pendingOpen, setPendingOpen] = useState(true);
+
   const loadInspections = useCallback(async () => {
     if (!supabase) return [];
     const { data } = await supabase.from('construction_inspections').select('*')
@@ -172,10 +178,16 @@ export function Quality() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const [ins, iss, tsts] = await Promise.all([loadInspections(), loadIssues(), loadTests()]);
+      const [ins, iss, tsts, diaryRes, matRes] = await Promise.all([
+        loadInspections(), loadIssues(), loadTests(),
+        supabase ? supabase.from('daily_report_items').select('item_name, log_date, today_qty, is_construction').eq('project_id', projectId) : { data: [] },
+        supabase ? supabase.from('material_entries').select('name, entry_date').eq('project_id', projectId) : { data: [] },
+      ]);
       setInspections(ins);
       setIssues(iss);
       setTests(tsts);
+      setDiaryItems(diaryRes.data || []);
+      setMatEntries(matRes.data || []);
       // 照片計數
       if (supabase) {
         const { data: photoDocs } = await supabase.from('archive_docs').select('submission_id')
@@ -441,6 +453,66 @@ export function Quality() {
   }, [inspections]);
   const openIssues = (issueStats.open || 0) + (issueStats.in_progress || 0);
 
+  /* ── 依施工日誌待建立查驗：日誌有施工或材料進場、當日尚無對應查驗記錄 ── */
+  const pendingInspGroups = useMemo(() => {
+    // 工項相符判定：字面互含，或抽查表代碼相同（解決「1F鋼筋綁紮」vs「鋼筋工程」對不上）
+    const matches = (a, b) => {
+      if (!a || !b) return false;
+      if (a === b || a.includes(b) || b.includes(a)) return true;
+      const ca = guessTemplateCode(a), cb = guessTemplateCode(b);
+      return !!ca && ca === cb;
+    };
+    const hasInsp = (date, name) => inspections.some(r => r.inspect_date === date && matches(r.work_item, name));
+
+    const map = new Map();
+    for (const r of diaryItems) {
+      if (!r.item_name || !r.log_date) continue;
+      if (r.is_construction === false) continue;
+      if (!(parseFloat(r.today_qty) >= 0.1)) continue;
+      const key = `${r.log_date}|${r.item_name}|施工`;
+      if (map.has(key) || hasInsp(r.log_date, r.item_name)) continue;
+      map.set(key, { date: r.log_date, name: r.item_name, source: '施工' });
+    }
+    for (const m of matEntries) {
+      if (!m.name || !m.entry_date) continue;
+      const key = `${m.entry_date}|${m.name}|材料`;
+      if (map.has(key) || hasInsp(m.entry_date, m.name)) continue;
+      map.set(key, { date: m.entry_date, name: m.name, source: '材料進場' });
+    }
+
+    const byDate = {};
+    for (const it of map.values()) (byDate[it.date] = byDate[it.date] || []).push(it);
+    return Object.entries(byDate)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, items]) => ({ date, items: items.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant')) }));
+  }, [diaryItems, matEntries, inspections]);
+  const pendingInspCount = pendingInspGroups.reduce((s, g) => s + g.items.length, 0);
+
+  /* 點選待建立項：帶入日期與工項開啟新增檢驗 */
+  function startPendingInsp(it) {
+    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
+      inspect_type: it.source === '材料進場' ? '材料查驗' : '查驗' });
+    setShowInspModal(true);
+  }
+
+  /* 一鍵將全部待建立項寫入管制表（結果預設「待複驗」，後續逐筆編修） */
+  async function createAllPending() {
+    const all = pendingInspGroups.flatMap(g => g.items);
+    if (!all.length || !supabase) return;
+    if (!window.confirm(`將依施工日誌建立 ${all.length} 筆待編輯查驗（結果預設「待複驗」），確定？`)) return;
+    setSaving(true);
+    const payload = all.map(it => ({
+      project_id: projectId, created_by: user?.id,
+      inspect_date: it.date, work_item: it.name,
+      inspect_type: it.source === '材料進場' ? '材料查驗' : '查驗',
+      location: '', inspector: '', result: '待複驗', remark: '',
+    }));
+    const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
+    setSaving(false);
+    if (error) { alert(`建立失敗：${error.message}`); return; }
+    setInspections(prev => [...(data || []), ...prev]);
+  }
+
   async function saveQuickInsp() {
     if (!quickForm.work_item || !supabase) return;
     setSaving(true);
@@ -554,6 +626,42 @@ export function Quality() {
           )}
         </div>
       </div>
+
+      {/* Tab 0: 依施工日誌待建立查驗 */}
+      {tab === 0 && pendingInspCount > 0 && (
+        <div className="mcs-pending-panel">
+          <div className="mcs-pending-head" onClick={() => setPendingOpen(o => !o)}>
+            <ClipboardCheck size={14} style={{ color: 'var(--color-primary-light)', flexShrink: 0 }} />
+            <span className="mcs-pending-title">依施工日誌待建立查驗</span>
+            <span className="mcs-pending-count">{pendingInspCount}</span>
+            <span className="mcs-pending-hint">日誌有施工或材料進場、當日尚無查驗記錄，點工項即帶入日期建立</span>
+            <button className="mcs-btn mcs-btn-add" disabled={saving}
+              onClick={e => { e.stopPropagation(); createAllPending(); }}>
+              <Plus size={12} /> 全部建立
+            </button>
+            <span className="mcs-pending-caret">{pendingOpen ? '▲' : '▼'}</span>
+          </div>
+          {pendingOpen && (
+            <div className="mcs-pending-body">
+              {pendingInspGroups.map(g => (
+                <div key={g.date} className="mcs-pending-daterow">
+                  <span className="mcs-pending-date">{g.date}</span>
+                  <div className="mcs-pending-items">
+                    {g.items.map(it => (
+                      <button key={`${it.name}|${it.source}`} className="mcs-pending-chip"
+                        title={`點擊建立查驗（帶入 ${g.date}）`} onClick={() => startPendingInsp(it)}>
+                        {it.source === '材料進場' && <span className="mcs-pending-src">材</span>}
+                        <span className="mcs-pending-chip-name">{it.name}</span>
+                        <Plus size={11} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab 0: 施工抽查 — 工項分組總覽 */}
       {tab === 0 && workItemGroups.length > 0 && (
