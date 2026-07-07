@@ -48,7 +48,6 @@ export function Sidebar({
   isMobileOpen,
   setIsMobileOpen,
   projectId,
-  project,
   onSignOut,
   user,
   isDarkMode,

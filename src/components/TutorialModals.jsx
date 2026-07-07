@@ -40,12 +40,12 @@ export function WelcomeModal({ onClose }) {
             本系統提供完整的工程監造作業流程支援，以下為主要功能模組概覽：
           </div>
           <div className="tut-feature-grid">
-            {WELCOME_FEATURES.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="tut-feature-card">
-                <div className="tut-feature-icon"><Icon size={15} /></div>
+            {WELCOME_FEATURES.map((f) => (
+              <div key={f.label} className="tut-feature-card">
+                <div className="tut-feature-icon"><f.icon size={15} /></div>
                 <div>
-                  <div className="tut-feature-label">{label}</div>
-                  <div className="tut-feature-desc">{desc}</div>
+                  <div className="tut-feature-label">{f.label}</div>
+                  <div className="tut-feature-desc">{f.desc}</div>
                 </div>
               </div>
             ))}

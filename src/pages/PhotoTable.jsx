@@ -27,7 +27,6 @@ function parseRemark(r) { try { return JSON.parse(r) || {}; } catch { return {};
 const GAPI_KEY              = import.meta.env.VITE_GOOGLE_API_KEY                    || '';
 const GCLIENT_ID            = import.meta.env.VITE_GOOGLE_CLIENT_ID                  || '';
 const DRIVE_FOLDER_ID       = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID            || '';
-const INSPECTION_FOLDER_ID  = import.meta.env.VITE_GOOGLE_DRIVE_INSPECTION_FOLDER_ID || '';
 
 /** 通用：取得或建立子資料夾，回傳資料夾 ID */
 async function getOrCreateFolder(token, parentId, name) {
@@ -97,29 +96,6 @@ async function uploadToDrive(blob, mimeType, token, date, category = '', workIte
   return makeFilePublic(id, token);
 }
 
-/**
- * 上傳抽查單 PDF 至 Drive。
- * 結構：抽查單根目錄 → 工項 → YYYYMMDD → 檔案
- */
-async function uploadInspectionToDrive(blob, filename, token, workItem, date) {
-  if (!INSPECTION_FOLDER_ID) throw new Error('尚未設定 VITE_GOOGLE_DRIVE_INSPECTION_FOLDER_ID');
-  let parentId = INSPECTION_FOLDER_ID;
-  if (workItem) parentId = await getOrCreateFolder(token, parentId, workItem);
-  const dateFolder = (date || todayISO()).replace(/-/g, '');
-  parentId = await getOrCreateFolder(token, parentId, dateFolder);
-
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [parentId] })], { type: 'application/json' }));
-  form.append('file', blob);
-
-  const uploadRes = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink',
-    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
-  );
-  if (!uploadRes.ok) throw new Error(`抽查單上傳失敗（${uploadRes.status}）`);
-  return await uploadRes.json();
-}
-
 /** 從本機 File 解析 EXIF */
 async function parseExif(file) {
   try {
@@ -140,7 +116,6 @@ async function parseExif(file) {
   } catch { return { exifDate: '', exifGps: '' }; }
 }
 
-let _gapiPickerReady = false;
 let _gisReady        = false;
 
 function loadScript(src) {
@@ -150,13 +125,6 @@ function loadScript(src) {
     s.src = src; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
-}
-
-async function ensureGapiPicker() {
-  if (_gapiPickerReady) return;
-  await loadScript('https://apis.google.com/js/api.js');
-  await new Promise(res => window.gapi.load('picker', res));
-  _gapiPickerReady = true;
 }
 
 async function ensureGIS() {
@@ -233,29 +201,6 @@ function parsePathMeta(path) {
   }
   return { driveDate, driveWorkItem, driveCategory };
 }
-
-/** 開啟 Google Picker，viewId 可為 DOCS_IMAGES 或 PHOTOS */
-async function openGooglePicker(viewId, token) {
-  await ensureGapiPicker();
-  return new Promise(resolve => {
-    const P = window.google.picker;
-    const view = new P.View(viewId);
-    view.setMimeTypes('image/jpeg,image/png,image/heic,image/webp');
-    new P.PickerBuilder()
-      .addView(view)
-      .setOAuthToken(token)
-      .setDeveloperKey(GAPI_KEY)
-      .enableFeature(P.Feature.MULTISELECT_ENABLED)
-      .enableFeature(P.Feature.SUPPORT_DRIVES)   // 支援共用雲端硬碟
-      .setCallback(data => {
-          if (data.action === P.Action.PICKED) resolve(data.docs);
-          else if (data.action === P.Action.CANCEL) resolve([]);
-        })
-      .build()
-      .setVisible(true);
-  });
-}
-
 
 /* 共用列印 CSS
    A4 可用高度：29.7cm - 2cm padding = 27.7cm
@@ -759,7 +704,6 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
 function StepUpload({ onPhotosReady, onBack }) {
   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps, driveWorkItem, driveCategory }
   const [items,      setItems]      = useState([]);
-  const [gToken,     setGToken]     = useState(null);
   // driveBrowse: null = 關閉；開啟時 = { token, loading, path, folders, images, importBusy, importStatus }
   const [driveBrowse, setDriveBrowse] = useState(null);
   const fileInputRef = useRef(null);
@@ -774,14 +718,6 @@ function StepUpload({ onPhotosReady, onBack }) {
         mimeType: file.type, exifDate, exifGps, driveWorkItem: '', driveCategory: '',
       }]);
     }
-  }
-
-  /* 取得上傳用 token（drive.file scope） */
-  async function ensureToken() {
-    if (gToken) return gToken;
-    if (!GCLIENT_ID) { alert('尚未設定 Google OAuth Client ID（VITE_GOOGLE_CLIENT_ID）'); return null; }
-    try { const t = await getGoogleToken(); setGToken(t); return t; }
-    catch (e) { alert(`Google 授權失敗：${e.message}`); return null; }
   }
 
   /* ── Drive 資料夾瀏覽器 ── */
@@ -821,7 +757,7 @@ function StepUpload({ onPhotosReady, onBack }) {
       const parentId = newPath.length ? newPath[newPath.length - 1].id : DRIVE_FOLDER_ID;
       const { folders, images } = await listDriveFolder(parentId, driveBrowse.token);
       setDriveBrowse(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
-    } catch (e) {
+    } catch {
       setDriveBrowse(prev => ({ ...prev, loading: false }));
     }
   }
@@ -999,12 +935,12 @@ function parseWhiteboardText(text) {
   result.description = get(['施工說明', '說明', '備註', '工作說明', '抽查說明']);
 
   // 日期：民國年 or 西元年
-  const rocM = text.match(/(?:日期|施工日期|檢驗日期)[：:﹕]?\s*(\d{2,3})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+  const rocM = text.match(/(?:日期|施工日期|檢驗日期)[：:﹕]?\s*(\d{2,3})[/\-年](\d{1,2})[/\-月](\d{1,2})/);
   if (rocM) {
     const y = parseInt(rocM[1]) < 1000 ? parseInt(rocM[1]) + 1911 : parseInt(rocM[1]);
     result.date = `${y}-${String(rocM[2]).padStart(2,'0')}-${String(rocM[3]).padStart(2,'0')}`;
   } else {
-    const wM = text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const wM = text.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
     if (wM) result.date = `${wM[1]}-${String(wM[2]).padStart(2,'0')}-${String(wM[3]).padStart(2,'0')}`;
   }
 

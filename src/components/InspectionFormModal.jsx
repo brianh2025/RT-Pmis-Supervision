@@ -265,7 +265,7 @@ function extractItemsFromParagraphs(paragraphs, template) {
 }
 
 /* ── 產生抽查單 HTML（用於列印 / Drive 上傳） ── */
-function buildFormHtml({ template, header, items, defect, supervisor, signImgSrc, supervisorImgSrc, projectName, contractor }) {
+function buildFormHtml({ template, header, items, defect, signImgSrc, supervisorImgSrc, projectName, contractor }) {
   const phases = ['施工前', '施工中', '施工完成'];
   const PHASE_LABELS = { '施工前': '施工前', '施工中': '施工中', '施工完成': '施工<br>完成' };
 

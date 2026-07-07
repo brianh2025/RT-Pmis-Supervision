@@ -87,13 +87,6 @@ function toKey(y, m, d) {
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDow(y, m)    { return new Date(y, m, 1).getDay(); }
 
-function cleanNotes(raw) {
-  if (!raw) return '';
-  const lines = raw.split('\n');
-  const cutIdx = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
-  return (cutIdx === -1 ? lines : lines.slice(0, cutIdx)).join('\n').trim();
-}
-
 function progressColor(actual, planned) {
   if (actual == null) return 'var(--color-primary)';
   if (actual >= planned) return '#10b981';
@@ -443,7 +436,6 @@ function DiaryJournalInner() {
   const meaningfulItems = allMeaningfulItems.filter(wi => wi.is_construction !== false);
   const overheadItems   = allMeaningfulItems.filter(wi => wi.is_construction === false);
   const fmtUnit = u => u === '式' ? 'U' : (u || '');
-  const noteText = cleanNotes(summary?.log?.notes);
   const detectedMaterials = detectKeyMaterials(summary?.log?.work_items, summary?.workItems);
   const hasSelfInsp = detectSelfInspection(summary?.log?.work_items, summary?.workItems)
     || inspections.some(i => i.inspect_type === '自主檢查' || i.inspect_type === '自檢');

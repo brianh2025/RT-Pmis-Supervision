@@ -467,7 +467,6 @@ export function MaterialControl() {
         });
       }
     } else {
-      const name4 = tstToast.entry.name.trim().slice(0, 4);
       const newRow = {
         ver: 'v1', ver_color: VER_COLORS[0], project_id: projectId, created_by: user?.id,
         sort_order: tstRows.length, name: tstToast.entry.name,

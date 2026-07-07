@@ -181,7 +181,7 @@ function parseReport(items) {
         i.x > dateLabelItem.x - 10 &&
         i.x < dateLabelItem.x + 200 &&
         i !== dateLabelItem &&
-        (/\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
+        (/\d{2,4}[/-]\d{1,2}[/-]\d{1,2}/.test(i.str) || /\d{2,4}\s*年/.test(i.str))
       );
       if (near.length) logDate = parseDate(near[0].str);
     }
@@ -251,7 +251,7 @@ function parseReport(items) {
     const nums = items.filter(i => sameRow(i, predLabel) && /^[\d.]+$/.test(i.str));
     if (nums.length) {
       const r = nums.filter(i => i.x > predLabel.x).sort((a, b) => a.x - b.x);
-      const l = nums.filter(i => i.x < predLabel.x).sort((a, b) => predLabel.x - a.x);
+      const l = nums.filter(i => i.x < predLabel.x).sort((a, _b) => predLabel.x - a.x);
       plannedProgress = parseFloat((r[0] || l[0])?.str) || null;
     }
   }
@@ -259,7 +259,7 @@ function parseReport(items) {
     const nums = items.filter(i => sameRow(i, actLabel) && /^[\d.]+$/.test(i.str));
     if (nums.length) {
       const r = nums.filter(i => i.x > actLabel.x).sort((a, b) => a.x - b.x);
-      const l = nums.filter(i => i.x < actLabel.x).sort((a, b) => actLabel.x - a.x);
+      const l = nums.filter(i => i.x < actLabel.x).sort((a, _b) => actLabel.x - a.x);
       actualProgress = parseFloat((r[0] || l[0])?.str) || null;
     }
   }
@@ -628,7 +628,7 @@ export function DiaryImportModal({ projectId, onClose, onSuccess }) {
         //  → ["荷苞嶼橋下游段...pc樁打設", "1K+718~1K+844 140混凝土澆置"]
         // 註：要求項次符號前有空白或字串開頭，避免把 "1.5公斤" 拆錯
         const narrative = text.replace(/\n/g, ' ').trim();
-        const parts = narrative.split(/(?:^|\s)\d+[\.\．、]\s*/).map(s => s.trim()).filter(Boolean);
+        const parts = narrative.split(/(?:^|\s)\d+[.．、]\s*/).map(s => s.trim()).filter(Boolean);
         if (parts.length === 0) continue;
         for (const part of parts) {
           itemPayload.push({

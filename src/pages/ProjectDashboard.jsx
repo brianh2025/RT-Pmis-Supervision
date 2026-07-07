@@ -56,7 +56,7 @@ export function ProjectDashboard() {
     try {
       const saved = localStorage.getItem(`dash-order-${projectId}`);
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { /* localStorage 不可用或內容損毀時改用預設排序 */ }
     return DEFAULT_ORDER;
   });
   const [draggingId, setDraggingId] = useState(null);
@@ -71,7 +71,6 @@ export function ProjectDashboard() {
       const now = new Date();
       const thisMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const yesterdayStr = (() => {
         const y = new Date(now); y.setDate(y.getDate() - 1);
         return `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
@@ -335,10 +334,10 @@ export function ProjectDashboard() {
           <Grip />
         </div>
         <div className="dash-sc-grid">
-          {SHORTCUTS.map(({ icon: Icon, label, path, color }) => (
-            <button key={path} className="dash-sc-card" style={{ '--btn-color': color }} onClick={() => navigate(`/projects/${projectId}/${path}`)}>
-              <Icon size={28} style={{ color }} />
-              <div className="dash-sc-label">{label}</div>
+          {SHORTCUTS.map((sc) => (
+            <button key={sc.path} className="dash-sc-card" style={{ '--btn-color': sc.color }} onClick={() => navigate(`/projects/${projectId}/${sc.path}`)}>
+              <sc.icon size={28} style={{ color: sc.color }} />
+              <div className="dash-sc-label">{sc.label}</div>
             </button>
           ))}
         </div>

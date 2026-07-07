@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo, useContext, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CloudDownload, Calendar, CloudOff, RefreshCcw, PlusCircle, BookOpen, Loader2, ClipboardCheck, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { C } from './DailyReport/utils';
-import { fmtPct } from '../utils/format';
 import { DailyReportProvider, DailyReportContext } from './DailyReport/DailyReportContext';
 import { DailyReportView } from './DailyReport/DailyReportView';
 import { DiaryImportModal } from '../components/DiaryImportModal';
@@ -12,27 +11,6 @@ import { DriveSyncModal } from '../components/DriveSyncModal';
 import InspectionFormModal from '../components/InspectionFormModal';
 import MaterialInspectionModal from '../components/MaterialInspectionModal';
 
-const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-diary`;
-async function runBackgroundSync(projectId, startDate) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
-  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-  const syncSecret = import.meta.env.VITE_SYNC_SECRET || '';
-  const listRes = await fetch(EDGE_FN_URL, {
-    method: 'POST', headers,
-    body: JSON.stringify({ mode: 'list', projectId, startDate, secret: syncSecret }),
-  });
-  if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
-  const { files = [] } = await listRes.json();
-  if (files.length === 0) return 0;
-  for (const f of files) {
-    await fetch(EDGE_FN_URL, {
-      method: 'POST', headers,
-      body: JSON.stringify({ mode: 'sync_one', projectId, fileId: f.id, fileName: f.name, secret: syncSecret }),
-    }).catch(() => {});
-  }
-  return files.length;
-}
 import './DiaryLog.css';
 
 const dowHeaders = ["日", "一", "二", "三", "四", "五", "六"];
@@ -63,19 +41,6 @@ function fmtMonthLabel(monthStr) {
   return `${y - 1911} 年 ${m} 月（${y}/${String(m).padStart(2, '0')}）`;
 }
 
-function cleanNotes(raw) {
-  if (!raw) return '';
-  const lines = raw.split('\n');
-  const cut = lines.findIndex(l => /^[一二三四五六七八九十]+[、]/.test(l.trim()));
-  return (cut === -1 ? lines : lines.slice(0, cut)).join('\n').trim();
-}
-function progressColor(actual, planned) {
-  if (actual == null) return 'var(--color-primary)';
-  if (actual >= planned) return '#10b981';
-  if (actual >= planned * 0.95) return '#f59e0b';
-  return '#ef4444';
-}
-
 const MATERIAL_KEYWORDS = ['混凝土', '鋼筋', '瀝青', '鋼線', '地工', 'CLSM', '止水', '鋼板'];
 function isMaterialItem(name) {
   return MATERIAL_KEYWORDS.some(k => name.includes(k));
@@ -85,9 +50,6 @@ function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDow(y, m) { return new Date(y, m, 1).getDay(); }
 function toKey(y, m, d) {
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-}
-function toRoc(y, m, d) {
-    return `${y - 1911}.${String(m + 1).padStart(2, "0")}.${String(d).padStart(2, "0")}`;
 }
 
 export function DiaryLog() {
@@ -112,7 +74,7 @@ function DiaryLogInner() {
   const [month, setMonth] = useState(() => initDate ? parseInt(initDate.slice(5, 7)) - 1 : today.getMonth());
   const [selectedDay, setSelectedDay] = useState(() => initDate ? parseInt(initDate.slice(8, 10)) : null);
 
-  const [_project, setProject] = useState(null);
+  const [project, setProject] = useState(null);
   const [logs, setLogs] = useState([]);
   const [_loading, setLoading] = useState(true);
   const [_error, setError] = useState(null);
@@ -122,10 +84,8 @@ function DiaryLogInner() {
   const [quickInitialData, setQuickInitialData] = useState(null);
   const [refreshTrigger,   setRefreshTrigger]   = useState(0);
   const [showDriveSync,    setShowDriveSync]    = useState(false);
-  const [autoSyncing,      setAutoSyncing]      = useState(false);
-  const autoSyncedRef = useRef(false);
+  const [autoSyncing]      = useState(false);
   const [diaryDataCache,   setDiaryDataCache]   = useState({}); // dateKey → initialData
-  const [tabD, setTabD] = useState('work');
   const [mainTab, setMainTab] = useState('calendar');
 
   /* ── 月報稽核 ── */
@@ -221,7 +181,6 @@ function DiaryLogInner() {
   }, [logs]);
 
   const selectedKey    = selectedDay ? toKey(year, month, selectedDay) : null;
-  const selectedLog    = selectedKey ? (logs.find(l => l.log_date === selectedKey) ?? null) : null;
   const selectedReport = selectedKey ? (reports.find(r => r.date === selectedKey) ?? null) : null;
   const importedCount  = Object.keys(importedData).length;
 
@@ -399,7 +358,7 @@ function DiaryLogInner() {
           {auditLoading ? (
             <div className="audit-loading"><Loader2 size={20} className="animate-spin" />載入中…</div>
           ) : (() => {
-            const months = generateMonths(_project?.start_date);
+            const months = generateMonths(project?.start_date);
             return months.length === 0 ? (
               <div className="audit-empty">尚無資料，請確認工程起始日期已設定。</div>
             ) : (
@@ -696,7 +655,7 @@ function DiaryLogInner() {
       {showDriveSync && (
         <DriveSyncModal
           projectId={projectId}
-          startDate={_project?.start_date || ''}
+          startDate={project?.start_date || ''}
           onClose={() => setShowDriveSync(false)}
           onSuccess={() => { setShowDriveSync(false); setRefreshTrigger(t => t + 1); refresh?.(); }}
         />
@@ -704,7 +663,7 @@ function DiaryLogInner() {
       {inspTarget && (
         <InspectionFormModal
           inspection={{ work_item: inspTarget.work_item, inspect_date: inspTarget.inspect_date }}
-          project={{ id: projectId, name: _project?.name, contractor: _project?.contractor }}
+          project={{ id: projectId, name: project?.name, contractor: project?.contractor }}
           onClose={() => setInspTarget(null)}
           onSave={() => setInspTarget(null)}
         />
@@ -715,7 +674,7 @@ function DiaryLogInner() {
           materialName={matTarget.name}
           qty={matTarget.qty}
           unit={matTarget.unit}
-          project={{ id: projectId, name: _project?.name, contractor: _project?.contractor }}
+          project={{ id: projectId, name: project?.name, contractor: project?.contractor }}
           onClose={() => setMatTarget(null)}
           onSave={() => setMatTarget(null)}
         />

@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // docs/google-apps-script 內是 Google Apps Script 環境腳本（DriveApp、Logger 為 GAS 全域），不適用瀏覽器規則
+  globalIgnores(['dist', 'docs/google-apps-script']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
