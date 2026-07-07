@@ -806,6 +806,129 @@
 }
 .pt-drive-close:hover { color: var(--color-text1); background: var(--color-bg1); }
 
+/* ── 雲端相簿瀏覽（唯讀） ── */
+.pt-album-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+.pt-album-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pt-album-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text1);
+}
+.pt-album-hint {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.pt-album-count {
+  font-size: 13px;
+  color: var(--color-text2);
+}
+.pt-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.pt-album-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-bg2);
+  cursor: zoom-in;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.pt-album-cell:hover { border-color: var(--color-primary-light); transform: translateY(-1px); }
+.pt-album-cell img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: var(--color-bg1);
+}
+.pt-album-cell-name {
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--color-text2);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pt-album-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 72px;
+  background: rgba(0, 0, 0, 0.88);
+}
+.pt-album-lightbox img {
+  max-width: 100%;
+  max-height: calc(100% - 40px);
+  object-fit: contain;
+  border-radius: 6px;
+}
+.pt-album-lb-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #fff;
+}
+.pt-album-lb-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+.pt-album-lb-close:hover { background: rgba(255, 255, 255, 0.28); }
+.pt-album-lb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+.pt-album-lb-nav:hover { background: rgba(255, 255, 255, 0.28); }
+.pt-album-lb-prev { left: 16px; }
+.pt-album-lb-next { right: 16px; }
+
 .pt-upload-zone {
   border: 2px dashed var(--color-border);
   border-radius: 10px;
@@ -1192,6 +1315,12 @@
     font-size: 9pt;
     overflow-x: auto;
   }
+
+  /* 相簿瀏覽 */
+  .pt-album-view { padding: 10px 12px 14px; }
+  .pt-album-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .pt-album-cell img { height: 96px; }
+  .pt-album-lightbox { padding: 20px 56px; }
 }
 
 /* ══════════════════════════════════════════
@@ -1225,4 +1354,14 @@
 
   /* 按鈕字縮 */
   .pt-btn { font-size: 0.7rem; padding: 5px 9px; }
+
+  /* 相簿瀏覽：手機版燈箱鋪滿、換張鈕貼邊 */
+  .pt-album-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+  .pt-album-cell img { height: 84px; }
+  .pt-album-hint { display: none; }
+  .pt-album-lightbox { padding: 16px 8px 48px; }
+  .pt-album-lb-nav { width: 36px; height: 36px; }
+  .pt-album-lb-prev { left: 6px; }
+  .pt-album-lb-next { right: 6px; }
+  .pt-album-lb-caption { position: absolute; bottom: 14px; left: 0; right: 0; justify-content: center; }
 }

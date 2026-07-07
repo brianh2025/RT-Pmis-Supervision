@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud, FolderOpen,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
-  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine,
+  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine, Images,
 } from 'lucide-react';
 import * as exifr from 'exifr';
 import { supabase } from '../lib/supabaseClient';
@@ -175,7 +175,7 @@ async function downloadDriveFile(fileId, token) {
 async function listDriveFolder(folderId, token) {
   const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType)&orderBy=name&pageSize=200`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType,thumbnailLink)&orderBy=name&pageSize=200`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) throw new Error(`資料夾列出失敗（${res.status}）`);
@@ -484,7 +484,7 @@ function RecordDetail({ record, projectId: _projectId, projectName, driveRootId 
 }
 
 /* ── 照片記錄列表 ── */
-function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, srcCtx, autoOpen, filterMode, srcDate }) {
+function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onAlbum, onDetail, srcCtx, autoOpen, filterMode, srcDate }) {
   const navigate = useNavigate();
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -588,6 +588,9 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onDetail, 
       <div className="pt-new-btn-bar">
         <button className="pt-btn pt-btn-primary" onClick={onNew}>
           <Plus size={13} />新增照片記錄
+        </button>
+        <button className="pt-btn" style={{ marginLeft: 8 }} onClick={onAlbum}>
+          <Images size={13} />相簿瀏覽
         </button>
         <span className="pt-tab-count" style={{ marginLeft: 8 }}>{records.length}</span>
       </div>
@@ -906,6 +909,158 @@ function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── 雲端相簿瀏覽（唯讀：只瀏覽 Drive 照片，不下載、不上傳、不寫入） ── */
+function albumThumbUrl(img) {
+  return img.thumbnailLink || `https://drive.google.com/thumbnail?id=${img.id}&sz=w400`;
+}
+function albumLargeUrl(img) {
+  // thumbnailLink 結尾為 =s220 之類的尺寸參數，放大取代即可取得大圖
+  if (img.thumbnailLink) return img.thumbnailLink.replace(/=s\d+(-c)?$/, '=s1600');
+  return `https://drive.google.com/thumbnail?id=${img.id}&sz=w1600`;
+}
+
+function DriveAlbum({ driveRootId = '', onBack }) {
+  const driveRoot = driveRootId || DRIVE_FOLDER_ID;
+  // album: { token, loading, error, path, folders, images }
+  const [album, setAlbum] = useState(() => ({
+    token: null, loading: !!driveRoot,
+    error: driveRoot ? '' : '此工程未設定雲端資料夾（請於「編輯工程」填入雲端資料夾 ID），且未設定全域 VITE_GOOGLE_DRIVE_FOLDER_ID',
+    path: [], folders: [], images: [],
+  }));
+  const [lightbox, setLightbox] = useState(null); // null 或 images 索引
+
+  /* 進入時授權並載入根資料夾 */
+  useEffect(() => {
+    if (!driveRoot) return;
+    let cancelled = false;
+    getGoogleReadToken()
+      .then(token => listDriveFolder(driveRoot, token).then(({ folders, images }) => {
+        if (!cancelled) setAlbum({ token, loading: false, error: '', path: [], folders, images });
+      }))
+      .catch(e => {
+        if (!cancelled) setAlbum(prev => ({ ...prev, loading: false, error: `無法開啟相簿：${e.message}` }));
+      });
+    return () => { cancelled = true; };
+  }, [driveRoot]);
+
+  async function openFolder(folderId, newPath) {
+    setAlbum(prev => ({ ...prev, loading: true }));
+    try {
+      const { folders, images } = await listDriveFolder(folderId, album.token);
+      setLightbox(null);
+      setAlbum(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
+    } catch (e) {
+      alert(`無法開啟資料夾：${e.message}`);
+      setAlbum(prev => ({ ...prev, loading: false }));
+    }
+  }
+  function goTo(folder) { openFolder(folder.id, [...album.path, folder]); }
+  function goUp(toIndex) {
+    // toIndex = -1 → 回根目錄；≥0 → path[0..toIndex]
+    const newPath = toIndex < 0 ? [] : album.path.slice(0, toIndex + 1);
+    openFolder(newPath.length ? newPath[newPath.length - 1].id : driveRoot, newPath);
+  }
+
+  /* 燈箱鍵盤操作：← → 換張、Esc 關閉 */
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightbox(null);
+      else if (e.key === 'ArrowLeft')  setLightbox(i => Math.max(0, i - 1));
+      else if (e.key === 'ArrowRight') setLightbox(i => Math.min(album.images.length - 1, i + 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox, album.images.length]);
+
+  const lbImg = lightbox !== null ? album.images[lightbox] : null;
+
+  return (
+    <div className="pt-album-view">
+      <div className="pt-album-toolbar">
+        <button className="pt-btn" onClick={onBack}><ChevronLeft size={13} />返回列表</button>
+        <span className="pt-album-title"><Images size={14} />雲端相簿瀏覽</span>
+        <span className="pt-album-hint">唯讀瀏覽，不會下載或變更任何檔案</span>
+      </div>
+
+      {/* 麵包屑 */}
+      <div className="pt-drive-breadcrumb">
+        <button onClick={() => goUp(-1)}>根目錄</button>
+        {album.path.map((seg, i) => (
+          <span key={seg.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <span className="pt-drive-bc-sep">›</span>
+            <button onClick={() => goUp(i)}>{seg.name}</button>
+          </span>
+        ))}
+      </div>
+
+      {album.error ? (
+        <div className="pt-drive-empty">{album.error}</div>
+      ) : album.loading ? (
+        <div className="pt-drive-loading"><Loader2 size={14} className="pt-spin" />載入中…</div>
+      ) : (
+        <>
+          {/* 子資料夾清單 */}
+          {album.folders.length > 0 && (
+            <div className="pt-drive-folder-list">
+              {album.folders.map(f => (
+                <button key={f.id} className="pt-drive-folder-btn" onClick={() => goTo(f)}>
+                  <FolderOpen size={15} /><span>{f.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 照片縮圖牆 */}
+          {album.images.length > 0 && (
+            <>
+              <div className="pt-album-count">此資料夾共 {album.images.length} 張照片，點擊可放大檢視</div>
+              <div className="pt-album-grid">
+                {album.images.map((img, i) => (
+                  <button key={img.id} className="pt-album-cell" onClick={() => setLightbox(i)}>
+                    <img src={albumThumbUrl(img)} alt={img.name} loading="lazy" referrerPolicy="no-referrer"
+                      onError={e => { e.target.style.opacity = 0.15; }} />
+                    <span className="pt-album-cell-name">{img.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {album.folders.length === 0 && album.images.length === 0 && (
+            <div className="pt-drive-empty">此資料夾為空</div>
+          )}
+        </>
+      )}
+
+      {/* 燈箱 */}
+      {lbImg && (
+        <div className="pt-album-lightbox" onClick={() => setLightbox(null)}>
+          <button className="pt-album-lb-close" onClick={() => setLightbox(null)}><X size={18} /></button>
+          {lightbox > 0 && (
+            <button className="pt-album-lb-nav pt-album-lb-prev"
+              onClick={e => { e.stopPropagation(); setLightbox(i => i - 1); }}>
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          <img src={albumLargeUrl(lbImg)} alt={lbImg.name} referrerPolicy="no-referrer"
+            onClick={e => e.stopPropagation()} />
+          {lightbox < album.images.length - 1 && (
+            <button className="pt-album-lb-nav pt-album-lb-next"
+              onClick={e => { e.stopPropagation(); setLightbox(i => i + 1); }}>
+              <ChevronRight size={22} />
+            </button>
+          )}
+          <div className="pt-album-lb-caption">
+            <span>{lbImg.name}</span>
+            <span>{lightbox + 1} / {album.images.length}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1367,10 +1522,13 @@ export function PhotoTable() {
 
       {view === 'list' && (
         <PhotoRecordDB key={refreshKey} projectId={projectId} projectName={project?.name}
-          onNew={() => setView('upload')} onDetail={openDetail}
+          onNew={() => setView('upload')} onAlbum={() => setView('album')} onDetail={openDetail}
           srcCtx={srcCtx.srcTable ? srcCtx : null}
           autoOpen={autoParam === 'open'}
           filterMode={filterMode} srcDate={srcDate} />
+      )}
+      {view === 'album' && (
+        <DriveAlbum driveRootId={project?.drive_folder_id || ''} onBack={() => setView('list')} />
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}
