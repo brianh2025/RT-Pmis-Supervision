@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Camera, ChevronLeft, ChevronRight, Printer, Upload, Cloud, FolderOpen,
   RotateCcw, X, Check, FileImage, MapPin, RefreshCw,
-  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine, Images,
+  Save, Loader2, FileText, Plus, Trash2, Lock, Zap, ArrowLeft, Link2, HelpCircle, ScanLine, Images, CalendarDays,
 } from 'lucide-react';
 import * as exifr from 'exifr';
 import { supabase } from '../lib/supabaseClient';
@@ -586,11 +586,11 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onAlbum, o
     <div className="pt-step-list">
       {/* 新增按鈕列（標題已移至 Topbar pageLabel） */}
       <div className="pt-new-btn-bar">
-        <button className="pt-btn pt-btn-primary" onClick={onNew}>
-          <Plus size={13} />新增照片記錄
+        <button className="pt-big-btn pt-big-btn-primary" onClick={onNew}>
+          <Plus size={20} />新增照片記錄
         </button>
-        <button className="pt-btn" style={{ marginLeft: 8 }} onClick={onAlbum}>
-          <Images size={13} />相簿瀏覽
+        <button className="pt-big-btn" onClick={onAlbum}>
+          <Images size={20} />相簿瀏覽
         </button>
         <span className="pt-tab-count" style={{ marginLeft: 8 }}>{records.length}</span>
       </div>
@@ -931,7 +931,10 @@ function DriveAlbum({ driveRootId = '', onBack }) {
     error: driveRoot ? '' : '此工程未設定雲端資料夾（請於「編輯工程」填入雲端資料夾 ID），且未設定全域 VITE_GOOGLE_DRIVE_FOLDER_ID',
     path: [], folders: [], images: [],
   }));
-  const [lightbox, setLightbox] = useState(null); // null 或 images 索引
+  const [mode, setMode] = useState('date');       // date = 日期條列瀏覽；folder = 資料夾瀏覽
+  // dateScan: { loading, loaded, error, progress, groups: [{ date, items, start }], flat }
+  const [dateScan, setDateScan] = useState({ loading: false, loaded: false, error: '', progress: '', groups: [], flat: [] });
+  const [lightbox, setLightbox] = useState(null); // null 或目前清單索引
 
   /* 進入時授權並載入根資料夾 */
   useEffect(() => {
@@ -946,6 +949,50 @@ function DriveAlbum({ driveRootId = '', onBack }) {
       });
     return () => { cancelled = true; };
   }, [driveRoot]);
+
+  /* 日期模式：遞迴掃描全部照片，依日期新→舊分組條列 */
+  useEffect(() => {
+    if (mode !== 'date' || !album.token || dateScan.loaded || dateScan.loading) return;
+    let cancelled = false;
+    setDateScan(prev => ({ ...prev, loading: true, error: '', progress: '掃描中…' }));
+    (async () => {
+      try {
+        const byDate = new Map();
+        const queue = [{ id: driveRoot, path: [] }];
+        let folderN = 0, imageN = 0;
+        while (queue.length) {
+          if (cancelled) return;
+          const { id, path } = queue.shift();
+          const { folders, images } = await listDriveFolder(id, album.token);
+          folderN++;
+          const { driveDate, driveWorkItem } = parsePathMeta(path);
+          for (const img of images) {
+            imageN++;
+            const key = driveDate || '';
+            if (!byDate.has(key)) byDate.set(key, []);
+            byDate.get(key).push({ ...img, workItem: driveWorkItem });
+          }
+          // 結構深度：類別 → 工項 → 日期，最多再往下一層保險
+          if (path.length < 4) for (const f of folders) queue.push({ id: f.id, path: [...path, f] });
+          if (!cancelled) setDateScan(prev => ({ ...prev, progress: `掃描中…已掃 ${folderN} 個資料夾、${imageN} 張照片` }));
+        }
+        let offset = 0;
+        const groups = [...byDate.entries()]
+          .sort((a, b) => (b[0] || '0000').localeCompare(a[0] || '0000'))
+          .map(([date, items]) => {
+            items.sort((x, y) => (x.workItem || '').localeCompare(y.workItem || '') || (x.name || '').localeCompare(y.name || ''));
+            const g = { date, items, start: offset };
+            offset += items.length;
+            return g;
+          });
+        const flat = groups.flatMap(g => g.items);
+        if (!cancelled) setDateScan({ loading: false, loaded: true, error: '', progress: '', groups, flat });
+      } catch (e) {
+        if (!cancelled) setDateScan(prev => ({ ...prev, loading: false, error: `掃描失敗：${e.message}` }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mode, album.token, dateScan.loaded, dateScan.loading, driveRoot]);
 
   async function openFolder(folderId, newPath) {
     setAlbum(prev => ({ ...prev, loading: true }));
@@ -965,41 +1012,89 @@ function DriveAlbum({ driveRootId = '', onBack }) {
     openFolder(newPath.length ? newPath[newPath.length - 1].id : driveRoot, newPath);
   }
 
+  /* 燈箱清單：日期模式用掃描後的全量清單，資料夾模式用當前資料夾 */
+  const lbList = mode === 'date' ? dateScan.flat : album.images;
+
   /* 燈箱鍵盤操作：← → 換張、Esc 關閉 */
   useEffect(() => {
     if (lightbox === null) return;
     const onKey = (e) => {
       if (e.key === 'Escape') setLightbox(null);
       else if (e.key === 'ArrowLeft')  setLightbox(i => Math.max(0, i - 1));
-      else if (e.key === 'ArrowRight') setLightbox(i => Math.min(album.images.length - 1, i + 1));
+      else if (e.key === 'ArrowRight') setLightbox(i => Math.min(lbList.length - 1, i + 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [lightbox, album.images.length]);
+  }, [lightbox, lbList.length]);
 
-  const lbImg = lightbox !== null ? album.images[lightbox] : null;
+  const lbImg = lightbox !== null ? lbList[lightbox] : null;
 
   return (
     <div className="pt-album-view">
       <div className="pt-album-toolbar">
         <button className="pt-btn" onClick={onBack}><ChevronLeft size={13} />返回列表</button>
         <span className="pt-album-title"><Images size={14} />雲端相簿瀏覽</span>
+        <div className="pt-album-mode">
+          <button className={`pt-btn${mode === 'date' ? ' pt-btn-primary' : ''}`}
+            onClick={() => { setMode('date'); setLightbox(null); }}>
+            <CalendarDays size={13} />日期瀏覽
+          </button>
+          <button className={`pt-btn${mode === 'folder' ? ' pt-btn-primary' : ''}`}
+            onClick={() => { setMode('folder'); setLightbox(null); }}>
+            <FolderOpen size={13} />資料夾瀏覽
+          </button>
+        </div>
         <span className="pt-album-hint">唯讀瀏覽，不會下載或變更任何檔案</span>
       </div>
 
-      {/* 麵包屑 */}
-      <div className="pt-drive-breadcrumb">
-        <button onClick={() => goUp(-1)}>根目錄</button>
-        {album.path.map((seg, i) => (
-          <span key={seg.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <span className="pt-drive-bc-sep">›</span>
-            <button onClick={() => goUp(i)}>{seg.name}</button>
-          </span>
-        ))}
-      </div>
+      {/* 麵包屑（資料夾模式） */}
+      {mode === 'folder' && (
+        <div className="pt-drive-breadcrumb">
+          <button onClick={() => goUp(-1)}>根目錄</button>
+          {album.path.map((seg, i) => (
+            <span key={seg.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span className="pt-drive-bc-sep">›</span>
+              <button onClick={() => goUp(i)}>{seg.name}</button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {album.error ? (
         <div className="pt-drive-empty">{album.error}</div>
+      ) : mode === 'date' ? (
+        /* ── 日期條列瀏覽 ── */
+        (album.loading || dateScan.loading) ? (
+          <div className="pt-drive-loading"><Loader2 size={14} className="pt-spin" />{dateScan.progress || '載入中…'}</div>
+        ) : dateScan.error ? (
+          <div className="pt-drive-empty">{dateScan.error}</div>
+        ) : dateScan.flat.length === 0 ? (
+          <div className="pt-drive-empty">雲端資料夾內沒有照片</div>
+        ) : (
+          <>
+            <div className="pt-album-count">共 {dateScan.flat.length} 張照片，依日期由新至舊條列，點擊可放大檢視</div>
+            {dateScan.groups.map(g => (
+              <div key={g.date || 'none'} className="pt-album-date-group">
+                <div className="pt-album-date-header">
+                  <CalendarDays size={14} />
+                  <span className="pt-album-date-label">{g.date ? toRocDate(g.date) : '未依日期歸檔'}</span>
+                  <span className="pt-album-date-count">{g.items.length} 張</span>
+                </div>
+                <div className="pt-album-grid">
+                  {g.items.map((img, i) => (
+                    <button key={img.id} className="pt-album-cell" onClick={() => setLightbox(g.start + i)}>
+                      <img src={albumThumbUrl(img)} alt={img.name} loading="lazy" referrerPolicy="no-referrer"
+                        onError={e => { e.target.style.opacity = 0.15; }} />
+                      <span className="pt-album-cell-name" title={img.workItem ? `${img.workItem}｜${img.name}` : img.name}>
+                        {img.workItem ? `${img.workItem}｜${img.name}` : img.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )
       ) : album.loading ? (
         <div className="pt-drive-loading"><Loader2 size={14} className="pt-spin" />載入中…</div>
       ) : (
@@ -1049,15 +1144,15 @@ function DriveAlbum({ driveRootId = '', onBack }) {
           )}
           <img src={albumLargeUrl(lbImg)} alt={lbImg.name} referrerPolicy="no-referrer"
             onClick={e => e.stopPropagation()} />
-          {lightbox < album.images.length - 1 && (
+          {lightbox < lbList.length - 1 && (
             <button className="pt-album-lb-nav pt-album-lb-next"
               onClick={e => { e.stopPropagation(); setLightbox(i => i + 1); }}>
               <ChevronRight size={22} />
             </button>
           )}
           <div className="pt-album-lb-caption">
-            <span>{lbImg.name}</span>
-            <span>{lightbox + 1} / {album.images.length}</span>
+            <span>{lbImg.workItem ? `${lbImg.workItem}｜${lbImg.name}` : lbImg.name}</span>
+            <span>{lightbox + 1} / {lbList.length}</span>
           </div>
         </div>
       )}
