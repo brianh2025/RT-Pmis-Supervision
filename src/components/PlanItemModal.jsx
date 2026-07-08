@@ -65,9 +65,13 @@ function ToggleBadge({ val, opts, onChange }) {
   );
 }
 
-export function PlanItemModal({ mode, project, pdfUrl, onClose, onSaved }) {
+export function PlanItemModal({ mode, project, pdfUrl, initialRows, onClose, onSaved }) {
   const { user } = useAuth();
-  const [rows, setRows] = useState([makeRow(mode)]);
+  const [rows, setRows] = useState(() =>
+    initialRows?.length
+      ? initialRows.map(r => ({ ...makeRow(mode), ...r, _uid: crypto.randomUUID() }))
+      : [makeRow(mode)]
+  );
   const [saving, setSaving] = useState(false);
   const [existingCount, setExistingCount] = useState(0);
   const tableRef = useRef(null);
@@ -124,6 +128,11 @@ export function PlanItemModal({ mode, project, pdfUrl, onClose, onSaved }) {
       const inserts = filled.map((r, idx) => {
         const row = { project_id: project.id, created_by: user?.id, sort_order: existingCount + idx };
         cols.forEach(c => { row[c.k] = r[c.k] ?? ''; });
+        // PDF 辨識帶入的項次/備註（不在編輯欄位中，但屬管制表欄位）
+        if (mode === 'submission') {
+          if (r.no) row.no = r.no;
+          if (r.remark) row.remark = r.remark;
+        }
         return row;
       });
       const { error } = await supabase.from(dbTable).insert(inserts);
@@ -158,6 +167,11 @@ export function PlanItemModal({ mode, project, pdfUrl, onClose, onSaved }) {
             {existingCount > 0 && (
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg)', padding: '2px 8px', borderRadius: 10 }}>
                 現有 {existingCount} 筆，此次將額外新增
+              </span>
+            )}
+            {initialRows?.length > 0 && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-bg)', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                已辨識 {initialRows.length} 筆，請核對後儲存
               </span>
             )}
           </div>

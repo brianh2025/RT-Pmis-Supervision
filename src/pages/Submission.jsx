@@ -3,11 +3,12 @@
    Based on MaterialControl MCS spreadsheet interface
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Send, Plus, Trash2, Download, Columns, RotateCcw, Archive, Loader2, CheckCircle, Upload, ClipboardList } from 'lucide-react';
+import { Send, Plus, Trash2, Download, Columns, RotateCcw, Archive, Loader2, CheckCircle, Upload, ClipboardList, FileText } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { uploadPdfToDrive } from '../utils/uploadPdfToDrive';
+import { parseSubmissionMasterPdf } from '../utils/parseSubmissionMasterPdf';
 import { PlanItemModal } from '../components/PlanItemModal';
 import './MaterialControl.css';
 
@@ -150,6 +151,8 @@ export function Submission() {
   const [planPdfUrl, setPlanPdfUrl] = useState('');
   const [showPlanImport, setShowPlanImport] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [importRows, setImportRows] = useState(null);
   const saveQueueRef = useRef({});
   const editInputRef = useRef(null);
 
@@ -290,6 +293,31 @@ export function Submission() {
     }
   }
 
+  /* ── 匯入管制總表 PDF 辨識填入 ── */
+  async function handleImportMaster(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setRecognizing(true);
+    try {
+      const { rows: parsed, scanned, headerFound } = await parseSubmissionMasterPdf(file);
+      if (scanned) {
+        alert('此 PDF 為掃描版（純圖片），無文字層可辨識。\n請改用文字版 PDF（由 Word 直接轉出），或使用「上傳監造計畫 PDF → 開始定項」手動填寫。');
+        return;
+      }
+      if (!headerFound || !parsed.length) {
+        alert('未辨識到「材料設備送審管制總表」表格內容。\n請確認 PDF 內含表 5.3-1（需有「契約項次」「材料/設備名稱」等表頭）。');
+        return;
+      }
+      setImportRows(parsed);
+      setShowPlanImport(true);
+    } catch (err) {
+      alert(`辨識失敗：${err.message || '未知錯誤'}`);
+    } finally {
+      setRecognizing(false);
+    }
+  }
+
   /* ── Seed 材料送審預設範本 ── */
   async function seedSub() {
     if (!supabase) return;
@@ -394,6 +422,13 @@ export function Submission() {
               {uploadingPdf ? <Loader2 size={12} className="mcs-spin" /> : <Upload size={12} />}
               上傳監造計畫 PDF
               <input type="file" accept=".pdf" hidden onChange={handleUploadPdf} />
+            </label>
+          )}
+          {tab === 0 && (
+            <label className="mcs-btn" style={{ cursor: recognizing ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} title="選擇監造計畫「表 5.3-1 材料設備送審管制總表」PDF，自動辨識填入">
+              {recognizing ? <Loader2 size={12} className="mcs-spin" /> : <FileText size={12} />}
+              {recognizing ? '辨識中…' : '匯入管制總表'}
+              <input type="file" accept=".pdf" hidden disabled={recognizing} onChange={handleImportMaster} />
             </label>
           )}
           {tab === 0 && planPdfUrl && (
@@ -529,8 +564,9 @@ export function Submission() {
           mode="submission"
           project={{ id: projectId }}
           pdfUrl={planPdfUrl}
-          onClose={() => setShowPlanImport(false)}
-          onSaved={() => { setShowPlanImport(false); loadTable(0).then(sub => setTables(prev => [sub, prev[1]])); }}
+          initialRows={importRows}
+          onClose={() => { setShowPlanImport(false); setImportRows(null); }}
+          onSaved={() => { setShowPlanImport(false); setImportRows(null); loadTable(0).then(sub => setTables(prev => [sub, prev[1]])); }}
         />
       )}
     </div>
