@@ -1136,7 +1136,10 @@ export function Quality() {
           inspection={formRow}
           project={project}
           onClose={() => setFormRow(null)}
-          onSave={newRecord => setInspections(prev => [newRecord, ...prev])}
+          onSave={rec => setInspections(prev => prev.some(r => r.id === rec.id)
+            ? prev.map(r => r.id === rec.id ? rec : r)
+            : [rec, ...prev])}
+          onDelete={id => setInspections(prev => prev.filter(r => r.id !== id))}
         />
       )}
 

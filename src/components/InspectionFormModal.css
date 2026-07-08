@@ -49,6 +49,12 @@
 }
 .ifm-btn-primary:hover { background: var(--color-primary-dark); }
 .ifm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.ifm-btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444; border-color: rgba(239, 68, 68, 0.4);
+}
+.ifm-btn-danger:hover { background: rgba(239, 68, 68, 0.22); }
+.ifm-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 .ifm-btn-close {
   padding: 4px; background: transparent; border: none; cursor: pointer;
   color: var(--color-text-muted); border-radius: var(--radius-sm);

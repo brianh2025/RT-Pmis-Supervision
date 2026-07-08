@@ -399,7 +399,7 @@ function buildFormHtml({ template, header, items, defect, signImgSrc, supervisor
 }
 
 /* ── 主元件 ── */
-export default function InspectionFormModal({ inspection, project, onClose, onSave }) {
+export default function InspectionFormModal({ inspection, project, onClose, onSave, onDelete }) {
   const { user } = useAuth();
   const guessedCode = guessTemplateCode(inspection?.work_item);
   const [templateCode, setTemplateCode] = useState(guessedCode || '');
@@ -580,7 +580,7 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     finally { setSaving(false); }
   }
 
-  /* 儲存至 construction_inspections */
+  /* 儲存至 construction_inspections：既有記錄（有 id）更新原筆，否則新增 */
   async function handleSaveDb() {
     if (!template) return alert('請先選擇工項');
     if (!supabase) return alert('資料庫未連線');
@@ -590,9 +590,8 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
       const overallResult = results.includes('fail') ? '不合格'
         : results.length > 0 && results.every(r => r === 'pass') ? '合格'
         : '待複驗';
-      const payload = {
-        project_id:   project?.id,
-        created_by:   user?.id,
+      const isEdit = !!inspection?.id;
+      const fields = {
         inspect_date: header.date,
         work_item:    template.label,
         location:     header.location || null,
@@ -601,12 +600,28 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
         result:       overallResult,
         remark:       defect.resolved ? '已立即完成改善' : defect.unresolved ? '未完成改善，需追蹤' : null,
       };
-      const { data, error } = await supabase.from('construction_inspections').insert([payload]).select().single();
+      const { data, error } = isEdit
+        ? await supabase.from('construction_inspections').update(fields).eq('id', inspection.id).select().single()
+        : await supabase.from('construction_inspections').insert([{ project_id: project?.id, created_by: user?.id, ...fields }]).select().single();
       if (error) throw error;
-      alert(`已儲存至施工檢驗管制表（結果：${overallResult}）`);
+      alert(`已${isEdit ? '更新' : '儲存至'}施工檢驗管制表（結果：${overallResult}）`);
       onSave?.(data);
       onClose();
     } catch (e) { alert(`儲存失敗：${e.message}`); }
+    finally { setSavingDb(false); }
+  }
+
+  /* 刪除既有抽查記錄 */
+  async function handleDeleteDb() {
+    if (!inspection?.id || !supabase) return;
+    if (!window.confirm('確定刪除這筆抽查記錄？此操作無法復原。')) return;
+    setSavingDb(true);
+    try {
+      const { error } = await supabase.from('construction_inspections').delete().eq('id', inspection.id);
+      if (error) throw error;
+      onDelete?.(inspection.id);
+      onClose();
+    } catch (e) { alert(`刪除失敗：${e.message}`); }
     finally { setSavingDb(false); }
   }
 
@@ -629,8 +644,13 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
             <input ref={pdfFileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handlePdfFile} />
             <button className="ifm-btn ifm-btn-primary" onClick={handleSaveDb} disabled={savingDb}>
               {savingDb ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-              儲存至管制表
+              {inspection?.id ? '更新管制表' : '儲存至管制表'}
             </button>
+            {inspection?.id && (
+              <button className="ifm-btn ifm-btn-danger" onClick={handleDeleteDb} disabled={savingDb}>
+                <Trash2 size={13} />刪除
+              </button>
+            )}
             <button className="ifm-btn" onClick={handlePrint}><Printer size={13} />列印 / PDF</button>
             <button className="ifm-btn" onClick={handleUploadDrive} disabled={saving}>
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Cloud size={13} />}
