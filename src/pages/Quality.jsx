@@ -859,13 +859,13 @@ export function Quality() {
                   <th style={{ width: 80 }}>結果</th>
                   <th style={{ width: 90 }}>缺失狀態</th>
                   <th style={{ width: 52 }}>照片</th>
-                  <th style={{ width: 68 }}></th>
-                  <th style={{ width: 130 }}>備註</th>
+                  <th style={{ width: 96 }}></th>
+                  <th style={{ width: 120 }}>備註</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredInsp.length === 0 ? (
-                  <tr><td colSpan={10} className="mcs-empty">
+                  <tr><td colSpan={11} className="mcs-empty">
                     <ShieldCheck size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
                     <div>尚無施工檢驗記錄 — 點擊「新增檢驗」建立</div>
                   </td></tr>
