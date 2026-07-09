@@ -39,6 +39,9 @@ const INSPECT_RESULT = {
 };
 const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 
+/* 非查驗性日誌記事（休假、天候、場地管理），不列入待建立查驗 */
+const NON_INSPECT_RE = /連休|連假|休假|停工|無施工|颱風|豪雨|雨量|降雨|積水|排除|清理|整理|維持|打掃|環境|便道|善後/;
+
 const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
 const WORK_ITEMS_PRESET = [
@@ -468,6 +471,7 @@ export function Quality() {
     for (const r of diaryItems) {
       if (!r.item_name || !r.log_date) continue;
       if (r.is_construction === false) continue;
+      if (NON_INSPECT_RE.test(r.item_name)) continue;
       if (!(parseFloat(r.today_qty) >= 0.1)) continue;
       const key = `${r.log_date}|${r.item_name}|施工`;
       if (map.has(key) || hasInsp(r.log_date, r.item_name)) continue;
