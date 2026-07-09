@@ -409,7 +409,8 @@ export function Quality() {
     if (!editCell || !supabase) return;
     const { id, field, table } = editCell;
     const patch = { [field]: editVal || null };
-    await supabase.from(table).update(patch).eq('id', id);
+    const { error } = await supabase.from(table).update(patch).eq('id', id);
+    if (error) { alert(`儲存失敗：${error.message}`); setEditCell(null); setEditVal(''); return; }
     if (table === 'construction_inspections') {
       setInspections(prev => prev.map(r => r.id === id ? { ...r, [field]: editVal } : r));
     } else if (table === 'quality_issues') {
@@ -426,23 +427,28 @@ export function Quality() {
   async function deleteSelected() {
     if (!selected.size || !supabase) return;
     const ids = Array.from(selected);
-    if (tab === 0) {
-      await supabase.from('construction_inspections').delete().in('id', ids);
-      setInspections(prev => prev.filter(r => !selected.has(r.id)));
-    } else if (tab === 1) {
-      await supabase.from('quality_issues').delete().in('id', ids);
-      setIssues(prev => prev.filter(r => !selected.has(r.id)));
-    } else if (tab === 2) {
-      await supabase.from('mcs_test').delete().in('id', ids);
-      setTests(prev => prev.filter(r => !selected.has(r.id)));
-    }
+    const table = tab === 0 ? 'construction_inspections' : tab === 1 ? 'quality_issues' : 'mcs_test';
+    const { error } = await supabase.from(table).delete().in('id', ids);
+    if (error) { alert(`刪除失敗：${error.message}`); return; }
+    if (tab === 0) setInspections(prev => prev.filter(r => !selected.has(r.id)));
+    else if (tab === 1) setIssues(prev => prev.filter(r => !selected.has(r.id)));
+    else setTests(prev => prev.filter(r => !selected.has(r.id)));
     setSelected(new Set());
+  }
+
+  /* 單筆刪除（列尾垃圾桶鈕） */
+  async function deleteOneInsp(row) {
+    if (!supabase || !window.confirm(`確定刪除「${row.work_item || '（未命名）'}」這筆檢驗記錄？`)) return;
+    const { error } = await supabase.from('construction_inspections').delete().eq('id', row.id);
+    if (error) { alert(`刪除失敗：${error.message}`); return; }
+    setInspections(prev => prev.filter(r => r.id !== row.id));
   }
 
   function togSel(id) {
     setSelected(prev => { const ns = new Set(prev); ns.has(id) ? ns.delete(id) : ns.add(id); return ns; });
   }
 
+  /* 以函式呼叫（非 JSX 元件）使用：內部元件每次渲染型別都不同，會導致 input 重掛載失焦 */
   function EditableCell({ id, field, table, val, type = 'text' }) {
     const isEd = editCell?.id === id && editCell?.field === field;
     if (isEd) {
@@ -755,7 +761,7 @@ export function Quality() {
 
       {/* Tab 0: 施工抽查 — 工項分組總覽 */}
       {tab === 0 && workItemGroups.length > 0 && (
-        <div style={{ padding: '0 0 8px 0', overflowX: 'auto' }}>
+        <div style={{ padding: '0 0 8px 0', overflowX: 'auto', maxHeight: 260, overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
               <tr style={{ background: 'var(--color-bg2)', color: 'var(--color-text-muted)' }}>
@@ -846,7 +852,7 @@ export function Quality() {
                   <th style={{ width: 90 }}>缺失狀態</th>
                   <th style={{ width: 52 }}>照片</th>
                   <th>備註</th>
-                  <th style={{ width: 36 }}></th>
+                  <th style={{ width: 68 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -863,19 +869,19 @@ export function Quality() {
                         <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="inspect_date" table="construction_inspections" val={row.inspect_date} type="date" />
+                        {EditableCell({ id: row.id, field: 'inspect_date', table: 'construction_inspections', val: row.inspect_date, type: 'date' })}
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="work_item" table="construction_inspections" val={row.work_item} />
+                        {EditableCell({ id: row.id, field: 'work_item', table: 'construction_inspections', val: row.work_item })}
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="location" table="construction_inspections" val={row.location} />
+                        {EditableCell({ id: row.id, field: 'location', table: 'construction_inspections', val: row.location })}
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="inspect_type" table="construction_inspections" val={row.inspect_type} />
+                        {EditableCell({ id: row.id, field: 'inspect_type', table: 'construction_inspections', val: row.inspect_type })}
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="inspector" table="construction_inspections" val={row.inspector} />
+                        {EditableCell({ id: row.id, field: 'inspector', table: 'construction_inspections', val: row.inspector })}
                       </td>
                       <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                         <span onClick={() => cycleInspResult(row.id, row.result)} title="點擊切換結果"
@@ -906,14 +912,18 @@ export function Quality() {
                         </button>
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        <EditableCell id={row.id} field="remark" table="construction_inspections" val={row.remark} />
+                        {EditableCell({ id: row.id, field: 'remark', table: 'construction_inspections', val: row.remark })}
                       </td>
-                      <td style={{ padding: '2px 4px', textAlign: 'center' }}>
+                      <td style={{ padding: '2px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <button className="mcs-photo-btn" title="填寫標準抽查單" onClick={() => setFormRow(row)}>
                           <FileText size={11} />
                         </button>
                         <button className="mcs-photo-btn" title="列印抽查單" onClick={() => setPrintRow(row)}>
                           <Printer size={11} />
+                        </button>
+                        <button className="mcs-photo-btn" title="刪除這筆記錄" style={{ color: '#ef4444' }}
+                          onClick={() => deleteOneInsp(row)}>
+                          <Trash2 size={11} />
                         </button>
                       </td>
                     </tr>
@@ -966,13 +976,13 @@ export function Quality() {
                       <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="inspection_date" table="quality_issues" val={row.inspection_date} type="date" />
+                      {EditableCell({ id: row.id, field: 'inspection_date', table: 'quality_issues', val: row.inspection_date, type: 'date' })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="location" table="quality_issues" val={row.location} />
+                      {EditableCell({ id: row.id, field: 'location', table: 'quality_issues', val: row.location })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="item" table="quality_issues" val={row.item} />
+                      {EditableCell({ id: row.id, field: 'item', table: 'quality_issues', val: row.item })}
                     </td>
                     <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                       <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px',
@@ -981,13 +991,13 @@ export function Quality() {
                       </span>
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="description" table="quality_issues" val={row.description} />
+                      {EditableCell({ id: row.id, field: 'description', table: 'quality_issues', val: row.description })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="responsible" table="quality_issues" val={row.responsible} />
+                      {EditableCell({ id: row.id, field: 'responsible', table: 'quality_issues', val: row.responsible })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="deadline" table="quality_issues" val={row.deadline} type="date" />
+                      {EditableCell({ id: row.id, field: 'deadline', table: 'quality_issues', val: row.deadline, type: 'date' })}
                     </td>
                     <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
@@ -1006,10 +1016,10 @@ export function Quality() {
                       </div>
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="resolve_date" table="quality_issues" val={row.resolve_date} type="date" />
+                      {EditableCell({ id: row.id, field: 'resolve_date', table: 'quality_issues', val: row.resolve_date, type: 'date' })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="remark" table="quality_issues" val={row.remark} />
+                      {EditableCell({ id: row.id, field: 'remark', table: 'quality_issues', val: row.remark })}
                     </td>
                   </tr>
                 );
@@ -1058,25 +1068,25 @@ export function Quality() {
                     </td>
                     <td style={{ padding: '2px 6px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-text-muted)' }}>{row.no || '—'}</td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="ci" table="mcs_test" val={row.ci} />
+                      {EditableCell({ id: row.id, field: 'ci', table: 'mcs_test', val: row.ci })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="name" table="mcs_test" val={row.name} />
+                      {EditableCell({ id: row.id, field: 'name', table: 'mcs_test', val: row.name })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="freq" table="mcs_test" val={row.freq} />
+                      {EditableCell({ id: row.id, field: 'freq', table: 'mcs_test', val: row.freq })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="p_date" table="mcs_test" val={row.p_date} />
+                      {EditableCell({ id: row.id, field: 'p_date', table: 'mcs_test', val: row.p_date })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="a_date" table="mcs_test" val={row.a_date} />
+                      {EditableCell({ id: row.id, field: 'a_date', table: 'mcs_test', val: row.a_date })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="cum_qty" table="mcs_test" val={row.cum_qty} />
+                      {EditableCell({ id: row.id, field: 'cum_qty', table: 'mcs_test', val: row.cum_qty })}
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="cum_smp" table="mcs_test" val={row.cum_smp} />
+                      {EditableCell({ id: row.id, field: 'cum_smp', table: 'mcs_test', val: row.cum_smp })}
                     </td>
                     <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                       <span onClick={() => cycleTestResult(row.id, resultKey)} title="點擊切換可入判定"
@@ -1087,7 +1097,7 @@ export function Quality() {
                       </span>
                     </td>
                     <td style={{ padding: '2px 4px' }}>
-                      <EditableCell id={row.id} field="remark" table="mcs_test" val={row.remark} />
+                      {EditableCell({ id: row.id, field: 'remark', table: 'mcs_test', val: row.remark })}
                     </td>
                   </tr>
                 );
