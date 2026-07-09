@@ -844,14 +844,14 @@ export function Quality() {
                       onChange={() => setSelected(selected.size === filteredInsp.length ? new Set() : new Set(filteredInsp.map(r => r.id)))} />
                   </th>
                   <th style={{ width: 90 }}>檢驗日期</th>
-                  <th style={{ width: 160 }}>工程項目</th>
+                  <th>工程項目</th>
                   <th style={{ width: 120 }}>部位</th>
                   <th style={{ width: 100 }}>檢驗類型</th>
                   <th style={{ width: 90 }}>人員</th>
                   <th style={{ width: 80 }}>結果</th>
                   <th style={{ width: 90 }}>缺失狀態</th>
                   <th style={{ width: 52 }}>照片</th>
-                  <th>備註</th>
+                  <th style={{ width: 130 }}>備註</th>
                   <th style={{ width: 68 }}></th>
                 </tr>
               </thead>
