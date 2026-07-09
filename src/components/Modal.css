@@ -27,6 +27,68 @@
   overflow: hidden;
 }
 
+/* ─── 簡易 Modal（modal-box 系列，Quality / Archive 使用） ───
+   先前 .modal-box 未定義任何樣式，彈窗呈透明底導致內容與底層頁面疊在一起看不清 */
+.modal-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1;
+}
+.modal-close:hover { background: rgba(239, 68, 68, 0.1); color: var(--color-error); }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-surface-border);
+}
+
+.btn-secondary {
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid var(--color-surface-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-secondary:hover { background: var(--color-surface-border); }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-primary:hover:not(:disabled) { background: var(--color-primary-dark); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
 /* ─── Modal Header ────────────────────────────────────── */
 .modal-header {
   display: flex;

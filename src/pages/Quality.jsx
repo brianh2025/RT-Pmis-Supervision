@@ -4,10 +4,14 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload, ScanText } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
+import {
+  renderPdfPagesToImages, recognizeInspectionImage, collectOcrParagraphs,
+  parseInspectionHeader, extractItemsFromParagraphs,
+} from '../utils/inspectionOcr';
 import { InspectionImportModal } from '../components/InspectionImportModal';
-import { guessTemplateCode } from '../config/inspectionFormTemplates';
+import { guessTemplateCode, getTemplateByCode } from '../config/inspectionFormTemplates';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -50,9 +54,12 @@ const WORK_ITEMS_PRESET = [
   '鋼筋進場', '混凝土進場', '材料進場驗收',
 ];
 
+const INSPECT_TYPE_CHOICES = ['檢驗停留點-抽查', '不定期抽查'];
+
 const EMPTY_INSPECT = {
   inspect_date: new Date().toISOString().split('T')[0],
-  work_item: '', location: '', inspect_type: '', inspector: '', result: '待複驗', remark: '',
+  work_item: '', location: '', inspect_type: INSPECT_TYPE_CHOICES[0], inspector: '', result: '待複驗', remark: '',
+  fail_action: '',   // 不合格處置：improved = 當日已改善完成、issue = 開立缺失改善單（不寫入資料表）
 };
 const EMPTY_QUALITY = {
   inspection_date: new Date().toISOString().split('T')[0],
@@ -240,23 +247,43 @@ export function Quality() {
     if (!supabase || !inspForm.work_item.trim()) return;
     setSaving(true);
     try {
+      const { fail_action, ...fields } = inspForm;
       const { data, error } = await supabase.from('construction_inspections').insert([{
-        project_id: projectId, created_by: user?.id, ...inspForm,
+        project_id: projectId, created_by: user?.id, ...fields,
+        remark: fail_action === 'improved'
+          ? [fields.remark, '當日已改善完成'].filter(Boolean).join('；')
+          : fields.remark,
       }]).select().single();
       if (error) throw error;
       if (data) {
         setInspections(prev => [data, ...prev]);
         if (inspForm.result === '不合格') {
           const today = new Date().toISOString().split('T')[0];
-          if (confirm(`此抽查結果為「不合格」，是否立即建立缺失改善單？\n\n工項：${inspForm.work_item}\n位置：${inspForm.location || '（未填）'}`)) {
+          const issuePayload = {
+            project_id: projectId, created_by: user?.id,
+            inspection_date: inspForm.inspect_date || today,
+            location: inspForm.location || null,
+            item: inspForm.work_item,
+            severity: 'major',
+            description: inspForm.remark || null,
+            source_table: 'construction_inspections', source_record_id: data.id,
+          };
+          if (fail_action === 'improved') {
+            // 當日已改善完成：缺失單直接以「已改善」建檔留存軌跡，改善日期即檢驗日期
             const { data: issue } = await supabase.from('quality_issues').insert([{
-              project_id: projectId, created_by: user?.id,
-              inspection_date: inspForm.inspect_date || today,
-              location: inspForm.location || null,
-              item: inspForm.work_item,
-              severity: 'major', status: 'open',
-              description: inspForm.remark || null,
-              source_table: 'construction_inspections', source_record_id: data.id,
+              ...issuePayload, status: 'resolved',
+              resolve_date: inspForm.inspect_date || today,
+              remark: '當日已改善完成',
+            }]).select().single();
+            if (issue) setIssues(prev => [issue, ...prev]);
+          } else if (fail_action === 'issue') {
+            const { data: issue } = await supabase.from('quality_issues').insert([{
+              ...issuePayload, status: 'open',
+            }]).select().single();
+            if (issue) setIssues(prev => [issue, ...prev]);
+          } else if (confirm(`此抽查結果為「不合格」，是否立即建立缺失改善單？\n\n工項：${inspForm.work_item}\n位置：${inspForm.location || '（未填）'}`)) {
+            const { data: issue } = await supabase.from('quality_issues').insert([{
+              ...issuePayload, status: 'open',
             }]).select().single();
             if (issue) setIssues(prev => [issue, ...prev]);
           }
@@ -494,9 +521,68 @@ export function Quality() {
 
   /* 點選待建立項：帶入日期與工項開啟新增檢驗 */
   function startPendingInsp(it) {
-    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
-      inspect_type: it.source === '材料進場' ? '材料查驗' : '查驗' });
+    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name });
     setShowInspModal(true);
+  }
+
+  /* ── 新增檢驗：匯入抽查紀錄 PDF 掃描檔辨識（重用標準抽查單的 OCR 管線） ── */
+  const inspPdfInputRef = useRef(null);
+  const [inspOcrLoading, setInspOcrLoading] = useState(false);
+  const [inspPdfPages, setInspPdfPages] = useState([]);
+  const [inspPdfPickerOpen, setInspPdfPickerOpen] = useState(false);
+
+  async function handleInspPdfFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!import.meta.env.VITE_GOOGLE_API_KEY) { alert('尚未設定 VITE_GOOGLE_API_KEY，無法使用 PDF 辨識匯入'); return; }
+    setInspOcrLoading(true);
+    try {
+      const pages = await renderPdfPagesToImages(file);
+      setInspPdfPages(pages);
+      setInspPdfPickerOpen(true);
+    } catch (err) {
+      alert(`PDF 讀取失敗：${err.message}`);
+    } finally {
+      setInspOcrLoading(false);
+    }
+  }
+
+  async function pickInspPdfPage(dataUrl) {
+    setInspPdfPickerOpen(false);
+    setInspOcrLoading(true);
+    try {
+      const visionResponse = await recognizeInspectionImage(dataUrl);
+      const paragraphs = collectOcrParagraphs(visionResponse);
+      if (!paragraphs.length) { alert('未辨識到任何文字，請確認掃描檔清晰度'); return; }
+      const parsed = parseInspectionHeader(paragraphs);
+
+      // 由表單標題推工項範本，再依各項 ○╳ 計算整體結果（同標準抽查單邏輯）
+      const code = guessTemplateCode(parsed.formTitle) || guessTemplateCode(inspForm.work_item);
+      const template = code ? getTemplateByCode(code) : null;
+      let overall = '', itemHits = 0;
+      if (template) {
+        const items = extractItemsFromParagraphs(paragraphs, template);
+        itemHits = Object.keys(items).length;
+        const results = Object.values(items).map(v => v.result).filter(Boolean);
+        overall = results.includes('fail') ? '不合格'
+          : results.length > 0 && results.every(r => r === 'pass') ? '合格' : '';
+      }
+
+      setInspForm(prev => ({
+        ...prev,
+        ...(parsed.date     ? { inspect_date: parsed.date } : {}),
+        ...(parsed.location ? { location: parsed.location } : {}),
+        ...(template && !prev.work_item ? { work_item: template.label } : {}),
+        ...(overall ? { result: overall } : {}),
+      }));
+      const hits = (parsed.date ? 1 : 0) + (parsed.location ? 1 : 0) + (template ? 1 : 0);
+      alert(`辨識完成：帶入 ${hits} 項基本資料、${itemHits} 項抽查結果（整體結果：${overall || '無法判定'}）。手寫辨識準確度有限，請覆核後再新增。`);
+    } catch (err) {
+      alert(`辨識失敗：${err.message}`);
+    } finally {
+      setInspOcrLoading(false);
+    }
   }
 
   /* 一鍵將全部待建立項寫入管制表（結果預設「待複驗」，後續逐筆編修） */
@@ -508,7 +594,7 @@ export function Quality() {
     const payload = all.map(it => ({
       project_id: projectId, created_by: user?.id,
       inspect_date: it.date, work_item: it.name,
-      inspect_type: it.source === '材料進場' ? '材料查驗' : '查驗',
+      inspect_type: INSPECT_TYPE_CHOICES[0],
       location: '', inspector: '', result: '待複驗', remark: '',
     }));
     const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
@@ -1029,8 +1115,15 @@ export function Quality() {
           <div className="modal-box" style={{ maxWidth: '520px', width: '92%' }}>
             <div className="modal-header">
               <div className="modal-title"><ShieldCheck size={16} style={{ color: 'var(--color-primary-light)' }} /><span>新增施工檢驗記錄</span></div>
-              <button className="modal-close" onClick={() => setShowInspModal(false)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button className="mcs-btn mcs-btn-add" disabled={inspOcrLoading}
+                  onClick={() => inspPdfInputRef.current?.click()} title="匯入已填寫的抽查紀錄掃描檔，自動辨識帶入欄位">
+                  {inspOcrLoading ? <Loader2 size={12} className="animate-spin" /> : <ScanText size={12} />} PDF辨識匯入
+                </button>
+                <button className="modal-close" onClick={() => setShowInspModal(false)}>✕</button>
+              </div>
             </div>
+            <input ref={inspPdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleInspPdfFile} />
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <datalist id="work-items-list">
@@ -1040,7 +1133,33 @@ export function Quality() {
                 </datalist>
                 {[
                   { label: '檢驗日期', field: 'inspect_date', type: 'date' },
-                  { label: '檢驗類型', field: 'inspect_type', type: 'text', placeholder: '例：施工抽查' },
+                ].map(({ label, field, type, placeholder, full, list }) => (
+                  <div key={field} style={{ gridColumn: full ? '1 / -1' : undefined }}>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{label}</label>
+                    <input type={type} placeholder={placeholder} value={inspForm[field] || ''}
+                      list={list}
+                      onChange={e => setInspForm(prev => ({ ...prev, [field]: e.target.value }))}
+                      style={{ width: '100%', padding: '6px 8px', background: 'var(--color-bg2)', border: '1px solid var(--color-border)', borderRadius: '6px', color: 'var(--color-text1)', fontSize: '13px', boxSizing: 'border-box' }} />
+                  </div>
+                ))}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>檢驗類型</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {INSPECT_TYPE_CHOICES.map(t => {
+                      const active = inspForm.inspect_type === t;
+                      return (
+                        <button key={t} onClick={() => setInspForm(prev => ({ ...prev, inspect_type: t }))}
+                          style={{ flex: 1, padding: '6px 6px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                            background: active ? 'rgba(var(--color-primary-rgb),0.12)' : 'transparent',
+                            color: active ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
+                            border: `1px solid ${active ? 'var(--color-primary-light)' : 'var(--color-border)'}` }}>
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {[
                   { label: '工程項目', field: 'work_item', type: 'text', placeholder: '例：混凝土澆置', full: true, list: 'work-items-list' },
                   { label: '部位/位置', field: 'location', type: 'text', placeholder: '例：B2F 柱位 A3' },
                   { label: '檢驗人員', field: 'inspector', type: 'text', placeholder: '姓名' },
@@ -1061,7 +1180,7 @@ export function Quality() {
                       const cfg = INSPECT_RESULT[r];
                       const active = inspForm.result === r;
                       return (
-                        <button key={r} onClick={() => setInspForm(prev => ({ ...prev, result: r }))}
+                        <button key={r} onClick={() => setInspForm(prev => ({ ...prev, result: r, ...(r !== '不合格' ? { fail_action: '' } : {}) }))}
                           style={{ flex: 1, padding: '5px 8px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                             background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--color-text-muted)',
                             border: `1px solid ${active ? cfg.color + '60' : 'var(--color-border)'}` }}>
@@ -1071,6 +1190,28 @@ export function Quality() {
                     })}
                   </div>
                 </div>
+                {inspForm.result === '不合格' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#ef4444', marginBottom: '4px' }}>不合格處置</label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {[
+                        { key: 'improved', label: '當日已改善完成', color: '#10b981' },
+                        { key: 'issue',    label: '開立缺失改善單', color: '#f97316' },
+                      ].map(({ key, label, color }) => {
+                        const active = inspForm.fail_action === key;
+                        return (
+                          <button key={key}
+                            onClick={() => setInspForm(prev => ({ ...prev, fail_action: prev.fail_action === key ? '' : key }))}
+                            style={{ flex: 1, padding: '5px 8px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                              background: active ? `${color}1f` : 'transparent', color: active ? color : 'var(--color-text-muted)',
+                              border: `1px solid ${active ? color + '80' : 'var(--color-border)'}` }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="modal-footer">
@@ -1079,6 +1220,32 @@ export function Quality() {
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} 新增
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新增檢驗：PDF 掃描檔頁面選取 overlay */}
+      {inspPdfPickerOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setInspPdfPickerOpen(false)}>
+          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: 20, maxWidth: 640, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: 12, color: 'var(--color-text1)' }}>
+              請選擇「施工抽查紀錄表」所在頁面
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+              {inspPdfPages.map(p => (
+                <button key={p.pageNum} onClick={() => pickInspPdfPage(p.dataUrl)}
+                  style={{ padding: 0, border: '1px solid var(--color-border)', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', background: 'var(--color-bg2)' }}>
+                  <img src={p.dataUrl} alt={`第 ${p.pageNum} 頁`} style={{ width: '100%', display: 'block' }} />
+                  <div style={{ fontSize: '12px', padding: '4px 0', color: 'var(--color-text-muted)' }}>第 {p.pageNum} 頁</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setInspPdfPickerOpen(false)}
+              style={{ marginTop: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              取消
+            </button>
           </div>
         </div>
       )}
