@@ -46,6 +46,38 @@ const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 /* 非查驗性日誌記事（休假、天候、場地管理），不列入待建立查驗 */
 const NON_INSPECT_RE = /連休|連假|休假|停工|無施工|颱風|豪雨|雨量|降雨|積水|排除|清理|整理|維持|打掃|環境|便道|善後/;
 
+/* 敘述式工項拆解：切出「位置及部位」與「施工項目」，多項活動各自一列 */
+const ACTIVITY_TERMS = [
+  '模板組立', '混凝土澆置', '鋼筋綁紮', '鋼筋加工',
+  '預力混凝土基樁打設', '預力基樁打設', '基樁打設',
+  '擋水鋼板樁打設', '擋土板樁打設', '鋼板樁打設', '鋼板樁進場',
+  '擋土板樁拔除', '板樁拔除', '擋土措施打設',
+  '土方開挖', '初步回填', '土方回填',
+  'PC襯底施作', '襯底施作', '漸變段打除',
+];
+function splitWorkItemEntry(raw) {
+  const name = (raw || '').replace(/^本日施作[:：]?/, '').trim();
+  // 先按「1. 2.」項次或句號分段
+  const segs = name.split(/(?:^|[。;；])\s*\d+\.\s*/).map(s => s.replace(/[。\s]+$/, '').trim()).filter(Boolean);
+  const out = [];
+  for (const seg of (segs.length ? segs : [name])) {
+    let idx = -1;
+    for (const t of ACTIVITY_TERMS) {
+      const i = seg.indexOf(t);
+      if (i >= 0 && (idx === -1 || i < idx)) idx = i;
+    }
+    if (idx > 0) {
+      const location = seg.slice(0, idx).trim();
+      for (const a of seg.slice(idx).split(/[及、，,]/).map(s => s.trim()).filter(Boolean)) {
+        out.push({ item: a, location });
+      }
+    } else {
+      out.push({ item: seg, location: '' });
+    }
+  }
+  return out.length ? out : [{ item: name, location: '' }];
+}
+
 const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
 const WORK_ITEMS_PRESET = [
@@ -507,13 +539,16 @@ export function Quality() {
     for (const r of diaryItems) {
       if (!r.item_name || !r.log_date) continue;
       if (r.is_construction === false) continue;
-      if (NON_INSPECT_RE.test(r.item_name)) continue;
       if (!(parseFloat(r.today_qty) >= 0.1)) continue;
-      // 工項含「進場」視為材料進場，建立時歸類材料檢驗
-      const src = /進場/.test(r.item_name) ? '材料進場' : '施工';
-      const key = `${r.log_date}|${r.item_name}|${src}`;
-      if (map.has(key) || hasInsp(r.log_date, r.item_name)) continue;
-      map.set(key, { date: r.log_date, name: r.item_name, source: src });
+      // 敘述式工項拆解：位置/部位切出、多項活動各自成列
+      for (const piece of splitWorkItemEntry(r.item_name)) {
+        if (!piece.item || NON_INSPECT_RE.test(piece.item)) continue;
+        // 工項含「進場」視為材料進場，建立時歸類材料檢驗
+        const src = /進場/.test(piece.item) ? '材料進場' : '施工';
+        const key = `${r.log_date}|${piece.item}|${piece.location}|${src}`;
+        if (map.has(key) || hasInsp(r.log_date, piece.item)) continue;
+        map.set(key, { date: r.log_date, name: piece.item, location: piece.location, source: src });
+      }
     }
     for (const m of matEntries) {
       if (!m.name || !m.entry_date) continue;
@@ -530,9 +565,10 @@ export function Quality() {
   }, [diaryItems, matEntries, inspections]);
   const pendingInspCount = pendingInspGroups.reduce((s, g) => s + g.items.length, 0);
 
-  /* 點選待建立項：帶入日期與工項開啟新增查驗（材料進場帶入材料檢驗類別） */
+  /* 點選待建立項：帶入日期、工項與部位開啟新增查驗（材料進場帶入材料檢驗類別） */
   function startPendingInsp(it) {
     setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
+      location: it.location || '',
       inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗' });
     setShowInspModal(true);
   }
@@ -608,7 +644,7 @@ export function Quality() {
       inspect_date: it.date, work_item: it.name,
       inspect_type: INSPECT_TYPE_CHOICES[0],
       inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗',
-      location: '', inspector: '', result: '待複驗', remark: '',
+      location: it.location || '', inspector: '', result: '待複驗', remark: '',
     }));
     const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
     setSaving(false);
@@ -751,9 +787,10 @@ export function Quality() {
                   <span className="mcs-pending-date">{g.date}</span>
                   <div className="mcs-pending-items">
                     {g.items.map(it => (
-                      <button key={`${it.name}|${it.source}`} className="mcs-pending-chip"
-                        title={`點擊建立查驗（帶入 ${g.date}）`} onClick={() => startPendingInsp(it)}>
+                      <button key={`${it.name}|${it.location || ''}|${it.source}`} className="mcs-pending-chip"
+                        title={`${it.location ? it.location + ' — ' : ''}${it.name}（帶入 ${g.date}）`} onClick={() => startPendingInsp(it)}>
                         {it.source === '材料進場' && <span className="mcs-pending-src">材</span>}
+                        {it.location && <span className="mcs-pending-loc">{it.location}</span>}
                         <span className="mcs-pending-chip-name">{it.name}</span>
                         <Plus size={11} />
                       </button>
