@@ -54,7 +54,7 @@ const WORK_ITEMS_PRESET = [
   '鋼筋進場', '混凝土進場', '材料進場驗收',
 ];
 
-const INSPECT_TYPE_CHOICES = ['檢驗停留點-抽查', '不定期抽查'];
+const INSPECT_TYPE_CHOICES = ['檢驗停留點-抽查', '不定期抽查', '材料檢驗'];
 
 const EMPTY_INSPECT = {
   inspect_date: new Date().toISOString().split('T')[0],
@@ -475,17 +475,18 @@ export function Quality() {
     .filter(r => !inspItemFilter || (r.work_item || '未分類') === inspItemFilter);
   const filteredIssues = issueFilter === 'all' ? issues : issues.filter(r => r.status === issueFilter);
 
-  /* 施工抽查 — 依工項分組統計 */
+  /* 施工抽查 — 依工項分組統計（帶最近檢驗日期，依日期新→舊排序） */
   const workItemGroups = React.useMemo(() => {
     const map = {};
     inspections.forEach(r => {
       const k = r.work_item || '未分類';
-      if (!map[k]) map[k] = { name: k, pass: 0, fail: 0, pending: 0 };
+      if (!map[k]) map[k] = { name: k, pass: 0, fail: 0, pending: 0, date: '' };
       if (r.result === '合格') map[k].pass++;
       else if (r.result === '不合格') map[k].fail++;
       else map[k].pending++;
+      if ((r.inspect_date || '') > map[k].date) map[k].date = r.inspect_date || '';
     });
-    return Object.values(map).sort((a, b) => (b.pass + b.fail + b.pending) - (a.pass + a.fail + a.pending));
+    return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
   }, [inspections]);
   const openIssues = (issueStats.open || 0) + (issueStats.in_progress || 0);
 
@@ -506,9 +507,11 @@ export function Quality() {
       if (r.is_construction === false) continue;
       if (NON_INSPECT_RE.test(r.item_name)) continue;
       if (!(parseFloat(r.today_qty) >= 0.1)) continue;
-      const key = `${r.log_date}|${r.item_name}|施工`;
+      // 工項含「進場」視為材料進場，建立時歸類材料檢驗
+      const src = /進場/.test(r.item_name) ? '材料進場' : '施工';
+      const key = `${r.log_date}|${r.item_name}|${src}`;
       if (map.has(key) || hasInsp(r.log_date, r.item_name)) continue;
-      map.set(key, { date: r.log_date, name: r.item_name, source: '施工' });
+      map.set(key, { date: r.log_date, name: r.item_name, source: src });
     }
     for (const m of matEntries) {
       if (!m.name || !m.entry_date) continue;
@@ -525,9 +528,10 @@ export function Quality() {
   }, [diaryItems, matEntries, inspections]);
   const pendingInspCount = pendingInspGroups.reduce((s, g) => s + g.items.length, 0);
 
-  /* 點選待建立項：帶入日期與工項開啟新增檢驗 */
+  /* 點選待建立項：帶入日期與工項開啟新增檢驗（材料進場帶入材料檢驗） */
   function startPendingInsp(it) {
-    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name });
+    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
+      inspect_type: it.source === '材料進場' ? '材料檢驗' : EMPTY_INSPECT.inspect_type });
     setShowInspModal(true);
   }
 
@@ -600,7 +604,7 @@ export function Quality() {
     const payload = all.map(it => ({
       project_id: projectId, created_by: user?.id,
       inspect_date: it.date, work_item: it.name,
-      inspect_type: INSPECT_TYPE_CHOICES[0],
+      inspect_type: it.source === '材料進場' ? '材料檢驗' : INSPECT_TYPE_CHOICES[0],
       location: '', inspector: '', result: '待複驗', remark: '',
     }));
     const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
@@ -759,12 +763,21 @@ export function Quality() {
         </div>
       )}
 
-      {/* Tab 0: 施工抽查 — 工項分組總覽 */}
+      {/* Tab 0: 篩選工項提示（最上方） */}
+      {tab === 0 && inspItemFilter && (
+        <div style={{ padding: '6px 8px', fontSize: '12px', color: 'var(--color-text-muted)', background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-border)' }}>
+          篩選工項：<strong style={{ color: 'var(--color-primary-light)' }}>{inspItemFilter}</strong>
+          <span onClick={() => setInspItemFilter(null)} style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--color-danger)', textDecoration: 'underline' }}>清除篩選</span>
+        </div>
+      )}
+
+      {/* Tab 0: 施工抽查 — 工項分組總覽（依日期新→舊） */}
       {tab === 0 && workItemGroups.length > 0 && (
         <div style={{ padding: '0 0 8px 0', overflowX: 'auto', maxHeight: 260, overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
               <tr style={{ background: 'var(--color-bg2)', color: 'var(--color-text-muted)' }}>
+                <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid var(--color-border)', width: 90 }}>日期</th>
                 <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>工項</th>
                 <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#10b981' }}>合格</th>
                 <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#ef4444' }}>不合格</th>
@@ -783,6 +796,7 @@ export function Quality() {
                     onClick={() => setInspItemFilter(f => f === g.name ? null : g.name)}
                     style={{ cursor: 'pointer', background: isActive ? 'rgba(var(--color-primary-rgb),0.08)' : undefined,
                       borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '3px 8px', color: 'var(--color-text2)', whiteSpace: 'nowrap' }}>{g.date || '—'}</td>
                     <td style={{ padding: '3px 8px', fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--color-primary-light)' : 'var(--color-text1)' }}>
                       {g.name}
                     </td>
@@ -802,12 +816,6 @@ export function Quality() {
               })}
             </tbody>
           </table>
-          {inspItemFilter && (
-            <div style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--color-text-muted)' }}>
-              篩選工項：<strong style={{ color: 'var(--color-primary-light)' }}>{inspItemFilter}</strong>
-              <span onClick={() => setInspItemFilter(null)} style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--color-danger)', textDecoration: 'underline' }}>清除篩選</span>
-            </div>
-          )}
         </div>
       )}
 
@@ -851,8 +859,8 @@ export function Quality() {
                   <th style={{ width: 80 }}>結果</th>
                   <th style={{ width: 90 }}>缺失狀態</th>
                   <th style={{ width: 52 }}>照片</th>
-                  <th style={{ width: 130 }}>備註</th>
                   <th style={{ width: 68 }}></th>
+                  <th style={{ width: 130 }}>備註</th>
                 </tr>
               </thead>
               <tbody>
@@ -911,9 +919,6 @@ export function Quality() {
                           {inspPhotoMap[row.id] > 0 ? inspPhotoMap[row.id] : ''}
                         </button>
                       </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'remark', table: 'construction_inspections', val: row.remark })}
-                      </td>
                       <td style={{ padding: '2px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <button className="mcs-photo-btn" title="填寫標準抽查單" onClick={() => setFormRow(row)}>
                           <FileText size={11} />
@@ -925,6 +930,9 @@ export function Quality() {
                           onClick={() => deleteOneInsp(row)}>
                           <Trash2 size={11} />
                         </button>
+                      </td>
+                      <td style={{ padding: '2px 4px' }}>
+                        {EditableCell({ id: row.id, field: 'remark', table: 'construction_inspections', val: row.remark })}
                       </td>
                     </tr>
                   );
