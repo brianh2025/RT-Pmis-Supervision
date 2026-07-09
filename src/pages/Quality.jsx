@@ -54,11 +54,13 @@ const WORK_ITEMS_PRESET = [
   '鋼筋進場', '混凝土進場', '材料進場驗收',
 ];
 
-const INSPECT_TYPE_CHOICES = ['檢驗停留點-抽查', '不定期抽查', '材料檢驗'];
+const INSPECT_TYPE_CHOICES = ['檢驗停留點', '不定期抽查'];
+const INSPECT_CATEGORY_CHOICES = ['施工檢驗', '材料檢驗'];
 
 const EMPTY_INSPECT = {
   inspect_date: new Date().toISOString().split('T')[0],
-  work_item: '', location: '', inspect_type: INSPECT_TYPE_CHOICES[0], inspector: '', result: '待複驗', remark: '',
+  work_item: '', location: '', inspect_type: INSPECT_TYPE_CHOICES[0], inspect_category: INSPECT_CATEGORY_CHOICES[0],
+  inspector: '', result: '待複驗', remark: '',
   fail_action: '',   // 不合格處置：improved = 當日已改善完成、issue = 開立缺失改善單（不寫入資料表）
 };
 const EMPTY_QUALITY = {
@@ -528,10 +530,10 @@ export function Quality() {
   }, [diaryItems, matEntries, inspections]);
   const pendingInspCount = pendingInspGroups.reduce((s, g) => s + g.items.length, 0);
 
-  /* 點選待建立項：帶入日期與工項開啟新增檢驗（材料進場帶入材料檢驗） */
+  /* 點選待建立項：帶入日期與工項開啟新增查驗（材料進場帶入材料檢驗類別） */
   function startPendingInsp(it) {
     setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
-      inspect_type: it.source === '材料進場' ? '材料檢驗' : EMPTY_INSPECT.inspect_type });
+      inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗' });
     setShowInspModal(true);
   }
 
@@ -604,7 +606,8 @@ export function Quality() {
     const payload = all.map(it => ({
       project_id: projectId, created_by: user?.id,
       inspect_date: it.date, work_item: it.name,
-      inspect_type: it.source === '材料進場' ? '材料檢驗' : INSPECT_TYPE_CHOICES[0],
+      inspect_type: INSPECT_TYPE_CHOICES[0],
+      inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗',
       location: '', inspector: '', result: '待複驗', remark: '',
     }));
     const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
@@ -886,7 +889,15 @@ export function Quality() {
                         {EditableCell({ id: row.id, field: 'location', table: 'construction_inspections', val: row.location })}
                       </td>
                       <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'inspect_type', table: 'construction_inspections', val: row.inspect_type })}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {row.inspect_category === '材料檢驗' && (
+                            <span style={{ flexShrink: 0, padding: '1px 4px', borderRadius: 3, fontSize: '10px', fontWeight: 700,
+                              color: '#10b981', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)' }}>材</span>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {EditableCell({ id: row.id, field: 'inspect_type', table: 'construction_inspections', val: row.inspect_type })}
+                          </div>
+                        </div>
                       </td>
                       <td style={{ padding: '2px 4px' }}>
                         {EditableCell({ id: row.id, field: 'inspector', table: 'construction_inspections', val: row.inspector })}
@@ -1132,7 +1143,7 @@ export function Quality() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowInspModal(false)}>
           <div className="modal-box" style={{ maxWidth: '520px', width: '92%' }}>
             <div className="modal-header">
-              <div className="modal-title"><ShieldCheck size={16} style={{ color: 'var(--color-primary-light)' }} /><span>新增施工檢驗記錄</span></div>
+              <div className="modal-title"><ShieldCheck size={16} style={{ color: 'var(--color-primary-light)' }} /><span>新增查驗紀錄</span></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button className="mcs-btn mcs-btn-add" disabled={inspOcrLoading}
                   onClick={() => inspPdfInputRef.current?.click()} title="匯入已填寫的抽查紀錄掃描檔，自動辨識帶入欄位">
@@ -1161,6 +1172,23 @@ export function Quality() {
                   </div>
                 ))}
                 <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>查驗類別</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {INSPECT_CATEGORY_CHOICES.map(c => {
+                      const active = inspForm.inspect_category === c;
+                      return (
+                        <button key={c} onClick={() => setInspForm(prev => ({ ...prev, inspect_category: c }))}
+                          style={{ flex: 1, padding: '6px 6px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                            background: active ? 'rgba(var(--color-primary-rgb),0.12)' : 'transparent',
+                            color: active ? 'var(--color-primary-light)' : 'var(--color-text-muted)',
+                            border: `1px solid ${active ? 'var(--color-primary-light)' : 'var(--color-border)'}` }}>
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>檢驗類型</label>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {INSPECT_TYPE_CHOICES.map(t => {
