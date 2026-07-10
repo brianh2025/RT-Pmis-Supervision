@@ -1,4 +1,5 @@
-// Supabase Edge Function: sync-diary v52
+// Supabase Edge Function: sync-diary v53
+// v53：進度欄位皆空的日誌不再寫入 0 值 progress_records（修 S 曲線摔 0 斷線）
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -704,37 +705,27 @@ async function syncFile(
     }, { onConflict: "project_id,log_date" });
     if (e1) throw new Error(`daily_logs 寫入失敗 (${logDate}): ` + e1.message);
 
-    // 無論有無進度欄位，均回填 progress_records（Drive 同步為校正用途，一律覆蓋）
+    // 有解析到進度欄位才回填 progress_records；只覆蓋有值的欄位，缺的欄位不硬補 0
+    // 進度欄位皆空（如停工日）則完全不寫入，避免 0 值把 S 曲線拉斷
     if (parsed.actualProgress !== null || parsed.plannedProgress !== null) {
+      const progFields: Record<string, number> = {};
+      if (parsed.plannedProgress !== null) progFields.planned_progress = parsed.plannedProgress;
+      if (parsed.actualProgress !== null) progFields.actual_progress = parsed.actualProgress;
       const { data: existProg } = await supabase.from("progress_records")
         .select("id").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
       if (existProg) {
         const { error: e2 } = await supabase.from("progress_records").update({
-          planned_progress: parsed.plannedProgress ?? 0,
-          actual_progress: parsed.actualProgress ?? 0,
-          notes: null,
+          ...progFields, notes: null,
         }).eq("id", existProg.id);
         if (e2) console.warn("progress_records:", e2.message);
       } else {
         const { error: e2 } = await supabase.from("progress_records").insert({
           project_id: projectId, report_date: logDate,
-          planned_progress: parsed.plannedProgress ?? 0,
-          actual_progress: parsed.actualProgress ?? 0,
+          planned_progress: parsed.plannedProgress,
+          actual_progress: parsed.actualProgress,
           notes: null,
         });
         if (e2) console.warn("progress_records:", e2.message);
-      }
-    } else {
-      // 進度欄位為空：僅在尚無紀錄時才新增，避免蓋掉已有的有效數值
-      const { data: existing } = await supabase.from("progress_records")
-        .select("id").eq("project_id", projectId).eq("report_date", logDate).maybeSingle();
-      if (!existing) {
-        const { error: e2 } = await supabase.from("progress_records").insert({
-          project_id: projectId, report_date: logDate,
-          planned_progress: 0, actual_progress: 0,
-          notes: null,
-        });
-        if (e2) console.warn("progress_records insert:", e2.message);
       }
     }
 

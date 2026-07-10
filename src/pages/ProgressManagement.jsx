@@ -160,8 +160,8 @@ export function ProgressManagement() {
     ...records.map(r => r.report_date),
   ])].sort();
 
-  const actualMap = Object.fromEntries(records.map(r => [r.report_date, Number(r.actual_progress)]));
-  const plannedMap = Object.fromEntries(records.map(r => [r.report_date, Number(r.planned_progress)]));
+  const actualMap = Object.fromEntries(records.filter(r => r.actual_progress !== null).map(r => [r.report_date, Number(r.actual_progress)]));
+  const plannedMap = Object.fromEntries(records.filter(r => r.planned_progress !== null).map(r => [r.report_date, Number(r.planned_progress)]));
 
   const chartData = scheduleItems.length > 0
     ? chartDates.map(date => {
@@ -181,7 +181,7 @@ export function ProgressManagement() {
         displayDate: r.report_date.slice(5),
         report_date: r.report_date,
         預定進度: null,
-        實際進度: Number(r.actual_progress),
+        實際進度: r.actual_progress !== null ? Number(r.actual_progress) : null,
       }));
 
   // Latest record summary
@@ -266,8 +266,8 @@ export function ProgressManagement() {
                   formatter={(v) => v !== null ? fmtPct(v) : '—'}
                 />
                 <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '12px' }} />
-                <Line type="monotone" dataKey="預定進度" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} strokeDasharray="4 2" />
-                <Line type="monotone" dataKey="實際進度" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
+                <Line type="monotone" dataKey="預定進度" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} strokeDasharray="4 2" connectNulls />
+                <Line type="monotone" dataKey="實際進度" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           ) : (
