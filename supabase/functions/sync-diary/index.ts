@@ -1,4 +1,5 @@
-// Supabase Edge Function: sync-diary v53
+// Supabase Edge Function: sync-diary v54
+// v54：新增開工日下限防護 — 解析出的日期早於 projects.start_date 一律跳過（防標單/明細表誤判成日誌）
 // v53：進度欄位皆空的日誌不再寫入 0 值 progress_records（修 S 曲線摔 0 斷線）
 // fflate + 手寫 XML 解析，支援多工作表、多 block 垂直並列、施工日誌/監造報表兩種格式
 
@@ -657,8 +658,9 @@ function parseAllDiaries(buf: ArrayBuffer): ParsedDiary[] {
 
 // ── 同步單一檔案（可能含多日資料）────────────────────────────
 async function syncFile(
-  fileId: string, fileName: string, projectId: string, token: string
-): Promise<{ date: string | null; dates: string[]; itemCount: number }> {
+  fileId: string, fileName: string, projectId: string, token: string,
+  projectStartDate: string | null = null  // 工程開工日；null 時不過濾
+): Promise<{ date: string | null; dates: string[]; itemCount: number; skippedDates: string[] }> {
   const buf = await downloadDriveFile(fileId, token);
   let diaries = parseAllDiaries(buf);
 
@@ -676,10 +678,26 @@ async function syncFile(
   const noFuture = diaries.filter((d) => d.logDate && d.logDate <= today);
   if (noFuture.length > 0) diaries = noFuture;
 
+  // 過濾早於開工日的日期：標單/明細表被誤判成日誌時常抓到舊日期
+  // 刻意採嚴格過濾（不做寬鬆救回）——全部日期早於開工日正是誤判特徵
+  const skippedDates: string[] = [];
+  if (projectStartDate) {
+    diaries = diaries.filter((d) => {
+      if (d.logDate && d.logDate < projectStartDate) {
+        skippedDates.push(d.logDate);
+        console.warn(`跳過早於開工日(${projectStartDate})的日誌: ${d.logDate} (${fileName})`);
+        return false;
+      }
+      return true;
+    });
+  }
+
   // Fallback：無法解析任何日誌時，從檔名取得日期
   if (diaries.length === 0) {
     const fallbackDate = parseDateFromFileName(fileName);
     if (!fallbackDate) throw new Error(`無法解析日期：${fileName}`);
+    if (projectStartDate && fallbackDate < projectStartDate)
+      throw new Error(`檔名日期 ${fallbackDate} 早於開工日 ${projectStartDate}，疑非施工日誌：${fileName}`);
     diaries = [{
       logDate: fallbackDate, weatherAm: null, weatherPm: null,
       plannedProgress: null, actualProgress: null,
@@ -745,7 +763,7 @@ async function syncFile(
     }
   }
 
-  return { date: dates[0] ?? null, dates, itemCount: totalItems };
+  return { date: dates[0] ?? null, dates, itemCount: totalItems, skippedDates };
 }
 
 // ── CORS ───────────────────────────────────────────────────────
@@ -827,8 +845,11 @@ Deno.serve(async (req) => {
       if (!projectId || !fileId || !fileName) return json({ error: "缺少 projectId / fileId / fileName" }, 400);
 
       try {
-        const r = await syncFile(fileId, fileName, projectId, token);
-        return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount });
+        // 查開工日供日期下限防護（不信任前端傳值）
+        const { data: proj } = await supabase
+          .from("projects").select("start_date").eq("id", projectId).maybeSingle();
+        const r = await syncFile(fileId, fileName, projectId, token, proj?.start_date ?? null);
+        return json({ success: true, file: fileName, date: r.date, dates: r.dates, itemCount: r.itemCount, skippedDates: r.skippedDates });
       } catch (err) {
         return json({ success: false, file: fileName, error: String(err) });
       }
@@ -850,8 +871,8 @@ Deno.serve(async (req) => {
       const results = [];
       for (const f of batch) {
         try {
-          const r = await syncFile(f.id, f.name, projectId, token);
-          results.push({ file: f.name, date: r.date, dates: r.dates, itemCount: r.itemCount, success: true });
+          const r = await syncFile(f.id, f.name, projectId, token, proj.start_date ?? null);
+          results.push({ file: f.name, date: r.date, dates: r.dates, itemCount: r.itemCount, skippedDates: r.skippedDates, success: true });
         } catch (err) {
           results.push({ file: f.name, success: false, error: String(err) });
         }
@@ -863,9 +884,9 @@ Deno.serve(async (req) => {
     const { fileId, fileName, projectFolderId } = body;
     if (!fileId || !projectFolderId) return json({ error: "缺少 fileId 或 projectFolderId" }, 400);
     const { data: proj, error: projErr } = await supabase
-      .from("projects").select("id").eq("drive_folder_id", projectFolderId).single();
+      .from("projects").select("id, start_date").eq("drive_folder_id", projectFolderId).single();
     if (projErr || !proj) return json({ error: "找不到對應工程，請確認 drive_folder_id 設定正確" }, 400);
-    const result = await syncFile(fileId, fileName, proj.id, token);
+    const result = await syncFile(fileId, fileName, proj.id, token, proj.start_date ?? null);
     return json({ success: true, projectId: proj.id, ...result });
   } catch (err) {
     console.error("sync-diary error:", err);

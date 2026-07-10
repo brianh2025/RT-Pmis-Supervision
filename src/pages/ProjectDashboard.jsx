@@ -155,8 +155,8 @@ export function ProjectDashboard() {
         thisMonthLogs: (monthLogsRes.data || []).length,
         pendingLogs,
         missingDates,
-        latestPlanned: parseFloat((latestProgress?.planned_progress || 0).toFixed(2)),
-        latestActual:  parseFloat((latestProgress?.actual_progress  || 0).toFixed(2)),
+        latestPlanned: latestProgress?.planned_progress != null ? parseFloat(Number(latestProgress.planned_progress).toFixed(2)) : null,
+        latestActual:  latestProgress?.actual_progress  != null ? parseFloat(Number(latestProgress.actual_progress).toFixed(2))  : null,
         mcsSubmissionCount: subRes.count || 0,
         mcsTestCount: tstRes.count || 0,
         mcsPlanCount: plnRes.count || 0,
@@ -194,7 +194,9 @@ export function ProjectDashboard() {
     </div>
   );
 
-  const diff = stats.latestActual - stats.latestPlanned;
+  const diff = (stats.latestPlanned != null && stats.latestActual != null)
+    ? stats.latestActual - stats.latestPlanned
+    : null;
   const daysRemaining = project.end_date
     ? Math.ceil((new Date(project.end_date).getTime() - now) / 86400000)
     : null;
@@ -232,7 +234,7 @@ export function ProjectDashboard() {
       dueDate: addDays(14), due: `請於 ${addDays(14)} 前送出`,
       path: 'submission', action: '前往送審',
     },
-    diff < -5 && {
+    diff !== null && diff < -5 && {
       id: 'progress', level: 'urgent', icon: TrendingUp,
       title: `進度落後 ${Math.abs(diff).toFixed(1)}%，需提出趕工計畫`,
       desc: `預定 ${stats.latestPlanned}%，實際 ${stats.latestActual}%`,
@@ -421,10 +423,10 @@ export function ProjectDashboard() {
             </div>
           )}
           <div className="stunning-progress-wrap">
-            <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned}%` }} />
-            <div className="stunning-actual-bar" style={{ width: `${stats.latestActual}%` }} />
+            <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned ?? 0}%` }} />
+            <div className="stunning-actual-bar" style={{ width: `${stats.latestActual ?? 0}%` }} />
             <span className="stunning-progress-label">
-              預定 {stats.latestPlanned}% / 實際 {stats.latestActual}%
+              預定 {stats.latestPlanned != null ? `${stats.latestPlanned}%` : '—'} / 實際 {stats.latestActual != null ? `${stats.latestActual}%` : '—'}
             </span>
           </div>
         </div>

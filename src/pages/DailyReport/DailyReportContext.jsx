@@ -177,8 +177,8 @@ export function DailyReportProvider({ children, projectId }) {
                 .filter(q => q.item?.trim())
                 .map(q => `${q.item}：${q.todayQty} ${q.unit || ''}`.trim())
                 .join('\n') || null,
-            planned_progress: form.plannedProgress || 0,
-            actual_progress: form.actualProgress || 0,
+            planned_progress: (form.plannedProgress !== '' && form.plannedProgress != null) ? form.plannedProgress : null,
+            actual_progress: (form.actualProgress !== '' && form.actualProgress != null) ? form.actualProgress : null,
             created_by: user?.id || null,
             form_data: {
                 reportNo: form.reportNo,
@@ -229,8 +229,8 @@ export function DailyReportProvider({ children, projectId }) {
                 supabase.from('progress_records').upsert({
                     project_id: projectId,
                     report_date: form.date,
-                    planned_progress: form.plannedProgress || 0,
-                    actual_progress: form.actualProgress || 0,
+                    planned_progress: (form.plannedProgress !== '' && form.plannedProgress != null) ? form.plannedProgress : null,
+                    actual_progress: (form.actualProgress !== '' && form.actualProgress != null) ? form.actualProgress : null,
                 }, { onConflict: 'project_id,report_date' })
             );
         }

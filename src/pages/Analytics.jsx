@@ -56,13 +56,15 @@ export function Analytics() {
       supabase.from('construction_inspections').select('result, work_item, inspect_date').eq('project_id', projectId).order('inspect_date'),
     ]);
 
-    // Progress bar chart
+    // Progress bar chart（null 進度保持 null，Recharts 遇 null 不繪製該長條）
     if (progRows && progRows.length > 0) {
-      setProgressData(progRows.map(r => ({
-        name: r.report_date?.substring(5) || '—',
-        planned: r.planned_progress || 0,
-        actual: r.actual_progress || 0,
-      })));
+      setProgressData(progRows
+        .filter(r => r.planned_progress !== null || r.actual_progress !== null)
+        .map(r => ({
+          name: r.report_date?.substring(5) || '—',
+          planned: r.planned_progress !== null ? Number(r.planned_progress) : null,
+          actual: r.actual_progress !== null ? Number(r.actual_progress) : null,
+        })));
     }
 
     // Submission stats by result
@@ -83,14 +85,16 @@ export function Analytics() {
       setQualityStats(Object.entries(sevMap).map(([k, v]) => ({ name: sevLabels[k] || k, value: v })));
     }
 
-    // Diary progress timeline
+    // Diary progress timeline（null 進度保持 null，不畫成 0 摔斷曲線；兩欄皆空的日誌跳過）
     if (diaryRows && diaryRows.length > 0) {
-      const timeline = diaryRows.map(r => ({
-        date: r.log_date?.substring(5) || '',
-        planned: r.planned_progress || 0,
-        actual: r.actual_progress || 0,
-        cumulative: r.actual_progress || 0,
-      }));
+      const timeline = diaryRows
+        .filter(r => r.planned_progress !== null || r.actual_progress !== null)
+        .map(r => ({
+          date: r.log_date?.substring(5) || '',
+          planned: r.planned_progress !== null ? Number(r.planned_progress) : null,
+          actual: r.actual_progress !== null ? Number(r.actual_progress) : null,
+          cumulative: r.actual_progress !== null ? Number(r.actual_progress) : null,
+        }));
       setDiaryStats({ timeline, total: diaryRows.length });
     }
 
@@ -243,8 +247,8 @@ export function Analytics() {
                 <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} unit="%" domain={[0, 100]} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Area type="monotone" dataKey="planned" name="預定進度" stroke="#1565C0" fill="url(#gradPlanned)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="actual" name="實際進度" stroke="#10b981" fill="url(#gradActual)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="planned" name="預定進度" stroke="#1565C0" fill="url(#gradPlanned)" strokeWidth={2} dot={false} connectNulls />
+                <Area type="monotone" dataKey="actual" name="實際進度" stroke="#10b981" fill="url(#gradActual)" strokeWidth={2} dot={false} connectNulls />
               </AreaChart>
             </ResponsiveContainer>
           )}

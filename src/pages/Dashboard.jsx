@@ -378,7 +378,7 @@ export function Dashboard() {
       const list = [];
       active.forEach(p => {
         const lp       = p.latest_progress;
-        const diff     = lp ? (lp.actual_progress - lp.planned_progress) : null;
+        const diff     = (lp && lp.planned_progress != null) ? (lp.actual_progress - lp.planned_progress) : null;
         const daysLeft = p.end_date ? Math.ceil((new Date(p.end_date).getTime() - today) / 86400000) : null;
         const qual     = qualMap[p.id] || 0;
         const sub      = subMap[p.id]  || 0;
@@ -490,7 +490,7 @@ export function Dashboard() {
 
   const isBehind = (p) => {
     const lp = p.latest_progress;
-    return p.status === 'active' && lp && (lp.actual_progress - lp.planned_progress) < -5;
+    return p.status === 'active' && lp && lp.planned_progress != null && (lp.actual_progress - lp.planned_progress) < -5;
   };
 
   // 切換收藏（樂觀更新）
@@ -553,8 +553,8 @@ export function Dashboard() {
   const renderCard = (p, index) => {
     const lp = p.latest_progress;
     const prog    = lp ? lp.actual_progress  : 0;
-    const planned = lp ? lp.planned_progress : 0;
-    const diff = parseFloat((prog - planned).toFixed(2));
+    const planned = (lp && lp.planned_progress != null) ? lp.planned_progress : null;
+    const diff = planned != null ? parseFloat((prog - planned).toFixed(2)) : null;
     const matWarn = matWarnMap[p.id] || 0;
     return (
       <div
@@ -588,13 +588,15 @@ export function Dashboard() {
           </div>
           <div className="card-progress-row">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
-                <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ marginLeft: 0 }}>
-                  {diff >= 0 ? '+' : ''}{diff}%
-                </span>
-              </div>
+              {diff !== null && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+                  <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ marginLeft: 0 }}>
+                    {diff >= 0 ? '+' : ''}{diff}%
+                  </span>
+                </div>
+              )}
               <div className="layered-progress-bar">
-                <div className="bar-planned" style={{ width: `${planned}%` }} />
+                <div className="bar-planned" style={{ width: `${planned ?? 0}%` }} />
                 <div className="bar-actual" style={{
                   width: `${prog}%`,
                   background: isBehind(p) ? 'var(--color-danger)' :
