@@ -19,6 +19,7 @@ import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
   GripHorizontal, LogOut,
+  Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudLightning,
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/ProjectLayout.css';
@@ -31,6 +32,17 @@ const WMO = {
   61:'小雨', 63:'中雨', 65:'大雨',
   80:'陣雨', 82:'大陣雨', 95:'雷雨',
 };
+
+/* WMO 天氣代碼 → 圖示 */
+function wxIconFor(code) {
+  if (code === 0) return Sun;
+  if (code === 1 || code === 2) return CloudSun;
+  if (code === 45 || code === 48) return CloudFog;
+  if (code >= 51 && code <= 55) return CloudDrizzle;
+  if (code >= 61 && code <= 82) return CloudRain;
+  if (code === 95) return CloudLightning;
+  return Cloud;
+}
 
 function buildProjectMsg(project, wx) {
   const nm = project.name.length > 10 ? project.name.slice(0, 10) + '…' : project.name;
@@ -47,31 +59,51 @@ function buildProjectMsg(project, wx) {
   return `今日天氣${wx.condition}，${nm}正常施工，天氣良好，氣溫 ${wx.temp}°C。`;
 }
 
-/* ── 跨工程待辦彙總區 ── */
-function AlertsPanel({ alerts, navigate }) {
+/* ── 跨工程待辦彙總區（整合於今日簡報卡右側） ── */
+function AlertsPanel({ alerts, navigate, loading }) {
   const urgent  = alerts.filter(a => a.level === 'urgent');
   const warning = alerts.filter(a => a.level === 'warning');
-  if (!urgent.length && !warning.length) return null;
+
+  if (loading) {
+    return (
+      <div className="briefing-tasks briefing-all-clear">
+        <Loader2 size={18} className="animate-spin" style={{ color: 'var(--color-text-muted)' }} />
+        <div className="all-clear-sub">任務狀態載入中…</div>
+      </div>
+    );
+  }
+
+  if (!urgent.length && !warning.length) {
+    return (
+      <div className="briefing-tasks briefing-all-clear">
+        <CheckCircle2 size={22} />
+        <div>
+          <div className="all-clear-title">今日無待辦警示</div>
+          <div className="all-clear-sub">各工程狀況良好，維持例行巡查即可。</div>
+        </div>
+      </div>
+    );
+  }
 
   const Item = ({ a }) => (
     <button className="alert-item" data-level={a.level} onClick={() => navigate(`/projects/${a.projectId}/${a.path}`)}>
       <span className="alert-project-name">{a.projectName}</span>
       <span className="alert-msg">{a.msg}</span>
-      <ChevronRight size={11} className="alert-arrow" />
+      <ChevronRight size={12} className="alert-arrow" />
     </button>
   );
 
   return (
-    <div className="alerts-panel">
+    <div className="briefing-tasks">
       {urgent.length > 0 && (
-        <div className="alerts-group">
-          <span className="alerts-group-label urgent">需立即處理（{urgent.length}）</span>
+        <div className="alerts-group" data-level="urgent">
+          <span className="alerts-group-label urgent"><span className="alerts-pulse" />需立即處理（{urgent.length}）</span>
           <div className="alerts-list">{urgent.map((a, i) => <Item key={i} a={a} />)}</div>
         </div>
       )}
       {warning.length > 0 && (
-        <div className="alerts-group">
-          <span className="alerts-group-label warning">本週注意（{warning.length}）</span>
+        <div className="alerts-group" data-level="warning">
+          <span className="alerts-group-label warning"><span className="alerts-pulse" />本週注意（{warning.length}）</span>
           <div className="alerts-list">{warning.map((a, i) => <Item key={i} a={a} />)}</div>
         </div>
       )}
@@ -284,6 +316,7 @@ export function Dashboard() {
         const afternoonRainAvg = prob.reduce((a, b) => a + b, 0) / prob.length;
         setWx({
           temp: Math.round(d.current.temperature_2m),
+          code: d.current.weather_code,
           condition: WMO[d.current.weather_code] ?? '—',
           precipMm: Math.round(d.daily.precipitation_sum[0] ?? 0),
           afternoonRainAvg,
@@ -400,6 +433,10 @@ export function Dashboard() {
     }
     fetchAlerts();
   }, [projects, loading]);
+
+  // 今日簡報卡：時段問候語
+  const hour = time.getHours();
+  const greeting = hour < 5 ? '夜深了' : hour < 11 ? '早安' : hour < 18 ? '午安' : '晚安';
 
   const formatDateWithSeconds = (date) => {
     return new Intl.DateTimeFormat('zh-TW', {
@@ -718,28 +755,41 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 情境輪播橫幅 */}
-            <div className="dash-info-strip">
-              <span className={`info-carousel-slide${carouselVisible ? '' : ' fade-out'}`}>
-                {(() => {
-                  const s = slides[carouselIdx];
-                  if (!s) return null;
-                  if (s.type === 'welcome') return '歡迎進行監造作業。';
-                  if (s.type === 'weather') return `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`;
-                  if (s.type === 'project') return buildProjectMsg(s.project, s.wx);
-                  if (s.type === 'report') return <span style={{ color: s.urgent ? 'var(--color-danger, #ef4444)' : 'var(--color-warning, #f59e0b)' }}>{s.message}</span>;
-                  return null;
-                })()}
-              </span>
-              {slides.length > 1 && (
-                <span className="carousel-dots">
-                  {slides.map((_, i) => <span key={i} className={`cdot${i === carouselIdx ? ' active' : ''}`} />)}
-                </span>
-              )}
-            </div>
+            {/* 今日簡報整合卡：天氣問候 + 情境輪播 + 跨工程待辦 */}
+            <section className="dash-briefing">
+              <div className="briefing-weather">
+                <div className="briefing-wx-row">
+                  {React.createElement(wx ? wxIconFor(wx.code) : CloudSun, { size: 32, className: 'briefing-wx-icon' })}
+                  <div className="briefing-wx-text">
+                    <span className="briefing-greeting">{greeting}，歡迎回到監造現場</span>
+                    <span className="briefing-wx-line">
+                      {wx ? `雲林縣 ${wx.condition} ${wx.temp}°C ・ 今日降雨 ${wx.precipMm}mm` : '天氣資訊載入中…'}
+                    </span>
+                  </div>
+                </div>
+                <div className="briefing-carousel">
+                  <span className={`info-carousel-slide${carouselVisible ? '' : ' fade-out'}`}>
+                    {(() => {
+                      const s = slides[carouselIdx];
+                      if (!s) return null;
+                      if (s.type === 'welcome') return '歡迎進行監造作業。';
+                      if (s.type === 'weather') return `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`;
+                      if (s.type === 'project') return buildProjectMsg(s.project, s.wx);
+                      if (s.type === 'report') return <span className={s.urgent ? 'slide-urgent' : 'slide-warning'}>{s.message}</span>;
+                      return null;
+                    })()}
+                  </span>
+                  {slides.length > 1 && (
+                    <span className="carousel-dots">
+                      {slides.map((_, i) => <span key={i} className={`cdot${i === carouselIdx ? ' active' : ''}`} />)}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            {/* 跨工程待辦彙總 */}
-            <AlertsPanel alerts={alerts} navigate={navigate} />
+              {/* 跨工程待辦彙總 */}
+              <AlertsPanel alerts={alerts} navigate={navigate} loading={loading} />
+            </section>
 
             {/* 工程列表標題 + 篩選標籤 + 計數（同一列） */}
             <div className="dash-list-header">
