@@ -2123,29 +2123,145 @@
   cursor: not-allowed;
 }
 
-/* ── 跨工程待辦彙總區 ── */
-.alerts-panel {
+/* ── 今日簡報整合卡（天氣問候 + 情境輪播 + 跨工程待辦） ── */
+.dash-briefing {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--color-surface-border);
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+  animation: briefingIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes briefingIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 左側：天氣問候面板（漸層藍） */
+.briefing-weather {
+  flex: 0 0 330px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+/* 裝飾光暈 */
+.briefing-weather::after {
+  content: '';
+  position: absolute;
+  top: -34px;
+  right: -34px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.briefing-wx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+.briefing-wx-icon {
+  flex-shrink: 0;
+  animation: wxFloat 3.2s ease-in-out infinite;
+}
+@keyframes wxFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+.briefing-wx-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.briefing-greeting {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.briefing-wx-line {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.briefing-carousel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.briefing-carousel .info-carousel-slide {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+.briefing-carousel .slide-urgent  { color: #FCA5A5; font-weight: 700; }
+.briefing-carousel .slide-warning { color: #FDE68A; font-weight: 600; }
+.briefing-carousel .cdot        { background: rgba(255, 255, 255, 0.35); }
+.briefing-carousel .cdot.active { background: #fff; }
+
+/* 右側：跨工程待辦彙總區 */
+.briefing-tasks {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
+  align-content: center;
   gap: 10px;
-  margin-bottom: 14px;
+  padding: 12px 14px;
 }
 .alerts-group {
-  flex: 1 1 260px;
-  background: var(--color-surface);
+  flex: 1 1 240px;
+  min-width: 0;
+  background: var(--color-bg2);
   border: 1px solid var(--color-surface-border);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
+.alerts-group[data-level="urgent"]  { border-top: 3px solid var(--color-danger); }
+.alerts-group[data-level="warning"] { border-top: 3px solid var(--color-warning); }
 .alerts-group-label {
-  display: block;
-  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   margin-bottom: 6px;
 }
 .alerts-group-label.urgent  { color: var(--color-danger); }
 .alerts-group-label.warning { color: var(--color-warning); }
+.alerts-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+.alerts-group-label.urgent .alerts-pulse { animation: alertPulse 1.6s ease-out infinite; }
+@keyframes alertPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
 .alerts-list {
   display: flex;
   flex-direction: column;
@@ -2162,29 +2278,51 @@
   padding: 4px 6px;
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s;
+  transition: background 0.12s, transform 0.12s;
 }
-.alert-item:hover { background: var(--color-bg2); }
+.alert-item:hover { background: var(--color-surface-hover); transform: translateX(2px); }
 .alert-item[data-level="urgent"]  { border-left: 2px solid var(--color-danger); }
 .alert-item[data-level="warning"] { border-left: 2px solid var(--color-warning); }
 .alert-project-name {
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   font-weight: 600;
   color: var(--color-text1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  max-width: 140px;
   flex-shrink: 0;
 }
 .alert-msg {
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   color: var(--color-text1);
   flex: 1;
 }
 .alert-arrow {
   color: var(--color-text-muted);
   flex-shrink: 0;
+}
+
+/* 全部就緒 / 載入中 空狀態 */
+.briefing-all-clear {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.briefing-all-clear > svg { color: var(--color-success); flex-shrink: 0; }
+.all-clear-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text1);
+}
+.all-clear-sub {
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+/* 行動版：上下堆疊 */
+@media (max-width: 768px) {
+  .dash-briefing { flex-direction: column; }
+  .briefing-weather { flex: none; }
 }
 
 /* ── 搜尋框 ── */
