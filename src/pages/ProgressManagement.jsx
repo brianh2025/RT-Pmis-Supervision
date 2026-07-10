@@ -83,7 +83,11 @@ export function ProgressManagement() {
       { header: '備註',        key: '備註',        width: 30 },
     ];
     records.forEach(r => {
-      const planned = calcPlanned(r.report_date);
+      const calcVal = calcPlanned(r.report_date);
+      // 與頁面一致：儲存值優先、計算值備援
+      const planned = (r.planned_progress != null && Number(r.planned_progress) > 0)
+        ? Number(r.planned_progress)
+        : ((calcVal !== null && calcVal > 0) ? calcVal : null);
       ws.addRow({
         '報告日期':    r.report_date,
         '預定進度(%)': planned !== null ? parseFloat(planned.toFixed(2)) : '',
@@ -121,7 +125,7 @@ export function ProgressManagement() {
   };
 
   // 從 schedule_items 推算任意日期的預定進度（線性插值，跳過無日期的工項）
-  // weight 全為 0（如尚未匯入計畫）時回傳 null，讓呼叫端 fallback 到儲存值
+  // 作為儲存值（日誌書面數字）缺漏時的備援；weight 全為 0（如尚未匯入計畫）時回傳 null
   const calcPlanned = (dateStr) => {
     if (!scheduleItems.length) return null;
     const totalWeight = scheduleItems.reduce((s, i) => s + parseFloat(i.weight ?? 0), 0);
@@ -167,9 +171,10 @@ export function ProgressManagement() {
     ? chartDates.map(date => {
         const calcVal = calcPlanned(date);
         const stored = plannedMap[date];
-        const planned = (calcVal !== null && calcVal > 0)
-          ? parseFloat(calcVal.toFixed(2))
-          : (stored > 0 ? parseFloat(Number(stored).toFixed(2)) : null);
+        // 儲存值優先（日誌書面數字）；未填的日子用計畫進度表內插值備援
+        const planned = (stored != null && stored > 0)
+          ? parseFloat(Number(stored).toFixed(2))
+          : ((calcVal !== null && calcVal > 0) ? parseFloat(calcVal.toFixed(2)) : null);
         return {
           displayDate: date.slice(5),
           report_date: date,
@@ -188,9 +193,9 @@ export function ProgressManagement() {
   const latest = records[records.length - 1];
   const _calcLatest = latest ? calcPlanned(latest.report_date) : null;
   const latestPlanned = latest ? (
-    (_calcLatest !== null && _calcLatest > 0)
-      ? _calcLatest
-      : (Number(latest.planned_progress) > 0 ? Number(latest.planned_progress) : _calcLatest)
+    (latest.planned_progress != null && Number(latest.planned_progress) > 0)
+      ? Number(latest.planned_progress)
+      : _calcLatest
   ) : null;
   const latestDiff = latest && latestPlanned !== null && latestPlanned > 0
     ? (Number(latest.actual_progress) - latestPlanned)
@@ -293,10 +298,10 @@ export function ProgressManagement() {
             <tbody>
               {records.length > 0 ? records.map((r) => {
                 const calcVal = calcPlanned(r.report_date);
-                // calcPlanned=0 表示排程未開始，fallback 到資料庫儲存值
-                const planned = (calcVal !== null && calcVal > 0)
-                  ? calcVal
-                  : (r.planned_progress > 0 ? r.planned_progress : calcVal);
+                // 優先使用資料庫儲存的預定進度（日誌書面數字）；未填才用計畫進度表內插值
+                const planned = (r.planned_progress != null && Number(r.planned_progress) > 0)
+                  ? Number(r.planned_progress)
+                  : ((calcVal !== null && calcVal > 0) ? calcVal : null);
                 const diff = planned !== null
                   ? (Number(r.actual_progress) - planned)
                   : null;
