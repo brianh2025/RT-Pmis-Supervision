@@ -188,20 +188,37 @@ async function listDriveFolder(folderId, token) {
 
 /** 從資料夾路徑陣列推算 date / workItem / category
  *  E0-x 開頭 → 類別資料夾：含「材料」→ 材料進場；否則 → 施工抽查
- *  YYYYMMDD  → 日期；其餘 → 工項名稱
+ *  YYYYMMDD（西元）或 YYYMMDD（民國）→ 日期
+ *  其他純數字（如民國年月 11506）→ 略過不視為工項；其餘 → 工項名稱
  */
 function parsePathMeta(path) {
   let driveDate = '', driveWorkItem = '', driveCategory = '';
   for (const seg of path) {
     if (/^\d{8}$/.test(seg.name)) {
       driveDate = `${seg.name.slice(0,4)}-${seg.name.slice(4,6)}-${seg.name.slice(6,8)}`;
+    } else if (/^\d{7}$/.test(seg.name)) {
+      driveDate = `${Number(seg.name.slice(0,3)) + 1911}-${seg.name.slice(3,5)}-${seg.name.slice(5,7)}`;
     } else if (/^E0-\d/i.test(seg.name)) {
       driveCategory = /材料/.test(seg.name) ? '材料進場' : '施工抽查';
-    } else {
+    } else if (!/^\d+$/.test(seg.name)) {
       driveWorkItem = seg.name;
     }
   }
   return { driveDate, driveWorkItem, driveCategory };
+}
+
+/* ── 瀏覽位置記憶（每工程一份，相簿瀏覽與匯入瀏覽器共用）── */
+function loadBrowseMemory(projectId) {
+  if (!projectId) return null;
+  try { return JSON.parse(localStorage.getItem(`pmis_drive_browse_${projectId}`) || 'null'); }
+  catch { return null; }
+}
+function saveBrowseMemory(projectId, patch) {
+  if (!projectId) return;
+  try {
+    localStorage.setItem(`pmis_drive_browse_${projectId}`,
+      JSON.stringify({ ...(loadBrowseMemory(projectId) || {}), ...patch }));
+  } catch { /* localStorage 不可用時略過 */ }
 }
 
 /* 共用列印 CSS
@@ -706,7 +723,7 @@ function PhotoRecordDB({ projectId, projectName: _projectName, onNew, onAlbum, o
 }
 
 /* ── 選取照片（本機 / Google Drive 資料夾瀏覽）── */
-function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
+function StepUpload({ onPhotosReady, onBack, driveRootId = '', projectId = '' }) {
   // 匯入瀏覽根資料夾：工程指定的 drive_folder_id 優先，未設定時回退全域資料夾
   const driveRoot = driveRootId || DRIVE_FOLDER_ID;
   // item: { id, previewUrl, blob, mimeType, exifDate, exifGps, driveWorkItem, driveCategory }
@@ -734,6 +751,15 @@ function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
     setDriveBrowse({ token: null, loading: true, path: [], folders: [], images: [], importBusy: false, importStatus: '' });
     try {
       const token = await getGoogleReadToken();
+      // 優先還原上次瀏覽位置；資料夾已失效則清除記憶回根目錄
+      const memPath = loadBrowseMemory(projectId)?.path;
+      if (Array.isArray(memPath) && memPath.length) {
+        try {
+          const { folders, images } = await listDriveFolder(memPath[memPath.length - 1].id, token);
+          setDriveBrowse({ token, loading: false, path: memPath, folders, images, importBusy: false, importStatus: '' });
+          return;
+        } catch { saveBrowseMemory(projectId, { path: [] }); }
+      }
       const { folders, images } = await listDriveFolder(driveRoot, token);
       setDriveBrowse({ token, loading: false, path: [], folders, images, importBusy: false, importStatus: '' });
     } catch (e) {
@@ -746,10 +772,9 @@ function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
     setDriveBrowse(prev => ({ ...prev, loading: true }));
     try {
       const { folders, images } = await listDriveFolder(folder.id, driveBrowse.token);
-      setDriveBrowse(prev => ({
-        ...prev, loading: false,
-        path: [...prev.path, folder], folders, images,
-      }));
+      const newPath = [...driveBrowse.path, folder];
+      saveBrowseMemory(projectId, { path: newPath });
+      setDriveBrowse(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
     } catch (e) {
       alert(`無法開啟資料夾：${e.message}`);
       setDriveBrowse(prev => ({ ...prev, loading: false }));
@@ -763,6 +788,7 @@ function StepUpload({ onPhotosReady, onBack, driveRootId = '' }) {
       const newPath = toIndex < 0 ? [] : driveBrowse.path.slice(0, toIndex + 1);
       const parentId = newPath.length ? newPath[newPath.length - 1].id : driveRoot;
       const { folders, images } = await listDriveFolder(parentId, driveBrowse.token);
+      saveBrowseMemory(projectId, { path: newPath });
       setDriveBrowse(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
     } catch {
       setDriveBrowse(prev => ({ ...prev, loading: false }));
@@ -923,7 +949,10 @@ function albumLargeUrl(img) {
   return `https://drive.google.com/thumbnail?id=${img.id}&sz=w1600`;
 }
 
-function DriveAlbum({ driveRootId = '', onBack }) {
+const DATE_SCAN_EMPTY = { loading: false, loaded: false, error: '', progress: '', groups: [], flat: [] };
+const dateScanCache = new Map();   // key = driveRoot，同一 session 內快取日期掃描結果
+
+function DriveAlbum({ projectId = '', driveRootId = '', onBack }) {
   const driveRoot = driveRootId || DRIVE_FOLDER_ID;
   // album: { token, loading, error, path, folders, images }
   const [album, setAlbum] = useState(() => ({
@@ -931,24 +960,35 @@ function DriveAlbum({ driveRootId = '', onBack }) {
     error: driveRoot ? '' : '此工程未設定雲端資料夾（請於「編輯工程」填入雲端資料夾 ID），且未設定全域 VITE_GOOGLE_DRIVE_FOLDER_ID',
     path: [], folders: [], images: [],
   }));
-  const [mode, setMode] = useState('date');       // date = 日期條列瀏覽；folder = 資料夾瀏覽
+  // date = 日期條列瀏覽；folder = 資料夾瀏覽（記住上次模式，無記憶預設資料夾瀏覽）
+  const [mode, setMode] = useState(() => loadBrowseMemory(projectId)?.mode || 'folder');
   // dateScan: { loading, loaded, error, progress, groups: [{ date, items, start }], flat }
-  const [dateScan, setDateScan] = useState({ loading: false, loaded: false, error: '', progress: '', groups: [], flat: [] });
+  const [dateScan, setDateScan] = useState(() => dateScanCache.get(driveRoot) || DATE_SCAN_EMPTY);
   const [lightbox, setLightbox] = useState(null); // null 或目前清單索引
 
-  /* 進入時授權並載入根資料夾 */
+  /* 進入時授權並載入資料夾（優先還原上次瀏覽位置，失效則清除記憶回根目錄） */
   useEffect(() => {
     if (!driveRoot) return;
     let cancelled = false;
-    getGoogleReadToken()
-      .then(token => listDriveFolder(driveRoot, token).then(({ folders, images }) => {
+    (async () => {
+      try {
+        const token = await getGoogleReadToken();
+        const memPath = loadBrowseMemory(projectId)?.path;
+        if (Array.isArray(memPath) && memPath.length) {
+          try {
+            const { folders, images } = await listDriveFolder(memPath[memPath.length - 1].id, token);
+            if (!cancelled) setAlbum({ token, loading: false, error: '', path: memPath, folders, images });
+            return;
+          } catch { saveBrowseMemory(projectId, { path: [] }); }
+        }
+        const { folders, images } = await listDriveFolder(driveRoot, token);
         if (!cancelled) setAlbum({ token, loading: false, error: '', path: [], folders, images });
-      }))
-      .catch(e => {
+      } catch (e) {
         if (!cancelled) setAlbum(prev => ({ ...prev, loading: false, error: `無法開啟相簿：${e.message}` }));
-      });
+      }
+    })();
     return () => { cancelled = true; };
-  }, [driveRoot]);
+  }, [driveRoot, projectId]);
 
   /* 日期模式：遞迴掃描全部照片，依日期新→舊分組條列 */
   useEffect(() => {
@@ -986,7 +1026,9 @@ function DriveAlbum({ driveRootId = '', onBack }) {
             return g;
           });
         const flat = groups.flatMap(g => g.items);
-        if (!cancelled) setDateScan({ loading: false, loaded: true, error: '', progress: '', groups, flat });
+        const done = { loading: false, loaded: true, error: '', progress: '', groups, flat };
+        dateScanCache.set(driveRoot, done);
+        if (!cancelled) setDateScan(done);
       } catch (e) {
         if (!cancelled) setDateScan(prev => ({ ...prev, loading: false, error: `掃描失敗：${e.message}` }));
       }
@@ -999,6 +1041,7 @@ function DriveAlbum({ driveRootId = '', onBack }) {
     try {
       const { folders, images } = await listDriveFolder(folderId, album.token);
       setLightbox(null);
+      saveBrowseMemory(projectId, { path: newPath });
       setAlbum(prev => ({ ...prev, loading: false, path: newPath, folders, images }));
     } catch (e) {
       alert(`無法開啟資料夾：${e.message}`);
@@ -1010,6 +1053,14 @@ function DriveAlbum({ driveRootId = '', onBack }) {
     // toIndex = -1 → 回根目錄；≥0 → path[0..toIndex]
     const newPath = toIndex < 0 ? [] : album.path.slice(0, toIndex + 1);
     openFolder(newPath.length ? newPath[newPath.length - 1].id : driveRoot, newPath);
+  }
+  function switchMode(m) {
+    setMode(m); setLightbox(null);
+    saveBrowseMemory(projectId, { mode: m });
+  }
+  function rescanDates() {
+    dateScanCache.delete(driveRoot);
+    setDateScan(DATE_SCAN_EMPTY);   // loaded 重設後掃描 effect 會自動重跑
   }
 
   /* 燈箱清單：日期模式用掃描後的全量清單，資料夾模式用當前資料夾 */
@@ -1036,13 +1087,18 @@ function DriveAlbum({ driveRootId = '', onBack }) {
         <span className="pt-album-title"><Images size={14} />雲端相簿瀏覽</span>
         <div className="pt-album-mode">
           <button className={`pt-btn${mode === 'date' ? ' pt-btn-primary' : ''}`}
-            onClick={() => { setMode('date'); setLightbox(null); }}>
+            onClick={() => switchMode('date')}>
             <CalendarDays size={13} />日期瀏覽
           </button>
           <button className={`pt-btn${mode === 'folder' ? ' pt-btn-primary' : ''}`}
-            onClick={() => { setMode('folder'); setLightbox(null); }}>
+            onClick={() => switchMode('folder')}>
             <FolderOpen size={13} />資料夾瀏覽
           </button>
+          {mode === 'date' && dateScan.loaded && (
+            <button className="pt-btn" onClick={rescanDates} title="清除快取並重新掃描全部照片">
+              <RotateCcw size={13} />重新掃描
+            </button>
+          )}
         </div>
         <span className="pt-album-hint">唯讀瀏覽，不會下載或變更任何檔案</span>
       </div>
@@ -1623,7 +1679,7 @@ export function PhotoTable() {
           filterMode={filterMode} srcDate={srcDate} />
       )}
       {view === 'album' && (
-        <DriveAlbum driveRootId={project?.drive_folder_id || ''} onBack={() => setView('list')} />
+        <DriveAlbum projectId={projectId} driveRootId={project?.drive_folder_id || ''} onBack={() => setView('list')} />
       )}
       {view === 'detail' && detailRec && (
         <RecordDetail record={detailRec} projectId={projectId} projectName={project?.name}
@@ -1636,7 +1692,7 @@ export function PhotoTable() {
       )}
       {view === 'upload' && (
         <StepUpload onPhotosReady={ps => { setPhotos(ps); setView('entry'); }} onBack={() => setView('list')}
-          driveRootId={project?.drive_folder_id || ''} />
+          driveRootId={project?.drive_folder_id || ''} projectId={projectId} />
       )}
       {view === 'entry' && (
         <StepEntry photos={photos} onComplete={(data, cat) => { setPhotoData(data); setPhotoCategory(cat); setView('report'); }} onBack={() => setView('upload')} />
