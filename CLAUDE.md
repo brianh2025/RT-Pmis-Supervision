@@ -29,6 +29,15 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 嘗試失敗 3 次後停止，擬定方案再繼續
 - 重複作業達 5 次須告知使用者並等待指示
 
+## 專案 Skill 一覽（.claude/skills/）
+- `/arch-index`：掃描專案產生架構索引至 `docs/arch-index.md`，新增/刪除頁面元件後更新
+- `/pmis-maintenance`：週測、月更新、季健檢、發版前檢查清單
+- `/pmis-deploy`：部署流程（lint + build 驗證 → push main → Vercel 確認）
+- `/drive-sync-debug`：Drive 同步除錯協議（sync-diary 架構、檔名日期格式、故障模式）
+- `/ui-rules`：UI 版面規範與設計 token 紀律（修改 UI 時自動套用）
+- `/screenshot-interpretation`：截圖標註解讀協議（收到標註截圖時套用）
+- `supabase-postgres-best-practices`：Postgres 最佳實務（外部 skill，經 skills-lock.json 管理）
+
 ## 維護週期
 詳細清單執行 `/pmis-maintenance`。
 - 每週一：功能迴歸測試
