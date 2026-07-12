@@ -20,8 +20,9 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 其餘版面規範、設計 token 紀律、字級底線的單一事實來源：`/ui-rules` skill 與 `docs/design.md`，修改 UI 前必讀
 
 ## 部署方式
-- **所有修改直接推送 `main` 分支**，不建立 feature branch、不開 PR
-- Vercel 自動從 main 部署到 production，無需預覽流程
+- 本機作業：**所有修改直接推送 `main` 分支**，不建立 feature branch、不開 PR
+- 例外：雲端 session 被指定專用分支時，依 session 指示開分支與 PR（與 `/pmis-deploy` 一致）
+- Vercel 自動從 main 部署到 production，無需預覽流程；完整流程見 `/pmis-deploy`
 
 ## 工作紀律
 - 嘗試失敗 3 次後停止，擬定方案再繼續

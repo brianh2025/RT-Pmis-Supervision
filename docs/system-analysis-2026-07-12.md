@@ -50,7 +50,7 @@
 | 內部矛盾 ① | 開頭寫「GitHub（主要 origin）、GitLab（備援）」，「基礎建設」段卻寫「Git remote 從 GitHub 遷移至 GitLab」 | ⚠️ 兩段敘述相反（實查 remote 為 GitHub，後者為過時歷史） |
 | 膨脹問題 | 「近期完成功能」累積 4 個日期批次、數十條 changelog，每次對話全量載入 | ⚠️ 違背自身「省 token」哲學 |
 | 規範重複 | UI/token 紀律同時存在於 CLAUDE.md、ui-rules、pmis-maintenance 三處 | ⚠️ 缺單一事實來源 |
-| 部署敘述 | 「直接推 main、不開 PR」 | ✅ pmis-deploy 已補雲端 session 例外，無實際衝突 |
+| 部署敘述 | 「直接推 main、不開 PR」 | ⚠️ 例外條款只存在於 pmis-deploy，CLAUDE.md 本身未載明，雲端 session（開分支 + PR）與字面敘述不一致 |
 
 ## 五、設計規範分析（src/index.css + ui-rules）
 
@@ -80,6 +80,7 @@
 | UI 規範三處重複 | 單一事實來源定為 `/ui-rules` + `docs/design.md`，CLAUDE.md 留引用 |
 | 缺 design.md | 建立 `docs/design.md`（token 對照、字階使用場合、雙主題驗證清單、動效原則） |
 | arch-index 未產生 | 執行 `/arch-index`，產生 `docs/arch-index.md`（13 頁面、28 元件、13 資料表、2 Edge Functions） |
+| 部署敘述未載明雲端例外 | CLAUDE.md 部署方式補「雲端 session 依指定分支開分支與 PR」例外，並指向 `/pmis-deploy` |
 
 ## 未執行的後續建議
 
