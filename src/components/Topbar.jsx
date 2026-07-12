@@ -5,14 +5,14 @@ import { Menu, ChevronLeft, LogOut, FileSpreadsheet, HelpCircle } from 'lucide-r
  * backInfo: { label: string, onClick: () => void } | null
  * 有 backInfo 時，桌機版顯示返回列（32px），行動版顯示返回按鈕。
  * 漢堡鍵移至右側 (.pl-topbar-right)。
- * 若為 isGlobalDashboard，隱藏漢堡鍵並在右側顯示 Excel匯入 + 登出。
+ * 有傳 setIsMobileOpen 即顯示漢堡鍵（含工程總覽，行動版 Sidebar 唯一開啟途徑）。
  */
 export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel, onHelp, pageLabel }) {
   return (
     <header className={`pl-topbar ${backInfo ? 'has-back' : 'pl-topbar-mobile-only'}`}>
       <div className="pl-topbar-left">
-        {/* 行動版漢堡鍵（專案內頁才顯示，與返回按鈕並排於左側） */}
-        {!isGlobalDashboard && setIsMobileOpen && (
+        {/* 行動版漢堡鍵（與返回按鈕並排於左側） */}
+        {setIsMobileOpen && (
           <button className="pl-mobile-toggle" onClick={() => setIsMobileOpen(true)}>
             <Menu size={22} />
           </button>

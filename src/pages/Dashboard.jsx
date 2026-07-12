@@ -698,8 +698,8 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：顯示登出、隱藏漢堡鍵） */}
-        <Topbar isGlobalDashboard={true} />
+        {/* Topbar 僅行動版顯示（總覽模式：漢堡鍵開啟 Sidebar） */}
+        <Topbar isGlobalDashboard={true} setIsMobileOpen={setIsMobileOpen} />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
