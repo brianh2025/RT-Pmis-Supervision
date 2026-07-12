@@ -17,15 +17,18 @@ allowed-tools: Read, Grep, Glob, Bash
 ### 1. 推送前驗證（強制，不可跳過）
 
 ```bash
-npm run lint     # 0 嚴重錯誤（react-refresh context 與 hooks 警告可接受）
-npm run build    # 成功無 error
-git status       # 確認無遺漏或誤入的檔案
+npm run lint        # 0 誤報（react-refresh 與 hooks 類提示可接受）
+npm run build       # 成功無 error
+npm run test:smoke  # 12/12 通過（11 個受保護頁面渲染 + 未登入防護）
+git status          # 確認無遺漏或誤入的檔案
 ```
 
-建置產物大小比對基準（異常暴增即停止並回報）：
-- JS 主 chunk ~224 KB（gzip ~72 KB）
+建置產物大小比對基準（2026-07-12，異常暴增即停止並回報）：
+- JS 主 chunk ~344 KB（gzip ~101 KB）
+- recharts chunk ~341 KB（gzip ~101 KB）
+- pdfjs chunk ~410 KB（gzip ~122 KB）
 - ExcelJS chunk ~933 KB（gzip ~258 KB）
-- CSS ~117 KB（gzip ~20 KB）
+- CSS 總計 ~184 KB
 
 ### 2. Commit 與推送
 

@@ -45,12 +45,15 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 每季：Supabase SQL 健檢 + 程式碼安全稽核
 - 發版前：完整清單
 
-## 建置基準（2026-04-25 更新）
-- JS 主 chunk: ~224 KB（gzip ~72 KB）— 已啟用 React.lazy code splitting
-- ExcelJS chunk: ~933 KB（gzip ~258 KB）— xlsx 替換為 exceljs 後新增
-- CSS bundle: ~117 KB（gzip ~20 KB）
-- 建置時間: ~3 s
-- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告與 hooks 警告）
+## 建置基準（2026-07-12 更新）
+- JS 主 chunk: ~344 KB（gzip ~101 KB）— React.lazy code splitting
+- recharts chunk: ~341 KB（gzip ~101 KB）
+- pdfjs chunk: ~410 KB（gzip ~122 KB）
+- ExcelJS chunk: ~933 KB（gzip ~258 KB）
+- CSS 總計: ~184 KB
+- 建置時間: ~1 s
+- Lint: 0 誤報（剩餘 react-refresh only-export-components 與 react-hooks 類提示為已知可接受）
+- 煙霧測試: `npm run build && npm run test:smoke`（12 項：11 個受保護頁面渲染 + 未登入防護）
 
 ## 已知技術債
 （無 xlsx CVE，已於 2026-04-25 完成 exceljs 遷移）

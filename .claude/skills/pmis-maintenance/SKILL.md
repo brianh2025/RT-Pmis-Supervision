@@ -37,6 +37,14 @@ allowed-tools: Read, Edit, Write, Grep, Glob, Bash
 
 ## 每週（每 Monday）— 功能迴歸測試
 
+**自動化煙霧測試（先跑這個）**
+```bash
+npm run build && npm run test:smoke
+```
+- 未設定測試帳號時以假 session 驗證 11 個受保護頁面渲染 + 未登入防護（模式 B）
+- 設定 `TEST_USER_EMAIL` + `TEST_USER_PASSWORD`（Supabase 測試帳號）可載入真實資料驗證（模式 A）
+- 12 項全過才繼續手動項目；失敗項目先修
+
 **Auth**
 - [ ] 登入 / 登出正常
 - [ ] 未登入直接進 `/dashboard` 被導回登入頁
@@ -93,12 +101,14 @@ npm run build
 **檢查清單**
 - [ ] `npm audit` 無新增高危漏洞
 - [ ] `npm run build` 無 error（警告可接受）
-- [ ] 建置產物大小無異常暴增，基準（2026-04-25）：
-  - JS 主 chunk ~224 KB（gzip ~72 KB）
+- [ ] 建置產物大小無異常暴增，基準（2026-07-12）：
+  - JS 主 chunk ~344 KB（gzip ~101 KB）
+  - recharts chunk ~341 KB（gzip ~101 KB）
+  - pdfjs chunk ~410 KB（gzip ~122 KB）
   - ExcelJS chunk ~933 KB（gzip ~258 KB）
-  - CSS ~117 KB（gzip ~20 KB）
-  - 建置時間 ~3 s
-- [ ] Lint 0 嚴重錯誤（react-refresh context 警告與 hooks 警告可接受）
+  - CSS 總計 ~184 KB
+  - 建置時間 ~1 s
+- [ ] Lint 0 誤報（react-refresh only-export-components 與 react-hooks 類提示可接受）
 
 ---
 
