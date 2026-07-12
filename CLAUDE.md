@@ -29,6 +29,15 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 嘗試失敗 3 次後停止，擬定方案再繼續
 - 重複作業達 5 次須告知使用者並等待指示
 
+## 專案 Skill 一覽（.claude/skills/）
+- `/arch-index`：掃描專案產生架構索引至 `docs/arch-index.md`，新增/刪除頁面元件後更新
+- `/pmis-maintenance`：週測、月更新、季健檢、發版前檢查清單
+- `/pmis-deploy`：部署流程（lint + build 驗證 → push main → Vercel 確認）
+- `/drive-sync-debug`：Drive 同步除錯協議（sync-diary 架構、檔名日期格式、故障模式）
+- `/ui-rules`：UI 版面規範與設計 token 紀律（修改 UI 時自動套用）
+- `/screenshot-interpretation`：截圖標註解讀協議（收到標註截圖時套用）
+- `supabase-postgres-best-practices`：Postgres 最佳實務（外部 skill，經 skills-lock.json 管理）
+
 ## 維護週期
 詳細清單執行 `/pmis-maintenance`。
 - 每週一：功能迴歸測試
@@ -36,17 +45,20 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - 每季：Supabase SQL 健檢 + 程式碼安全稽核
 - 發版前：完整清單
 
-## 建置基準（2026-04-25 更新）
-- JS 主 chunk: ~224 KB（gzip ~72 KB）— 已啟用 React.lazy code splitting
-- ExcelJS chunk: ~933 KB（gzip ~258 KB）— xlsx 替換為 exceljs 後新增
-- CSS bundle: ~117 KB（gzip ~20 KB）
-- 建置時間: ~3 s
-- Lint: 0 嚴重錯誤（剩餘為 react-refresh context 警告與 hooks 警告）
+## 建置基準（2026-07-12 更新）
+- JS 主 chunk: ~344 KB（gzip ~101 KB）— React.lazy code splitting
+- recharts chunk: ~341 KB（gzip ~101 KB）
+- pdfjs chunk: ~410 KB（gzip ~122 KB）
+- ExcelJS chunk: ~933 KB（gzip ~258 KB）
+- CSS 總計: ~184 KB
+- 建置時間: ~1 s
+- Lint: 0 誤報（剩餘 react-refresh only-export-components 與 react-hooks 類提示為已知可接受）
+- 煙霧測試: `npm run build && npm run test:smoke`（12 項：11 個受保護頁面渲染 + 未登入防護）
 
 ## 已知技術債
 （無 xlsx CVE，已於 2026-04-25 完成 exceljs 遷移）
 
-## 目前開發狀態（2026-05-14 更新）
+## 目前開發狀態（2026-07-12 更新）
 
 ### 近期完成功能
 - **施工抽查單**：填寫介面、照片 Drive 資料夾重構、列印格式、儲存至管制表（自動計算整體結果寫入 `construction_inspections`）
@@ -78,6 +90,17 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 ### 近期完成（2026-05-19 補充）
 - **Drive 同步 v35**：修正單日選擇卻跑全量檔案（109 個）的過濾 bug；支援連續日期檔名（施工日誌-1150508-1150511）日期重疊篩選；parseDateFromFileName 加入格式 4 向後相容非標準命名；readAllDiarySheets 加入 inline string 偵測（相容部分廠商 xlsx）；BOILERPLATE 加入第N號明細表過濾；工項解析跳過總價式比例值
 - **DriveSyncModal UX**：同步中監聽 beforeunload 防意外離頁；overlay 點擊若正在同步則不關閉 Modal
+
+### 近期完成（2026-07-12 補充，涵蓋 5/20–7/10 共 49 個 commit）
+- **Drive 同步 v36→v54**：v44 修跨表欄位錯位解析出非施工項；v47 修 notes 誤帶工項名稱；v49 監造報表顯示一致、清除殘留工項、天氣偵測修正；v50 同底稿名 xlsm 優先於 xlsx；v51+v52 結構性修正工項表抓取範圍防財務欄誤判；v53 進度欄位皆空不寫 0 值 progress_records；v54 開工日下限防護（早於 start_date 一律跳過，防標單/明細表誤判成日誌）
+- **品質/檢驗管制**：依施工日誌自動羅列待建立查驗項（排除非查驗性記事）；檢驗記錄強化（類型二選一、不合格處置、PDF 辨識匯入）；敘述式工項拆解（位置/部位自動分離、每項活動獨立一列）；管制表雙擊編輯失焦修正、單筆刪除鈕、欄寬多輪調整
+- **施工抽查單**：支援匯入掃描版 PDF 辨識自動填入、Excel 匯入；「前往抽查」帶入機制（自動開啟抽查單並預填待查驗工項）；列印格式多輪調整（標楷體/Noto Serif TC、欄寬百分比、表頭斷字修正）；修正無法編輯與刪除
+- **照片記錄**：新增 Google Drive 匯入（資料夾瀏覽器、自動帶入日期與工項、E0-1/E0-2 類別判斷）；雲端相簿唯讀瀏覽 + 日期條列模式 + 大按鈕介面；Drive 上傳改用工程專屬資料夾；瀏覽記憶每工程資料夾位置、支援民國日期資料夾
+- **日誌 PDF 匯入**：重構支援跨頁監造報表並修正欄位錯位；NFKC 正規化修復相容區「年」字；敘述式工項拆解至 daily_report_items；偵測掃描版（純圖片）PDF 並提供 OCR 建議；匯入成功後自動跳至該月份
+- **進度/分析**：修正 S 曲線斷線與摔 0、日誌進度曲線尖刺，全站進度 null 處理清查；預定進度改為儲存值優先、計算值備援；進度頁垂直間距收緊與標題對齊修正
+- **送審管制**：新增匯入管制總表 PDF 辨識填入
+- **Dashboard/UI**：全系統設計語言升級（色彩、導航、按鈕、任務看板）；天氣輪播與待辦彙總整合為今日簡報卡；修正施工項目查驗不足提醒與工項不符
+- **維護**：2026-06-06 月度套件安全更新；uuid overrides 消除 exceljs 間接漏洞；清除機械性 lint 錯誤並修復 DiaryLog project 未定義 bug
 
 ### 待辦
 （目前無明確待辦，依使用回饋再安排）

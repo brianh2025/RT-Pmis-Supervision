@@ -29,6 +29,12 @@ export default defineConfig([
         argsIgnorePattern: '^_',
         destructuredArrayIgnorePattern: '^_',
       }],
+      // 列印模板與 JSX 文字中的全形空白（U+3000）是刻意排版（如「　　年　　月　　日」），不是錯誤
+      'no-irregular-whitespace': ['error', {
+        skipTemplates: true,
+        skipJSXText: true,
+        skipComments: true,
+      }],
     },
   },
 ])
