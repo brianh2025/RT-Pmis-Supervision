@@ -43,6 +43,7 @@ npm run build && npm run test:smoke
 ```
 - 未設定測試帳號時以假 session 驗證 11 個受保護頁面渲染 + 未登入防護（模式 B）
 - 設定 `TEST_USER_EMAIL` + `TEST_USER_PASSWORD`（Supabase 測試帳號）可載入真實資料驗證（模式 A）
+- 專用測試帳號：`brianh+pmis-smoke@xiaoxiong.page`（密碼在 `.env.local`，不入版控；2026-07-12 建立，一般 authenticated 權限，僅供煙霧測試讀取，勿做破壞性操作）
 - 12 項全過才繼續手動項目；失敗項目先修
 
 **Auth**
