@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Plus, Upload, Download, Edit, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Plus, Upload, Download, Edit, Trash2, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -19,6 +19,8 @@ export function ProgressManagement() {
   const [editingRecord, setEditingRecord] = useState(null);
   const [scheduleItems, setScheduleItems] = useState([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [view, setView] = useState('main');           // 'main' 進度曲線＋歷史 | 'schedule' 工程計畫項目
+  const [openMonths, setOpenMonths] = useState(null); // null = 未操作過（預設只展開最新月份）
 
   const fetchRecords = async () => {
     if (!id) return;
@@ -189,6 +191,24 @@ export function ProgressManagement() {
         實際進度: r.actual_progress !== null ? Number(r.actual_progress) : null,
       }));
 
+  // 歷史紀錄依年月分組（月新→舊；月內維持日期升冪）
+  const monthGroups = useMemo(() => {
+    const map = new Map();
+    for (const r of records) {
+      const m = (r.report_date || '').slice(0, 7);
+      if (!map.has(m)) map.set(m, []);
+      map.get(m).push(r);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [records]);
+  const latestMonth = monthGroups[0]?.[0];
+  const isMonthOpen = (m) => (openMonths ? openMonths.has(m) : m === latestMonth);
+  const toggleMonth = (m) => setOpenMonths(prev => {
+    const next = new Set(prev ?? (latestMonth ? [latestMonth] : []));
+    if (next.has(m)) next.delete(m); else next.add(m);
+    return next;
+  });
+
   // Latest record summary
   const latest = records[records.length - 1];
   const _calcLatest = latest ? calcPlanned(latest.report_date) : null;
@@ -211,15 +231,17 @@ export function ProgressManagement() {
     <div style={{ padding: '8px 24px', width: '100%' }}>
       {/* Page Header */}
       <header className="page-section-header" style={{ marginBottom: '8px' }}>
-        <div className="header-left">
+        <div className="header-left" style={{ flexShrink: 0 }}>
           <span className="section-label">進度管理</span>
-          <span className="section-sub-label">S 曲線進度追蹤</span>
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{ flex: 1, minWidth: 0 }}>
           {latest && (
             <span className="status-badge" style={{
+              flex: 1, minWidth: 0,
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              fontSize: 'var(--fs-base)',
               background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-              color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : '#ef4444',
+              color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
             }}>
               {latestDiff !== null ? (latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />) : null}
               實際 {fmtPct(latest.actual_progress)}
@@ -227,18 +249,19 @@ export function ProgressManagement() {
               {latestPlanned !== null && latestPlanned > 0 && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
             </span>
           )}
-          <button className="btn-dash-action" onClick={handleAdd} style={{ background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
+          <button className="btn-dash-action" onClick={handleAdd} style={{ flexShrink: 0, background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
             <Plus size={14} /><span>新增進度</span>
           </button>
         </div>
       </header>
 
       {/* S-Curve + Records — 合併區塊 */}
+      {view === 'main' && (
       <div className="b-content-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '8px' }}>
         {/* 區塊標題 */}
         <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '3px', height: '18px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block' }} />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)' }}>進度曲線 &amp; 歷史紀錄</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--color-text1)' }}>進度曲線</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{records.length} 筆</span>
             <button className="btn-dash-action" onClick={() => setIsExcelModalOpen(true)} style={{ padding: '3px 10px', fontSize: '11px' }}>
@@ -253,6 +276,7 @@ export function ProgressManagement() {
         {/* S-Curve 圖表 */}
         <div style={{ padding: '8px 4px' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
+            <>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 5, right: 8, left: 0, bottom: chartDates.length > 12 ? 20 : 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-block-border)" />
@@ -275,6 +299,11 @@ export function ProgressManagement() {
                 <Line type="monotone" dataKey="實際進度" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
               </LineChart>
             </ResponsiveContainer>
+            {/* 圖名 */}
+            <div style={{ textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--color-text-muted)', padding: '2px 0 6px', letterSpacing: '0.05em' }}>
+              圖：S 曲線進度追蹤
+            </div>
+            </>
           ) : (
             <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '13px', border: '1px dashed var(--color-block-border)', borderRadius: '8px' }}>
               尚無資料，請先匯入工程計畫進度表
@@ -282,71 +311,88 @@ export function ProgressManagement() {
           )}
         </div>
 
-        {/* 分隔線 + 表格標題 */}
-        <div style={{ padding: '10px 20px', borderTop: '1px solid var(--color-block-border)', borderBottom: '1px solid var(--color-block-border)', background: 'var(--color-bg2)', fontSize: '11px', fontWeight: 500, color: 'var(--color-text-muted)' }}>
-          歷史進度紀錄
+        {/* 分隔線 + 表格標題（套用進度曲線標題樣式＋前方束線；右側為工程計畫項目入口） */}
+        <div style={{ padding: '8px 20px', borderTop: '1px solid var(--color-block-border)', borderBottom: '1px solid var(--color-block-border)', background: 'var(--color-bg2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '3px', height: '18px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block' }} />
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--color-text1)' }}>歷史進度紀錄</span>
+          <button className="btn-dash-action" onClick={() => setView('schedule')} style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: 'var(--fs-xs)' }}>
+            <span>預定進度與權重</span><ChevronRight size={12} />
+          </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: 'var(--color-bg2)' }}>
                 {['報告日期', '預定進度', '實際進度', '差異', '操作'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-block-border)', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '5px 12px', textAlign: 'left', fontWeight: 500, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-block-border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {records.length > 0 ? records.map((r) => {
-                const calcVal = calcPlanned(r.report_date);
-                // 優先使用資料庫儲存的預定進度（日誌書面數字）；未填才用計畫進度表內插值
-                const planned = (r.planned_progress != null && Number(r.planned_progress) > 0)
-                  ? Number(r.planned_progress)
-                  : ((calcVal !== null && calcVal > 0) ? calcVal : null);
-                const diff = planned !== null
-                  ? (Number(r.actual_progress) - planned)
-                  : null;
-                const ahead = diff !== null && diff >= 0;
-                return (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--color-block-border)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
-                  >
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text1)', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.report_date}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(planned)}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--color-text2)' }}>{fmtPct(r.actual_progress)}</td>
-                    <td style={{ padding: '10px 16px' }}>
-                      {diff === null ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '4px',
-                        padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                        background: ahead ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-                        color: ahead ? '#10b981' : '#ef4444',
-                      }}>
-                        {ahead ? <TrendingUp size={11} /> : diff === 0 ? <Minus size={11} /> : <TrendingDown size={11} />}
-                        {diff > 0 ? '+' : ''}{fmtPct(Math.abs(diff))}
+              {records.length > 0 ? monthGroups.map(([month, rows]) => (
+                <React.Fragment key={month}>
+                  {/* 年月分組頭（點擊折疊/展開） */}
+                  <tr onClick={() => toggleMonth(month)} style={{ background: 'var(--color-bg2)', cursor: 'pointer', userSelect: 'none' }}>
+                    <td colSpan={5} style={{ padding: '4px 12px', fontWeight: 600, fontSize: 'var(--fs-sm)', color: 'var(--color-text1)', borderBottom: '1px solid var(--color-block-border)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {isMonthOpen(month) ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                        {month}<span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>（{rows.length} 筆）</span>
                       </span>
-                      )}
-                    </td>
-
-                    <td style={{ padding: '10px 16px' }}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px', borderRadius: '4px', transition: 'color 0.2s' }}
-                          onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
-                          title="編輯">
-                          <Edit size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px', borderRadius: '4px', transition: 'color 0.2s' }}
-                          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
-                          title="刪除">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
                     </td>
                   </tr>
-                );
-              }) : (
+                  {isMonthOpen(month) && rows.map((r) => {
+                    const calcVal = calcPlanned(r.report_date);
+                    // 優先使用資料庫儲存的預定進度（日誌書面數字）；未填才用計畫進度表內插值
+                    const planned = (r.planned_progress != null && Number(r.planned_progress) > 0)
+                      ? Number(r.planned_progress)
+                      : ((calcVal !== null && calcVal > 0) ? calcVal : null);
+                    const diff = planned !== null
+                      ? (Number(r.actual_progress) - planned)
+                      : null;
+                    const ahead = diff !== null && diff >= 0;
+                    return (
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--color-block-border)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
+                        <td style={{ padding: '3px 12px', color: 'var(--color-text1)', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.report_date}</td>
+                        <td style={{ padding: '3px 12px', color: 'var(--color-text2)' }}>{fmtPct(planned)}</td>
+                        <td style={{ padding: '3px 12px', color: 'var(--color-text2)' }}>{fmtPct(r.actual_progress)}</td>
+                        <td style={{ padding: '3px 12px' }}>
+                          {diff === null ? <span style={{ color: 'var(--color-text-muted)' }}>—</span> : (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '1px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                            background: ahead ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
+                            color: ahead ? 'var(--color-success)' : 'var(--color-danger)',
+                          }}>
+                            {ahead ? <TrendingUp size={11} /> : diff === 0 ? <Minus size={11} /> : <TrendingDown size={11} />}
+                            {diff > 0 ? '+' : ''}{fmtPct(Math.abs(diff))}
+                          </span>
+                          )}
+                        </td>
+
+                        <td style={{ padding: '3px 12px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px', borderRadius: '4px', transition: 'color 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                              title="編輯">
+                              <Edit size={13} />
+                            </button>
+                            <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px', borderRadius: '4px', transition: 'color 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-danger)'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                              title="刪除">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              )) : (
                 <tr>
                   <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
                     尚無進度資料，請點擊「新增進度」或「匯入 Excel」
@@ -357,12 +403,17 @@ export function ProgressManagement() {
           </table>
         </div>
       </div>
+      )}
 
-      {/* 工程計畫項目 */}
-      <div className="b-content-panel" style={{ padding: 0, overflow: 'hidden', marginTop: '16px' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* 工程計畫項目（預定進度與權重）— 獨立檢視 */}
+      {view === 'schedule' && (
+      <div className="b-content-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: '8px' }}>
+        <div style={{ padding: '8px 20px', borderBottom: '1px solid var(--color-block-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button className="btn-dash-action" onClick={() => setView('main')} style={{ padding: '3px 10px', fontSize: 'var(--fs-xs)' }}>
+            <ChevronLeft size={12} /><span>返回</span>
+          </button>
           <span style={{ width: '3px', height: '18px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block' }} />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text1)' }}>工程計畫項目</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--color-text1)' }}>工程計畫項目（預定進度與權重）</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
               {scheduleItems.length} 項
@@ -425,6 +476,7 @@ export function ProgressManagement() {
           </table>
         </div>
       </div>
+      )}
 
       {isFormModalOpen && (
         <ProgressFormModal
