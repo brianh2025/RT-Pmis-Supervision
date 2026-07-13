@@ -558,19 +558,14 @@ export function Dashboard() {
         onDragEnd={handleDragEnd}
         style={{ animationDelay: `${0.3 + index * 0.04}s` }}
       >
-        <div className="card-accent-side" style={{
-          background: isBehind(p)
-            ? 'linear-gradient(to bottom, #dc2626, #f87171)'
-            : p.status === 'active'
-            ? 'linear-gradient(to bottom, #1565C0, #42a5f5)'
-            : p.status === 'suspended'
-            ? 'linear-gradient(to bottom, #d97706, #fbbf24)'
-            : p.status === 'accepted'
-            ? 'linear-gradient(to bottom, #059669, #34d399)'
-            : p.status === 'pending'
-            ? 'linear-gradient(to bottom, #64748b, #94a3b8)'
-            : 'linear-gradient(to bottom, #94a3b8, #cbd5e1)'
-        }} />
+        <div className={`card-accent-side ${
+          isBehind(p) ? 'accent-behind'
+          : p.status === 'active' ? 'accent-active'
+          : p.status === 'suspended' ? 'accent-suspended'
+          : p.status === 'accepted' ? 'accent-accepted'
+          : p.status === 'pending' ? 'accent-pending'
+          : 'accent-done'
+        }`} />
         <div className="card-compact-body">
           <div className="card-compact-top">
             <div className="card-title-compact">{p.name}</div>
