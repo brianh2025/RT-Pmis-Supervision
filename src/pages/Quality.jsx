@@ -4,7 +4,7 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload, ScanText } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload, ScanText, Pencil } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
 import {
   renderPdfPagesToImages, recognizeInspectionImage, collectOcrParagraphs,
@@ -55,24 +55,80 @@ const ACTIVITY_TERMS = [
   '土方開挖', '初步回填', '土方回填',
   'PC襯底施作', '襯底施作', '漸變段打除',
 ];
+/* 找出字串中最早出現的活動詞（同位置取較長者，避免「擋水鋼板樁打設」被「鋼板樁打設」搶匹配） */
+function findActivity(str) {
+  let idx = -1, term = '';
+  for (const t of ACTIVITY_TERMS) {
+    const i = str.indexOf(t);
+    if (i >= 0 && (idx === -1 || i < idx || (i === idx && t.length > term.length))) { idx = i; term = t; }
+  }
+  return { idx, term };
+}
+/* 拆解規則（以活動詞命中與否判別片段類型，位置與工項次序不固定亦可判別）：
+ *   R1 括號內無活動詞 → 抽為位置（解「鋼筋綁紮（1F東側）」）
+ *   R2 整段按 、，,及 全域斷詞（頓號多項目一律拆項）
+ *   R3 逐 token：位置前綴＋活動詞→切分；活動詞開頭＋殘餘無活動詞→殘餘當位置；
+ *      無活動詞→前置暫存或回填至 location 為空的項
+ *   R4 整段無活動詞 → 各 token 視為自由工項各自成列
+ * 測試案例：
+ *   '1F東側鋼筋綁紮及模板組立'   → [{鋼筋綁紮,1F東側},{模板組立,1F東側}]
+ *   '鋼筋綁紮（1F東側）'         → [{鋼筋綁紮,1F東側}]
+ *   '路基整理、級配鋪設、涵管吊放' → 三項各自成列（無位置）
+ *   '本日施作：1.P12～P15基樁打設 2.土方開挖（南側）' → [{基樁打設,P12～P15},{土方開挖,南側}]
+ *   '鋼筋綁紮1F東側'             → [{鋼筋綁紮,1F東側}]
+ *   '模板組立、混凝土澆置、2F版' → [{模板組立,2F版},{混凝土澆置,2F版}]
+ */
 function splitWorkItemEntry(raw) {
   const name = (raw || '').replace(/^本日施作[:：]?/, '').trim();
-  // 先按「1. 2.」項次或句號分段
-  const segs = name.split(/(?:^|[。;；])\s*\d+\.\s*/).map(s => s.replace(/[。\s]+$/, '').trim()).filter(Boolean);
+  // 先按「1. 2.」項次或句號分段（項次前可為句首、句號或空白；(?!\d) 避免誤切小數）
+  const segs = name.split(/(?:^|[。;；\s])\s*\d+\.(?!\d)\s*/).map(s => s.replace(/[。\s]+$/, '').trim()).filter(Boolean);
   const out = [];
-  for (const seg of (segs.length ? segs : [name])) {
-    let idx = -1;
-    for (const t of ACTIVITY_TERMS) {
-      const i = seg.indexOf(t);
-      if (i >= 0 && (idx === -1 || i < idx)) idx = i;
-    }
-    if (idx > 0) {
-      const location = seg.slice(0, idx).trim();
-      for (const a of seg.slice(idx).split(/[及、，,]/).map(s => s.trim()).filter(Boolean)) {
-        out.push({ item: a, location });
+  for (const seg0 of (segs.length ? segs : [name])) {
+    // R1 括號位置抽取
+    let parenLoc = '';
+    const seg = seg0.replace(/[（(]([^（）()]*)[）)]/g, (m, inner) => {
+      if (findActivity(inner).idx >= 0) return m;
+      if (inner.trim()) parenLoc = inner.trim();
+      return '';
+    }).trim();
+    // R2 全域斷詞
+    const tokens = seg.split(/[、，,及]/).map(s => s.trim()).filter(Boolean);
+    // R3 逐 token 分類
+    const results = [];
+    const pendingTokens = [];  // 首個活動詞之前的無活動詞 token（前置位置或自由工項，段末定奪）
+    let curLoc = parenLoc;
+    for (const tok of tokens) {
+      const { idx, term } = findActivity(tok);
+      if (idx > 0) {
+        curLoc = tok.slice(0, idx).trim() || curLoc;
+        results.push({ item: tok.slice(idx), location: curLoc });
+      } else if (idx === 0) {
+        const rest = tok.slice(term.length).trim();
+        if (rest && findActivity(rest).idx === -1) {
+          // 工項在前、位置在後（如「鋼筋綁紮1F東側」）
+          results.push({ item: term, location: rest });
+          curLoc = rest;
+        } else {
+          results.push({ item: tok, location: curLoc });
+        }
+      } else if (results.length === 0) {
+        pendingTokens.push(tok);
+      } else {
+        // 尾端無活動詞 token：回填至 location 為空的項，全數已有位置則自身成列
+        const holes = results.filter(r => !r.location);
+        if (holes.length) holes.forEach(r => { r.location = tok; });
+        else results.push({ item: tok, location: curLoc });
       }
+    }
+    // R4 段末收尾
+    if (results.length === 0) {
+      for (const tok of pendingTokens) out.push({ item: tok, location: parenLoc });
     } else {
-      out.push({ item: seg, location: '' });
+      if (pendingTokens.length) {
+        const loc = pendingTokens.join('');
+        results.forEach(r => { if (!r.location) r.location = loc; });
+      }
+      out.push(...results);
     }
   }
   return out.length ? out : [{ item: name, location: '' }];
@@ -101,7 +157,7 @@ const EMPTY_QUALITY = {
 };
 
 /* ── Mobile Card: 施工檢驗 ── */
-function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId, selected, onToggleSel, onCycleResult }) {
+function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId, selected, onToggleSel, onCycleResult, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const resCfg = INSPECT_RESULT[row.result] || INSPECT_RESULT['待複驗'];
   const iss = issueByInspMap[row.id];
@@ -140,6 +196,12 @@ function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId
               <span className="mcs-mc-val">{f.value}</span>
             </div>
           ))}
+          {/* 編輯入口：開啟標準抽查單 Modal 編修本筆內容 */}
+          <div className="mcs-mc-row" style={{ justifyContent: 'flex-end' }}>
+            <button className="mcs-btn mcs-btn-add" onClick={e => { e.stopPropagation(); onEdit(row); }}>
+              <Pencil size={12} /> 編輯內容
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -193,10 +255,23 @@ export function Quality() {
   // 施工抽查照片計數
   const [inspPhotoMap, setInspPhotoMap] = useState({});
 
-  // 依施工日誌 / 材料進場產生的待建立查驗
+  // 依施工日誌 / 材料進場產生的待建立查驗（自動直接建檔）
   const [diaryItems, setDiaryItems] = useState([]);
   const [matEntries, setMatEntries] = useState([]);
-  const [pendingOpen, setPendingOpen] = useState(true);
+  const [autoCreated, setAutoCreated] = useState(0); // 本次自動建立筆數（提示 banner）
+  const autoCreateRan = useRef(false);
+
+  // 自動建檔 tombstone：使用者刪除過的查驗不再自動重建（localStorage，per-browser）
+  const dismissKey = `pmis-insp-auto-dismissed-${projectId}`;
+  const tombOf = (date, name) => `${date}|${guessTemplateCode(name) || name}`;
+  const readDismissed = () => {
+    try { return new Set(JSON.parse(localStorage.getItem(dismissKey) || '[]')); } catch { return new Set(); }
+  };
+  const addDismissed = (rows) => {
+    const set = readDismissed();
+    for (const r of rows) set.add(tombOf(r.inspect_date, r.work_item));
+    localStorage.setItem(dismissKey, JSON.stringify([...set]));
+  };
 
   const loadInspections = useCallback(async () => {
     if (!supabase) return [];
@@ -464,6 +539,7 @@ export function Quality() {
     const table = tab === 0 ? 'construction_inspections' : tab === 1 ? 'quality_issues' : 'mcs_test';
     const { error } = await supabase.from(table).delete().in('id', ids);
     if (error) { alert(`刪除失敗：${error.message}`); return; }
+    if (tab === 0) addDismissed(inspections.filter(r => selected.has(r.id)));
     if (tab === 0) setInspections(prev => prev.filter(r => !selected.has(r.id)));
     else if (tab === 1) setIssues(prev => prev.filter(r => !selected.has(r.id)));
     else setTests(prev => prev.filter(r => !selected.has(r.id)));
@@ -475,6 +551,7 @@ export function Quality() {
     if (!supabase || !window.confirm(`確定刪除「${row.work_item || '（未命名）'}」這筆檢驗記錄？`)) return;
     const { error } = await supabase.from('construction_inspections').delete().eq('id', row.id);
     if (error) { alert(`刪除失敗：${error.message}`); return; }
+    addDismissed([row]);
     setInspections(prev => prev.filter(r => r.id !== row.id));
   }
 
@@ -563,15 +640,31 @@ export function Quality() {
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([date, items]) => ({ date, items: items.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant')) }));
   }, [diaryItems, matEntries, inspections]);
-  const pendingInspCount = pendingInspGroups.reduce((s, g) => s + g.items.length, 0);
 
-  /* 點選待建立項：帶入日期、工項與部位開啟新增查驗（材料進場帶入材料檢驗類別） */
-  function startPendingInsp(it) {
-    setInspForm({ ...EMPTY_INSPECT, inspect_date: it.date, work_item: it.name,
-      location: it.location || '',
-      inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗' });
-    setShowInspModal(true);
-  }
+  /* ── 自動直接建立待編輯查驗：初載完成後將候選一次寫入管制表（結果「待複驗」），
+     冪等由 hasInsp 保證（建檔後下次載入候選自然消失）；刪除過的由 tombstone 過濾不再重建 ── */
+  useEffect(() => {
+    if (loading || autoCreateRan.current || !supabase) return;
+    autoCreateRan.current = true; // 本次載入僅執行一次
+    const dismissed = readDismissed();
+    const candidates = pendingInspGroups.flatMap(g => g.items)
+      .filter(it => !dismissed.has(tombOf(it.date, it.name)));
+    if (!candidates.length) return;
+    (async () => {
+      const payload = candidates.map(it => ({
+        project_id: projectId, created_by: user?.id,
+        inspect_date: it.date, work_item: it.name,
+        inspect_type: INSPECT_TYPE_CHOICES[0],
+        inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗',
+        location: it.location || '', inspector: '', result: '待複驗', remark: '',
+      }));
+      const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
+      if (error || !data?.length) return;
+      setInspections(prev => [...data, ...prev]);
+      setAutoCreated(data.length);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pendingInspGroups]);
 
   /* ── 新增檢驗：匯入抽查紀錄 PDF 掃描檔辨識（重用標準抽查單的 OCR 管線） ── */
   const inspPdfInputRef = useRef(null);
@@ -631,25 +724,6 @@ export function Quality() {
     } finally {
       setInspOcrLoading(false);
     }
-  }
-
-  /* 一鍵將全部待建立項寫入管制表（結果預設「待複驗」，後續逐筆編修） */
-  async function createAllPending() {
-    const all = pendingInspGroups.flatMap(g => g.items);
-    if (!all.length || !supabase) return;
-    if (!window.confirm(`將依施工日誌建立 ${all.length} 筆待編輯查驗（結果預設「待複驗」），確定？`)) return;
-    setSaving(true);
-    const payload = all.map(it => ({
-      project_id: projectId, created_by: user?.id,
-      inspect_date: it.date, work_item: it.name,
-      inspect_type: INSPECT_TYPE_CHOICES[0],
-      inspect_category: it.source === '材料進場' ? '材料檢驗' : '施工檢驗',
-      location: it.location || '', inspector: '', result: '待複驗', remark: '',
-    }));
-    const { data, error } = await supabase.from('construction_inspections').insert(payload).select();
-    setSaving(false);
-    if (error) { alert(`建立失敗：${error.message}`); return; }
-    setInspections(prev => [...(data || []), ...prev]);
   }
 
   async function saveQuickInsp() {
@@ -766,40 +840,19 @@ export function Quality() {
         </div>
       </div>
 
-      {/* Tab 0: 依施工日誌待建立查驗 */}
-      {tab === 0 && pendingInspCount > 0 && (
-        <div className="mcs-pending-panel">
-          <div className="mcs-pending-head" onClick={() => setPendingOpen(o => !o)}>
-            <ClipboardCheck size={14} style={{ color: 'var(--color-primary-light)', flexShrink: 0 }} />
-            <span className="mcs-pending-title">依施工日誌待建立查驗</span>
-            <span className="mcs-pending-count">{pendingInspCount}</span>
-            <span className="mcs-pending-hint">日誌有施工或材料進場、當日尚無查驗記錄，點工項即帶入日期建立</span>
-            <button className="mcs-btn mcs-btn-add" disabled={saving}
-              onClick={e => { e.stopPropagation(); createAllPending(); }}>
-              <Plus size={12} /> 全部建立
-            </button>
-            <span className="mcs-pending-caret">{pendingOpen ? '▲' : '▼'}</span>
-          </div>
-          {pendingOpen && (
-            <div className="mcs-pending-body">
-              {pendingInspGroups.map(g => (
-                <div key={g.date} className="mcs-pending-daterow">
-                  <span className="mcs-pending-date">{g.date}</span>
-                  <div className="mcs-pending-items">
-                    {g.items.map(it => (
-                      <button key={`${it.name}|${it.location || ''}|${it.source}`} className="mcs-pending-chip"
-                        title={`${it.location ? it.location + ' — ' : ''}${it.name}（帶入 ${g.date}）`} onClick={() => startPendingInsp(it)}>
-                        {it.source === '材料進場' && <span className="mcs-pending-src">材</span>}
-                        {it.location && <span className="mcs-pending-loc">{it.location}</span>}
-                        <span className="mcs-pending-chip-name">{it.name}</span>
-                        <Plus size={11} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Tab 0: 依施工日誌自動建立查驗的結果提示（可關閉） */}
+      {tab === 0 && autoCreated > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', marginBottom: '8px',
+          borderRadius: '8px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+          color: 'var(--color-success)', fontSize: 'var(--fs-sm)',
+        }}>
+          <ClipboardCheck size={14} style={{ flexShrink: 0 }} />
+          <span>已依施工日誌自動建立 {autoCreated} 筆待複驗查驗，請於表列中編修內容與結果</span>
+          <button onClick={() => setAutoCreated(0)} title="關閉提示"
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex' }}>
+            <X size={13} />
+          </button>
         </div>
       )}
 
@@ -878,6 +931,7 @@ export function Quality() {
                 selected={selected.has(row.id)}
                 onToggleSel={() => togSel(row.id)}
                 onCycleResult={cycleInspResult}
+                onEdit={setFormRow}
               />
             ))}
           </div>
