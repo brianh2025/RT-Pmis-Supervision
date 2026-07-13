@@ -27,7 +27,10 @@
       "Bash(git commit *)",
       "mcp__6de4ef29-93e5-4d1e-8241-89f697ab524b__list_projects",
       "mcp__6de4ef29-93e5-4d1e-8241-89f697ab524b__list_deployments",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "mcp__Claude_Code_Remote__create_trigger",
+      "mcp__Claude_Code_Remote__delete_trigger",
+      "mcp__Claude_Code_Remote__send_later"
     ]
   },
   "enableAllProjectMcpServers": true,
