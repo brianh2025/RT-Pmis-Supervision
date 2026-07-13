@@ -1617,8 +1617,8 @@
     cursor: pointer;
     flex-shrink: 0;
   }
-  /* 標題已上移 Topbar 頂列，行動版隱藏頁內標題群組 */
-  .dash-title-block { display: none; }
+  /* 標題已上移 Topbar 頂列，行動版隱藏頁內標題群組（!important 蓋過 JSX inline display:flex） */
+  .dash-title-block { display: none !important; }
 }
 
 /* 明暗切換鈕（桌機 header 右上角；行動版由 Topbar 頂列提供） */
