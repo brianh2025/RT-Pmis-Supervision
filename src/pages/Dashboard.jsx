@@ -18,7 +18,7 @@ import { Topbar } from '../components/Topbar';
 import {
   Building2, PlusCircle, FileSpreadsheet, AlertCircle, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut, CalendarClock,
+  GripHorizontal, LogOut, CalendarClock, Menu, Moon,
   Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudLightning,
 } from 'lucide-react';
 import './Dashboard.css';
@@ -569,24 +569,20 @@ export function Dashboard() {
         <div className="card-compact-body">
           <div className="card-compact-top">
             <div className="card-title-compact">{p.name}</div>
+            {diff !== null && (
+              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ marginLeft: 0 }}>
+                {diff >= 0 ? '+' : ''}{diff}%
+              </span>
+            )}
           </div>
           <div className="card-progress-row">
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {diff !== null && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
-                  <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ marginLeft: 0 }}>
-                    {diff >= 0 ? '+' : ''}{diff}%
-                  </span>
-                </div>
-              )}
-              <div className="layered-progress-bar">
-                <div className="bar-planned" style={{ width: `${planned ?? 0}%` }} />
-                <div className="bar-actual" style={{
-                  width: `${prog}%`,
-                  background: isBehind(p) ? 'var(--color-danger)' :
-                              (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
-                }} />
-              </div>
+            <div className="layered-progress-bar">
+              <div className="bar-planned" style={{ width: `${planned ?? 0}%` }} />
+              <div className="bar-actual" style={{
+                width: `${prog}%`,
+                background: isBehind(p) ? 'var(--color-danger)' :
+                            (p.status === 'completed' || p.status === 'accepted' || p.status === 'pending') ? 'var(--color-text-muted)' : undefined
+              }} />
             </div>
             <span className="card-pct-num" style={{
               color: isBehind(p) ? 'var(--color-danger)' :
@@ -645,13 +641,22 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：漢堡鍵開啟 Sidebar） */}
-        <Topbar isGlobalDashboard={true} setIsMobileOpen={setIsMobileOpen} />
+        {/* Topbar 僅行動版顯示（總覽模式：頂列＝標題＋說明＋明暗切換，漢堡鍵移至下方標題列） */}
+        <Topbar
+          isGlobalDashboard={true}
+          title="雲林縣工程監造"
+          onHelp={() => setShowTutorial(true)}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+        />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">
           <div className="dash-main">
-              {/* 標題列：左（標題）/ 中（搜尋）/ 右（按鈕） */}
+              {/* 標題列：左（標題）/ 中（搜尋）/ 右（按鈕）；行動版＝☰＋搜尋＋按鈕同列 */}
               <div className="dash-page-header">
+                <button className="dash-header-menu-btn" onClick={() => setIsMobileOpen(true)} title="開啟選單">
+                  <Menu size={18} />
+                </button>
                 <div className="dash-title-block" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="dash-title-accent" />
                   <div>
@@ -695,6 +700,9 @@ export function Dashboard() {
                   <button className="btn-dash-action btn-dash-export" onClick={handleExport}>
                     <Download size={13} />
                     <span>匯出清單</span>
+                  </button>
+                  <button className="btn-dash-theme" onClick={toggleTheme} title={isDarkMode ? '切換亮色' : '切換暗色'}>
+                    {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
                   </button>
                   <button className="btn-dash-signout" onClick={handleSignOut}>
                     <LogOut size={13} /><span>登出</span>

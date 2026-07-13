@@ -1,13 +1,14 @@
 import React from 'react';
-import { Menu, ChevronLeft, LogOut, FileSpreadsheet, HelpCircle } from 'lucide-react';
+import { Menu, ChevronLeft, LogOut, FileSpreadsheet, HelpCircle, Sun, Moon } from 'lucide-react';
 
 /**
  * backInfo: { label: string, onClick: () => void } | null
  * 有 backInfo 時，桌機版顯示返回列（32px），行動版顯示返回按鈕。
  * 漢堡鍵移至右側 (.pl-topbar-right)。
- * 有傳 setIsMobileOpen 即顯示漢堡鍵（含工程總覽，行動版 Sidebar 唯一開啟途徑）。
+ * 有傳 setIsMobileOpen 即顯示漢堡鍵（行動版 Sidebar 開啟途徑；總覽頁改由頁內標題列漢堡鍵開啟）。
+ * title：總覽頁行動版於頂列顯示的頁面標題；isDarkMode/toggleTheme：頂列右端明暗切換鈕。
  */
-export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel, onHelp, pageLabel }) {
+export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut, onShowExcel, onHelp, pageLabel, title, isDarkMode, toggleTheme }) {
   return (
     <header className={`pl-topbar ${backInfo ? 'has-back' : 'pl-topbar-mobile-only'}`}>
       <div className="pl-topbar-left">
@@ -23,6 +24,13 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
             <ChevronLeft size={18} />
           </button>
         )}
+        {/* 頁面標題（總覽頁行動版） */}
+        {title && (
+          <div className="pl-topbar-title">
+            <span className="pl-topbar-title-accent" />
+            <span className="pl-topbar-title-text">{title}</span>
+          </div>
+        )}
       </div>
 
       {pageLabel && (
@@ -32,6 +40,11 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
       )}
 
       <div className="pl-topbar-right">
+        {toggleTheme && (
+          <button className="pl-topbar-theme-btn" onClick={toggleTheme} title={isDarkMode ? '切換亮色' : '切換暗色'}>
+            {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        )}
         {onHelp && (
           <button className="pl-topbar-help-btn" onClick={onHelp} title="使用說明">
             <HelpCircle size={14} />
