@@ -1136,14 +1136,16 @@ function DriveAlbum({ projectId = '', driveRootId = '', onBack }) {
                   <span className="pt-album-date-label">{g.date ? toRocDate(g.date) : '未依日期歸檔'}</span>
                   <span className="pt-album-date-count">{g.items.length} 張</span>
                 </div>
-                <div className="pt-album-grid">
+                <div className="pt-album-list">
                   {g.items.map((img, i) => (
-                    <button key={img.id} className="pt-album-cell" onClick={() => setLightbox(g.start + i)}>
-                      <img src={albumThumbUrl(img)} alt={img.name} loading="lazy" referrerPolicy="no-referrer"
+                    <button key={img.id} className="pt-album-list-row" onClick={() => setLightbox(g.start + i)}>
+                      <img className="pt-album-list-thumb" src={albumThumbUrl(img)} alt={img.name} loading="lazy" referrerPolicy="no-referrer"
                         onError={e => { e.target.style.opacity = 0.15; }} />
-                      <span className="pt-album-cell-name" title={img.workItem ? `${img.workItem}｜${img.name}` : img.name}>
-                        {img.workItem ? `${img.workItem}｜${img.name}` : img.name}
+                      <span className="pt-album-list-info">
+                        {img.workItem && <span className="pt-category-badge">{img.workItem}</span>}
+                        <span className="pt-album-list-name" title={img.name}>{img.name}</span>
                       </span>
+                      <ChevronRight size={14} className="pt-album-list-arrow" />
                     </button>
                   ))}
                 </div>
