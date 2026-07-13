@@ -2123,206 +2123,121 @@
   cursor: not-allowed;
 }
 
-/* ── 今日簡報整合卡（天氣問候 + 情境輪播 + 跨工程待辦） ── */
-.dash-briefing {
+/* ── 訊息輪播條（警訊 + 月報 + 施工狀況 + 天氣 + 歡迎語整合） ── */
+.dash-ticker {
   display: flex;
-  align-items: stretch;
-  margin-bottom: 8px;
-  border-radius: 14px;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid var(--color-surface-border);
   background: var(--color-surface);
-  overflow: hidden;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
-  animation: briefingIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: tickerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes briefingIn {
+[data-theme="light"] .dash-ticker {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+@keyframes tickerIn {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 左側：天氣問候面板（漸層藍） */
-.briefing-weather {
-  flex: 0 0 330px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%);
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-/* 裝飾光暈 */
-.briefing-weather::after {
-  content: '';
-  position: absolute;
-  top: -34px;
-  right: -34px;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-}
-.briefing-wx-row {
+/* 左側型別圖示 */
+.ticker-icon {
   display: flex;
   align-items: center;
-  gap: 10px;
-  position: relative;
-  z-index: 1;
-}
-.briefing-wx-icon {
   flex-shrink: 0;
-  animation: wxFloat 3.2s ease-in-out infinite;
+  color: var(--color-primary-light);
 }
-@keyframes wxFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
-}
-.briefing-wx-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.briefing-greeting {
-  font-size: 0.98rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.briefing-wx-line {
-  font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.briefing-carousel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  z-index: 1;
-}
-.briefing-carousel .info-carousel-slide {
-  font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.92);
-}
-.briefing-carousel .slide-urgent  { color: #FCA5A5; font-weight: 700; }
-.briefing-carousel .slide-warning { color: #FDE68A; font-weight: 600; }
-.briefing-carousel .cdot        { background: rgba(255, 255, 255, 0.35); }
-.briefing-carousel .cdot.active { background: #fff; }
-
-/* 右側：跨工程待辦彙總區 */
-.briefing-tasks {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  gap: 10px;
-  padding: 12px 14px;
-}
-.alerts-group {
-  flex: 1 1 240px;
-  min-width: 0;
-  background: var(--color-bg2);
-  border: 1px solid var(--color-surface-border);
-  border-radius: 10px;
-  padding: 8px 10px;
-}
-.alerts-group[data-level="urgent"]  { border-top: 3px solid var(--color-danger); }
-.alerts-group[data-level="warning"] { border-top: 3px solid var(--color-warning); }
-.alerts-group-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
-.alerts-group-label.urgent  { color: var(--color-danger); }
-.alerts-group-label.warning { color: var(--color-warning); }
-.alerts-pulse {
-  width: 8px;
-  height: 8px;
+.ticker-icon.urgent {
+  color: var(--color-danger);
   border-radius: 50%;
-  flex-shrink: 0;
-  background: currentColor;
+  animation: alertPulse 1.6s ease-out infinite;
 }
-.alerts-group-label.urgent .alerts-pulse { animation: alertPulse 1.6s ease-out infinite; }
+.ticker-icon.warning { color: var(--color-warning); }
 @keyframes alertPulse {
   0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
   70%  { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
-.alerts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.alert-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s, transform 0.12s;
-}
-.alert-item:hover { background: var(--color-surface-hover); transform: translateX(2px); }
-.alert-item[data-level="urgent"]  { border-left: 2px solid var(--color-danger); }
-.alert-item[data-level="warning"] { border-left: 2px solid var(--color-warning); }
-.alert-project-name {
-  font-size: 0.84rem;
+
+/* 中央輪播訊息（主角：0.92rem / 600） */
+.ticker-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--color-text1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
-  flex-shrink: 0;
+  transition: opacity 0.3s ease;
+  opacity: 1;
 }
-.alert-msg {
-  font-size: 0.84rem;
-  color: var(--color-text1);
-  flex: 1;
-}
-.alert-arrow {
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
+.ticker-msg.fade-out { opacity: 0; }
+.ticker-msg .slide-urgent  { color: var(--color-danger); font-weight: 700; }
+.ticker-msg .slide-warning { color: var(--color-warning); font-weight: 600; }
 
-/* 全部就緒 / 載入中 空狀態 */
-.briefing-all-clear {
-  flex-wrap: nowrap;
+/* 警訊 slide（可點擊導向工程頁） */
+.ticker-alert {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 0.12s, transform 0.12s;
 }
-.briefing-all-clear > svg { color: var(--color-success); flex-shrink: 0; }
-.all-clear-title {
-  font-size: 0.9rem;
+.ticker-alert:hover {
+  background: var(--color-surface-hover);
+  transform: translateX(2px);
+}
+.ticker-badge {
+  flex-shrink: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fff;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.ticker-badge[data-level="urgent"]  { background: var(--color-danger); }
+.ticker-badge[data-level="warning"] { background: var(--color-warning); }
+.ticker-alert-name {
   font-weight: 700;
   color: var(--color-text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 3; /* 空間不足時工程名優先收縮，保留警訊訊息可讀 */
 }
-.all-clear-sub {
-  font-size: 0.84rem;
+.ticker-alert-msg {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+.ticker-alert[data-level="urgent"]  .ticker-alert-msg { color: var(--color-danger); }
+.ticker-alert[data-level="warning"] .ticker-alert-msg { color: var(--color-warning); }
+.ticker-alert-arrow {
   color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
-/* 行動版：上下堆疊 */
-@media (max-width: 768px) {
-  .dash-briefing { flex-direction: column; }
-  .briefing-weather { flex: none; }
+/* 右側計數（slides > 8 時取代圓點） */
+.ticker-counter {
+  flex-shrink: 0;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 /* ── 搜尋框 ── */

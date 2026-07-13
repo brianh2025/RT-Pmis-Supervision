@@ -16,9 +16,9 @@ import { HELP_CONTENT } from '../config/helpContent';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import {
-  Building2, PlusCircle, FileSpreadsheet, AlertCircle, CheckCircle2, Layers,
+  Building2, PlusCircle, FileSpreadsheet, AlertCircle, Layers,
   TriangleAlert, Loader2, Search, ChevronRight, Pencil, Download, Trash2, HelpCircle,
-  GripHorizontal, LogOut,
+  GripHorizontal, LogOut, CalendarClock,
   Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudLightning,
 } from 'lucide-react';
 import './Dashboard.css';
@@ -57,58 +57,6 @@ function buildProjectMsg(project, wx) {
     return `今日天氣${wx.condition}，${nm}正常施工，預計${slot}將有陣雨，預估雨量 ${wx.precipMm}mm。`;
   }
   return `今日天氣${wx.condition}，${nm}正常施工，天氣良好，氣溫 ${wx.temp}°C。`;
-}
-
-/* ── 跨工程待辦彙總區（整合於今日簡報卡右側） ── */
-function AlertsPanel({ alerts, navigate, loading }) {
-  const urgent  = alerts.filter(a => a.level === 'urgent');
-  const warning = alerts.filter(a => a.level === 'warning');
-
-  if (loading) {
-    return (
-      <div className="briefing-tasks briefing-all-clear">
-        <Loader2 size={18} className="animate-spin" style={{ color: 'var(--color-text-muted)' }} />
-        <div className="all-clear-sub">任務狀態載入中…</div>
-      </div>
-    );
-  }
-
-  if (!urgent.length && !warning.length) {
-    return (
-      <div className="briefing-tasks briefing-all-clear">
-        <CheckCircle2 size={22} />
-        <div>
-          <div className="all-clear-title">今日無待辦警示</div>
-          <div className="all-clear-sub">各工程狀況良好，維持例行巡查即可。</div>
-        </div>
-      </div>
-    );
-  }
-
-  const Item = ({ a }) => (
-    <button className="alert-item" data-level={a.level} onClick={() => navigate(`/projects/${a.projectId}/${a.path}`)}>
-      <span className="alert-project-name">{a.projectName}</span>
-      <span className="alert-msg">{a.msg}</span>
-      <ChevronRight size={12} className="alert-arrow" />
-    </button>
-  );
-
-  return (
-    <div className="briefing-tasks">
-      {urgent.length > 0 && (
-        <div className="alerts-group" data-level="urgent">
-          <span className="alerts-group-label urgent"><span className="alerts-pulse" />需立即處理（{urgent.length}）</span>
-          <div className="alerts-list">{urgent.map((a, i) => <Item key={i} a={a} />)}</div>
-        </div>
-      )}
-      {warning.length > 0 && (
-        <div className="alerts-group" data-level="warning">
-          <span className="alerts-group-label warning"><span className="alerts-pulse" />本週注意（{warning.length}）</span>
-          <div className="alerts-list">{warning.map((a, i) => <Item key={i} a={a} />)}</div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ── 刪除專案確認 Modal ── */
@@ -281,6 +229,7 @@ export function Dashboard() {
   const [reportSlide, setReportSlide] = useState(null);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselVisible, setCarouselVisible] = useState(true);
+  const [tickerPaused, setTickerPaused] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('pmis-tutorial-seen'));
   const [showDashHelp, setShowDashHelp] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState('');
@@ -348,20 +297,23 @@ export function Dashboard() {
       });
   }, [projects]);
 
-  // 輪播 slides
+  // 輪播 slides：警訊優先（urgent → 月報 → warning），再接情境訊息
   const slides = useMemo(() => {
-    const s = [{ type: 'welcome' }];
-    if (wx) {
-      s.push({ type: 'weather', wx });
-      projects.filter(p => p.status !== 'pending').forEach(p => s.push({ type: 'project', project: p, wx }));
-    }
+    const s = [];
+    alerts.filter(a => a.level === 'urgent').forEach(a => s.push({ type: 'alert', a }));
     if (reportSlide) s.push({ type: 'report', ...reportSlide });
+    alerts.filter(a => a.level === 'warning').forEach(a => s.push({ type: 'alert', a }));
+    if (wx) {
+      projects.filter(p => p.status !== 'pending').forEach(p => s.push({ type: 'project', project: p, wx }));
+      s.push({ type: 'weather', wx });
+    }
+    s.push({ type: 'welcome' });
     return s;
-  }, [wx, projects, reportSlide]);
+  }, [wx, projects, reportSlide, alerts]);
 
-  // 輪播自動推進
+  // 輪播自動推進（hover 暫停）
   useEffect(() => {
-    if (slides.length <= 1) return;
+    if (slides.length <= 1 || tickerPaused) return;
     const tick = setInterval(() => {
       setCarouselVisible(false);
       setTimeout(() => {
@@ -370,7 +322,7 @@ export function Dashboard() {
       }, 300);
     }, 5000);
     return () => clearInterval(tick);
-  }, [slides.length]);
+  }, [slides.length, tickerPaused]);
 
   // 跨工程警示查詢（在專案列表載入完成後執行）
   useEffect(() => {
@@ -755,41 +707,55 @@ export function Dashboard() {
                 </div>
               </div>
 
-            {/* 今日簡報整合卡：天氣問候 + 情境輪播 + 跨工程待辦 */}
-            <section className="dash-briefing">
-              <div className="briefing-weather">
-                <div className="briefing-wx-row">
-                  {React.createElement(wx ? wxIconFor(wx.code) : CloudSun, { size: 32, className: 'briefing-wx-icon' })}
-                  <div className="briefing-wx-text">
-                    <span className="briefing-greeting">{greeting}，歡迎回到監造現場</span>
-                    <span className="briefing-wx-line">
-                      {wx ? `雲林縣 ${wx.condition} ${wx.temp}°C ・ 今日降雨 ${wx.precipMm}mm` : '天氣資訊載入中…'}
-                    </span>
-                  </div>
-                </div>
-                <div className="briefing-carousel">
-                  <span className={`info-carousel-slide${carouselVisible ? '' : ' fade-out'}`}>
-                    {(() => {
-                      const s = slides[carouselIdx];
-                      if (!s) return null;
-                      if (s.type === 'welcome') return '歡迎進行監造作業。';
-                      if (s.type === 'weather') return `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`;
-                      if (s.type === 'project') return buildProjectMsg(s.project, s.wx);
-                      if (s.type === 'report') return <span className={s.urgent ? 'slide-urgent' : 'slide-warning'}>{s.message}</span>;
-                      return null;
-                    })()}
+            {/* 訊息輪播條：警訊 + 月報提醒 + 施工狀況 + 天氣 + 歡迎語（單行整合） */}
+            {(() => {
+              const s = slides[carouselIdx];
+              if (!s) return null;
+              const sev  = s.type === 'alert' ? s.a.level : (s.type === 'report' ? (s.urgent ? 'urgent' : 'warning') : null);
+              const Icon = sev === 'urgent' ? AlertCircle
+                         : s.type === 'alert' ? TriangleAlert
+                         : s.type === 'report' ? CalendarClock
+                         : s.type === 'welcome' ? Sun
+                         : (wx ? wxIconFor(wx.code) : CloudSun);
+              return (
+                <div
+                  className="dash-ticker"
+                  onMouseEnter={() => setTickerPaused(true)}
+                  onMouseLeave={() => setTickerPaused(false)}
+                >
+                  <span className={`ticker-icon${sev ? ` ${sev}` : ''}`}>
+                    {React.createElement(Icon, { size: 17 })}
                   </span>
-                  {slides.length > 1 && (
+                  <div className={`ticker-msg${carouselVisible ? '' : ' fade-out'}`}>
+                    {s.type === 'welcome' && `${greeting}，歡迎進行監造作業。`}
+                    {s.type === 'weather' && `雲林縣　${s.wx.condition}　${s.wx.temp}°C　今日降雨 ${s.wx.precipMm}mm`}
+                    {s.type === 'project' && buildProjectMsg(s.project, s.wx)}
+                    {s.type === 'report' && <span className={s.urgent ? 'slide-urgent' : 'slide-warning'}>{s.message}</span>}
+                    {s.type === 'alert' && (
+                      <button
+                        className="ticker-alert"
+                        data-level={s.a.level}
+                        onClick={() => navigate(`/projects/${s.a.projectId}/${s.a.path}`)}
+                      >
+                        <span className="ticker-badge" data-level={s.a.level}>
+                          {s.a.level === 'urgent' ? '需立即處理' : '本週注意'}
+                        </span>
+                        <span className="ticker-alert-name">{s.a.projectName}</span>
+                        <span className="ticker-alert-msg">{s.a.msg}</span>
+                        <ChevronRight size={13} className="ticker-alert-arrow" />
+                      </button>
+                    )}
+                  </div>
+                  {slides.length > 1 && (slides.length > 8 ? (
+                    <span className="ticker-counter">{carouselIdx + 1} / {slides.length}</span>
+                  ) : (
                     <span className="carousel-dots">
                       {slides.map((_, i) => <span key={i} className={`cdot${i === carouselIdx ? ' active' : ''}`} />)}
                     </span>
-                  )}
+                  ))}
                 </div>
-              </div>
-
-              {/* 跨工程待辦彙總 */}
-              <AlertsPanel alerts={alerts} navigate={navigate} loading={loading} />
-            </section>
+              );
+            })()}
 
             {/* 工程列表標題 + 篩選標籤 + 計數（同一列） */}
             <div className="dash-list-header">
