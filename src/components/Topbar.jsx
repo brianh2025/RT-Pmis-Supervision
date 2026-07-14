@@ -18,10 +18,10 @@ export function Topbar({ setIsMobileOpen, backInfo, isGlobalDashboard, onSignOut
             <Menu size={22} />
           </button>
         )}
-        {/* 返回按鈕 */}
+        {/* 返回按鈕（強化樣式，明顯可辨） */}
         {backInfo && (
-          <button className="pl-back-btn" onClick={backInfo.onClick}>
-            <ChevronLeft size={18} />
+          <button className="pl-back-btn" onClick={backInfo.onClick} title={`返回${backInfo.label}`}>
+            <ChevronLeft size={20} />
           </button>
         )}
       </div>
