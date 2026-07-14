@@ -273,7 +273,6 @@ export function ProjectDashboard() {
       id: 'mat-unregistered', level: 'warning', icon: Package,
       title: '材料進場管制尚未回填',
       desc: '廠商日誌已有記錄，請至材料管制頁回填進場資料',
-      dueDate: addDays(14), due: `請於 ${addDays(14)} 前回填`,
       path: 'material', action: '前往回填',
     },
     stats.constrUnInspected > 0 && project?.status === 'active' && {
@@ -350,9 +349,6 @@ export function ProjectDashboard() {
       <div className="task-board">
         <div className="task-board-header">
           <Grip />
-          {!allDone && (
-            <span className="task-board-count">{statsLoading ? '載入中…' : `${tasks.length} 項待處理`}</span>
-          )}
         </div>
 
         {statsLoading && (
@@ -387,16 +383,14 @@ export function ProjectDashboard() {
                   </div>
                 )}
                 {task.itemStats?.length > 0 && (
-                  <div className="task-missing-dates">
+                  <ul className="task-item-sublist">
                     {task.itemStats.map(s => (
-                      <span key={s.name} className="task-missing-date-chip" style={{
-                        color: s.inspCount === 0 ? '#ef4444' : '#f59e0b',
-                        borderColor: s.inspCount === 0 ? '#ef444440' : '#f59e0b40',
-                      }}>
-                        {s.name}（施工{s.workDays}天·查驗{s.inspCount}次）
-                      </span>
+                      <li key={s.name} className={s.inspCount === 0 ? 'sub-danger' : 'sub-warning'}>
+                        <span className="sub-name">{s.name}</span>
+                        <span className="sub-meta">施工 {s.workDays} 天・查驗 {s.inspCount} 次</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
               {task.due && <span className={`task-due-badge task-due-${task.level}`}>{task.due}</span>}
@@ -414,21 +408,19 @@ export function ProjectDashboard() {
           <h3 className="stunning-card-title">工程進度</h3>
           {statsLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }} />}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {stats.latestPlanned > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
-              <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
-                {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
-              </span>
-            </div>
-          )}
-          <div className="stunning-progress-wrap">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="stunning-progress-wrap" style={{ flex: 1, minWidth: 0 }}>
             <div className="stunning-planned-bar" style={{ width: `${stats.latestPlanned ?? 0}%` }} />
             <div className="stunning-actual-bar" style={{ width: `${stats.latestActual ?? 0}%` }} />
             <span className="stunning-progress-label">
               預定 {stats.latestPlanned != null ? `${stats.latestPlanned}%` : '—'} / 實際 {stats.latestActual != null ? `${stats.latestActual}%` : '—'}
             </span>
           </div>
+          {stats.latestPlanned > 0 && (
+            <span className={`diff-badge ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`} style={{ flexShrink: 0 }}>
+              {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+            </span>
+          )}
         </div>
       </div>
     );
@@ -477,7 +469,11 @@ export function ProjectDashboard() {
       {/* ── 專案標頭 ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 14px', minWidth: 0, flex: 1 }}>
-          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3 }}>
+          <h1 title={project.name} style={{
+            fontSize: (project.name || '').length <= 22 ? 'var(--fs-lg)' : 'var(--fs-base)',
+            fontWeight: 700, color: 'var(--color-text1)', margin: 0, lineHeight: 1.3,
+            flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
             {project.name}
           </h1>
           {project.contractor && (

@@ -374,6 +374,41 @@
   color: var(--color-primary-light);
 }
 
+/* 總覽頁頂列標題（行動版：標題上移至原漢堡鍵位置） */
+.pl-topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pl-topbar-title-accent {
+  display: block;
+  width: 4px;
+  height: 18px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  flex-shrink: 0;
+}
+.pl-topbar-title-text {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 頂列右端明暗切換鈕 */
+.pl-topbar-theme-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: none; color: var(--color-text-muted); cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.pl-topbar-theme-btn:hover { background: var(--color-surface-hover); color: var(--color-primary); border-color: var(--color-primary); }
+
 /* 行動版總覽 Topbar 按鈕 */
 .pl-topbar-excel-btn {
   display: inline-flex; align-items: center; gap: 4px;
