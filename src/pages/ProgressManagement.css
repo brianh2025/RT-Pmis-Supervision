@@ -1,0 +1,106 @@
+/* 進度管理頁專用樣式（token 定義見 src/index.css、docs/design.md） */
+
+.pm-page {
+  padding: 8px 16px;
+  width: 100%;
+}
+@media (max-width: 768px) {
+  .pm-page { padding: 8px 12px; }
+}
+
+/* ── 頁首：標題 + 統計凸顯 ── */
+.pm-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.pm-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pm-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-text1);
+}
+.pm-title::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-light));
+}
+
+/* 統計凸顯磚：實際進度 / 差值 / 預定進度 */
+.pm-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 1 auto;
+  min-width: 92px;
+  padding: 5px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg2);
+}
+/* 行動版：三磚均分整列 */
+@media (max-width: 768px) {
+  .pm-stat { flex: 1 1 0; min-width: 0; }
+}
+.pm-stat-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+}
+.pm-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.pm-stat-actual .pm-stat-value { color: var(--color-primary); }
+.pm-stat-diff.ahead  { background: rgba(16, 185, 129, 0.1); }
+.pm-stat-diff.ahead  .pm-stat-value { color: var(--color-success); }
+.pm-stat-diff.behind { background: rgba(239, 68, 68, 0.08); }
+.pm-stat-diff.behind .pm-stat-value { color: var(--color-danger); }
+.pm-stat-planned .pm-stat-value { color: var(--color-text2); font-weight: 700; }
+
+/* ── S 曲線圖名（置中 caption，兩側細線） ── */
+.pm-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 2px 0 8px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text2);
+  letter-spacing: 0.03em;
+}
+.pm-caption::before,
+.pm-caption::after {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--color-block-border);
+}

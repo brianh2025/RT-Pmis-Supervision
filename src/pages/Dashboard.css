@@ -1580,15 +1580,10 @@
   margin-bottom: 0;
 }
 
-/* 行動版：☰＋搜尋＋動作按鈕同一列（標題已上移 Topbar） */
+/* 行動版：☰＋動作按鈕同一列（標題上移 Topbar、搜尋列取消） */
 @media (max-width: 768px) {
   .dash-page-header {
     align-items: center;
-  }
-  .dash-page-header .dash-search-row {
-    flex: 1;
-    min-width: 0;
-    max-width: none;
   }
   .btn-back-to-list {
     order: -1;
@@ -1619,6 +1614,8 @@
   }
   /* 標題已上移 Topbar 頂列，行動版隱藏頁內標題群組（!important 蓋過 JSX inline display:flex） */
   .dash-title-block { display: none !important; }
+  /* 行動版：搜尋列取消，明暗切換改於動作列顯示 */
+  .dash-page-header .dash-search-row { display: none; }
 }
 
 /* 明暗切換鈕（桌機 header 右上角；行動版由 Topbar 頂列提供） */
@@ -1630,20 +1627,19 @@
   flex-shrink: 0; transition: all 0.15s;
 }
 .btn-dash-theme:hover { background: var(--color-surface-hover); color: var(--color-primary); border-color: var(--color-primary); }
-@media (max-width: 1024px) {
-  .btn-dash-theme { display: none; }
-}
 
 /* 我的最愛 / 全部工程 分隔線（凸線效果） */
 .dash-section-divider {
   height: 1px;
-  margin: 10px 0;
+  margin: 4px 0;
   background: linear-gradient(to right, transparent, var(--color-border), transparent);
   box-shadow: 0 1px 0 var(--color-surface);
 }
 
 /* 我的最愛分區標籤 */
-.dash-section-starred { margin-bottom: 8px; }
+.dash-section-starred { margin-bottom: 4px; }
+/* 常用區塊卡片底部不留空（消除與主清單間的大片空白） */
+.dash-section-starred .dash-project-grid { padding-bottom: 0; }
 .dash-section-label {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -1781,9 +1777,10 @@
 .dash-list-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;             /* 縮小標題與標籤列間距 */
   margin-bottom: 8px;
-  padding-left: 14px;   /* 對齊卡片內文（色條4px + body padding 10px） */
+  min-height: 40px;     /* 表頭加高 */
+  padding-left: 18px;   /* 對齊卡片內文（色條6px + body padding 12px） */
 }
 
 /* 標題裝飾 */
@@ -1818,7 +1815,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px 5px;
+  padding: 7px 8px;
   border: 1px solid var(--color-border);
   border-bottom: 2px solid transparent;
   background: var(--color-bg2);

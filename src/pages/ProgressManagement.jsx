@@ -9,6 +9,7 @@ import { ProgressFormModal } from '../components/ProgressFormModal';
 import { ProgressExcelImportModal } from '../components/ProgressExcelImportModal';
 import { ScheduleImportModal } from '../components/ScheduleImportModal';
 import { fmtPct } from '../utils/format';
+import './ProgressManagement.css';
 
 export function ProgressManagement() {
   const { id } = useParams();
@@ -228,31 +229,38 @@ export function ProgressManagement() {
   );
 
   return (
-    <div style={{ padding: '8px 24px', width: '100%' }}>
-      {/* Page Header */}
-      <header className="page-section-header" style={{ marginBottom: '8px' }}>
-        <div className="header-left" style={{ flexShrink: 0 }}>
-          <span className="section-label">進度管理</span>
-        </div>
-        <div className="header-actions" style={{ flex: 1, minWidth: 0 }}>
-          {latest && (
-            <span className="status-badge" style={{
-              flex: 1, minWidth: 0,
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              fontSize: 'var(--fs-base)',
-              background: latestDiff !== null && latestDiff >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-              color: latestDiff !== null && latestDiff >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
-            }}>
-              {latestDiff !== null ? (latestDiff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />) : null}
-              實際 {fmtPct(latest.actual_progress)}
-              {latestDiff !== null && <>{' '}{latestDiff >= 0 ? '超前' : '落後'} {fmtPct(Math.abs(latestDiff))}</>}
-              {latestPlanned !== null && latestPlanned > 0 && <span style={{ fontWeight: 400, marginLeft: '4px' }}>（預定 {fmtPct(latestPlanned)}）</span>}
-            </span>
-          )}
+    <div className="pm-page">
+      {/* Page Header：標題 + 統計凸顯（實際進度 / 差值 / 預定進度） */}
+      <header className="pm-header">
+        <div className="pm-header-top">
+          <h1 className="pm-title">進度管理</h1>
           <button className="btn-dash-action" onClick={handleAdd} style={{ flexShrink: 0, background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }}>
             <Plus size={14} /><span>新增進度</span>
           </button>
         </div>
+        {latest && (
+          <div className="pm-stats">
+            <div className="pm-stat pm-stat-actual">
+              <span className="pm-stat-label">實際進度</span>
+              <span className="pm-stat-value">{fmtPct(latest.actual_progress)}</span>
+            </div>
+            {latestDiff !== null && (
+              <div className={`pm-stat pm-stat-diff ${latestDiff >= 0 ? 'ahead' : 'behind'}`}>
+                <span className="pm-stat-label">{latestDiff >= 0 ? '超前' : '落後'}</span>
+                <span className="pm-stat-value">
+                  {latestDiff >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  {fmtPct(Math.abs(latestDiff))}
+                </span>
+              </div>
+            )}
+            {latestPlanned !== null && latestPlanned > 0 && (
+              <div className="pm-stat pm-stat-planned">
+                <span className="pm-stat-label">預定進度</span>
+                <span className="pm-stat-value">{fmtPct(latestPlanned)}</span>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* S-Curve + Records — 合併區塊 */}
@@ -274,7 +282,7 @@ export function ProgressManagement() {
         </div>
 
         {/* S-Curve 圖表 */}
-        <div style={{ padding: '8px 4px' }}>
+        <div style={{ padding: '4px 4px 0' }}>
           {scheduleItems.length > 0 || records.length > 0 ? (
             <>
             <ResponsiveContainer width="100%" height={280}>
@@ -300,9 +308,7 @@ export function ProgressManagement() {
               </LineChart>
             </ResponsiveContainer>
             {/* 圖名 */}
-            <div style={{ textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--color-text-muted)', padding: '2px 0 6px', letterSpacing: '0.05em' }}>
-              圖：S 曲線進度追蹤
-            </div>
+            <div className="pm-caption">S曲線追蹤圖</div>
             </>
           ) : (
             <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '13px', border: '1px dashed var(--color-block-border)', borderRadius: '8px' }}>

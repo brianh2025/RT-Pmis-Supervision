@@ -498,14 +498,15 @@ export function Dashboard() {
   const acceptedCount  = projects.filter(p => p.status === 'accepted').length;
   const suspendedCount = projects.filter(p => p.status === 'suspended').length;
 
+  // 數值為 0 的分類標籤一律隱藏（「全部」恆顯示）
   const FILTERS = [
     { key: 'all',       label: '全部',   count: projects.length,  color: 'var(--color-text2)' },
-    ...(starredCount > 0 ? [{ key: 'starred', label: '常用', count: starredCount, color: '#f59e0b' }] : []),
-    ...(pendingCount > 0  ? [{ key: 'pending',  label: '未發包',  count: pendingCount,  color: '#94a3b8' }] : []),
-    { key: 'active',    label: '執行中', count: activeCount,      color: 'var(--color-primary-light)' },
-    { key: 'behind',    label: '落後',   count: behindCount,      color: 'var(--color-danger)' },
-    { key: 'completed', label: '已完工', count: completedCount,   color: 'var(--color-success)' },
-    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工',  count: acceptedCount,  color: '#10b981' }] : []),
+    ...(starredCount > 0   ? [{ key: 'starred',   label: '常用',   count: starredCount,   color: '#f59e0b' }] : []),
+    ...(pendingCount > 0   ? [{ key: 'pending',   label: '未發包', count: pendingCount,   color: '#94a3b8' }] : []),
+    ...(activeCount > 0    ? [{ key: 'active',    label: '執行中', count: activeCount,    color: 'var(--color-primary-light)' }] : []),
+    ...(behindCount > 0    ? [{ key: 'behind',    label: '落後',   count: behindCount,    color: 'var(--color-danger)' }] : []),
+    ...(completedCount > 0 ? [{ key: 'completed', label: '已完工', count: completedCount, color: 'var(--color-success)' }] : []),
+    ...(acceptedCount > 0  ? [{ key: 'accepted',  label: '已竣工', count: acceptedCount,  color: '#10b981' }] : []),
     ...(suspendedCount > 0 ? [{ key: 'suspended', label: '暫停中', count: suspendedCount, color: 'var(--color-warning)' }] : []),
   ];
 
@@ -641,13 +642,11 @@ export function Dashboard() {
       />
 
       <div className="pl-main-wrapper">
-        {/* Topbar 僅行動版顯示（總覽模式：頂列＝標題＋說明＋明暗切換，漢堡鍵移至下方標題列） */}
+        {/* Topbar 僅行動版顯示（總覽模式：頂列＝置中標題＋說明；明暗切換移至下方動作列） */}
         <Topbar
           isGlobalDashboard={true}
           title="雲林縣工程監造"
           onHelp={() => setShowTutorial(true)}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
         />
 
         <main ref={contentRef} className="pl-content-area custom-scrollbar dashboard-page">

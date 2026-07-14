@@ -223,7 +223,6 @@ export function Quality() {
   // Tab 0: construction_inspections
   const [inspections, setInspections] = useState([]);
   const [inspFilter, setInspFilter] = useState('all');
-  const [inspItemFilter, setInspItemFilter] = useState(null);
   const [showInspModal, setShowInspModal] = useState(false);
   const [showInspImportModal, setShowInspImportModal] = useState(false);
   const [inspForm, setInspForm] = useState({ ...EMPTY_INSPECT });
@@ -582,8 +581,7 @@ export function Quality() {
   const inspStats = RESULT_CYCLE.reduce((acc, r) => { acc[r] = inspections.filter(i => i.result === r).length; return acc; }, {});
   const issueStats = RESOLVE_CYCLE.reduce((acc, s) => { acc[s] = issues.filter(i => i.status === s).length; return acc; }, {});
   const filteredInsp = inspections
-    .filter(r => inspFilter === 'all' || r.result === inspFilter)
-    .filter(r => !inspItemFilter || (r.work_item || '未分類') === inspItemFilter);
+    .filter(r => inspFilter === 'all' || r.result === inspFilter);
   const filteredIssues = issueFilter === 'all' ? issues : issues.filter(r => r.status === issueFilter);
 
   /* 施工抽查 — 依工項分組統計（帶最近檢驗日期，依日期新→舊排序） */
@@ -809,7 +807,7 @@ export function Quality() {
           <div className="mcs-tabs">
             {TNAMES.map((n, i) => (
               <button key={i} className={`mcs-tab${tab === i ? ' active' : ''}`}
-                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); setTestFilter('all'); setInspItemFilter(null); }}>
+                onClick={() => { setTab(i); setSelected(new Set()); setEditCell(null); setInspFilter('all'); setIssueFilter('all'); setTestFilter('all'); }}>
                 {n}
               </button>
             ))}
@@ -853,62 +851,6 @@ export function Quality() {
             style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex' }}>
             <X size={13} />
           </button>
-        </div>
-      )}
-
-      {/* Tab 0: 篩選工項提示（最上方） */}
-      {tab === 0 && inspItemFilter && (
-        <div style={{ padding: '6px 8px', fontSize: '12px', color: 'var(--color-text-muted)', background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-border)' }}>
-          篩選工項：<strong style={{ color: 'var(--color-primary-light)' }}>{inspItemFilter}</strong>
-          <span onClick={() => setInspItemFilter(null)} style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--color-danger)', textDecoration: 'underline' }}>清除篩選</span>
-        </div>
-      )}
-
-      {/* Tab 0: 施工抽查 — 工項分組總覽（依日期新→舊） */}
-      {tab === 0 && workItemGroups.length > 0 && (
-        <div style={{ padding: '0 0 8px 0', overflowX: 'auto', maxHeight: 260, overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-bg2)', color: 'var(--color-text-muted)' }}>
-                <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid var(--color-border)', width: 90 }}>日期</th>
-                <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>工項</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#10b981' }}>合格</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#ef4444' }}>不合格</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)', color: '#f59e0b' }}>待複驗</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>合計</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>合格率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workItemGroups.map(g => {
-                const total = g.pass + g.fail + g.pending;
-                const rate = total > 0 ? Math.round((g.pass / total) * 100) : 0;
-                const isActive = inspItemFilter === g.name;
-                return (
-                  <tr key={g.name}
-                    onClick={() => setInspItemFilter(f => f === g.name ? null : g.name)}
-                    style={{ cursor: 'pointer', background: isActive ? 'rgba(var(--color-primary-rgb),0.08)' : undefined,
-                      borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '3px 8px', color: 'var(--color-text2)', whiteSpace: 'nowrap' }}>{g.date || '—'}</td>
-                    <td style={{ padding: '3px 8px', fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--color-primary-light)' : 'var(--color-text1)' }}>
-                      {g.name}
-                    </td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', color: '#10b981', fontWeight: 600 }}>{g.pass || '—'}</td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', color: g.fail > 0 ? '#ef4444' : 'var(--color-text-muted)', fontWeight: g.fail > 0 ? 600 : 400 }}>{g.fail || '—'}</td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', color: g.pending > 0 ? '#f59e0b' : 'var(--color-text-muted)' }}>{g.pending || '—'}</td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center', color: 'var(--color-text2)' }}>{total}</td>
-                    <td style={{ padding: '3px 8px', textAlign: 'center' }}>
-                      <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: 3, fontSize: '10px', fontWeight: 600,
-                        background: rate === 100 ? 'rgba(16,185,129,0.1)' : rate >= 80 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: rate === 100 ? '#10b981' : rate >= 80 ? '#f59e0b' : '#ef4444' }}>
-                        {rate}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       )}
 
