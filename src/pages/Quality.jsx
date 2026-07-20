@@ -43,6 +43,14 @@ const INSPECT_RESULT = {
 };
 const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 
+const TEST_RESULT_CYCLE = ['待審閱', '審閱中', '可入', '不可入'];
+const TEST_RESULT_CFG = {
+  '待審閱': { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
+  '審閱中': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  '可入':   { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  '不可入': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+};
+
 /* 非查驗性日誌記事（休假、天候、場地管理），不列入待建立查驗 */
 const NON_INSPECT_RE = /連休|連假|休假|停工|無施工|颱風|豪雨|雨量|降雨|積水|排除|清理|整理|維持|打掃|環境|便道|善後/;
 
@@ -202,6 +210,101 @@ function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId
               <Pencil size={12} /> 編輯內容
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Mobile Card: 缺失改善 ── */
+function MobileIssueCard({ row, selected, onToggleSel, onCycleStatus, onOpenVerify }) {
+  const [expanded, setExpanded] = useState(false);
+  const sevCfg = SEVERITY_CONFIG[row.severity] || SEVERITY_CONFIG.major;
+  const resCfg = RESOLVE_STATUS[row.status] || RESOLVE_STATUS.open;
+  const isOverdue = row.deadline && new Date(row.deadline) < new Date()
+    && !['resolved', 'verified', 'waived'].includes(row.status);
+
+  return (
+    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
+      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
+        <input type="checkbox" checked={selected} onChange={onToggleSel} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }} />
+        <span className="mcs-mc-date">{row.inspection_date || '—'}</span>
+        <span className="mcs-mc-name">{row.item || '—'}</span>
+        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
+          color: sevCfg.color, background: sevCfg.bg, border: `1px solid ${sevCfg.color}40` }}>
+          {sevCfg.label}
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+      {expanded && (
+        <div className="mcs-mc-body">
+          {[
+            { label: '位置', value: row.location },
+            { label: '缺失說明', value: row.description },
+            { label: '責任廠商', value: row.responsible },
+            { label: '改善期限', value: row.deadline, overdue: isOverdue },
+            { label: '改善日期', value: row.resolve_date },
+            { label: '備註', value: row.remark },
+          ].filter(f => f.value).map(f => (
+            <div key={f.label} className="mcs-mc-row">
+              <span className="mcs-mc-label">{f.label}</span>
+              <span className="mcs-mc-val" style={f.overdue ? { color: '#ef4444', fontWeight: 600 } : undefined}>{f.value}</span>
+            </div>
+          ))}
+          <div className="mcs-mc-row" style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+            {row.status === 'resolved' && (
+              <button onClick={e => { e.stopPropagation(); onOpenVerify(row); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
+                  background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', marginRight: 'auto' }}>
+                <ClipboardCheck size={11} />申請驗收
+              </button>
+            )}
+            <span onClick={e => { e.stopPropagation(); onCycleStatus(row.id, row.status); }} title="點擊切換狀態"
+              style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                color: resCfg.color, background: `${resCfg.color}15`, border: `1px solid ${resCfg.color}40` }}>
+              {resCfg.label}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Mobile Card: 試驗報告 ── */
+function MobileTestCard({ row, selected, onToggleSel, onCycleResult }) {
+  const [expanded, setExpanded] = useState(false);
+  const resultKey = row.result || '待審閱';
+  const cfg = TEST_RESULT_CFG[resultKey] || TEST_RESULT_CFG['待審閱'];
+
+  return (
+    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
+      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
+        <input type="checkbox" checked={selected} onChange={onToggleSel} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }} />
+        <span className="mcs-mc-name">{row.name || '—'}</span>
+        <span onClick={e => { e.stopPropagation(); onCycleResult(row.id, resultKey); }} title="點擊切換可入判定"
+          style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+            color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40` }}>
+          {resultKey}
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+      {expanded && (
+        <div className="mcs-mc-body">
+          {[
+            { label: '契約項次', value: row.ci },
+            { label: '抽樣頻率', value: row.freq },
+            { label: '預定進場', value: row.p_date },
+            { label: '實際進場', value: row.a_date },
+            { label: '累積進場', value: row.cum_qty },
+            { label: '累積抽樣', value: row.cum_smp },
+            { label: '備註', value: row.remark },
+          ].filter(f => f.value).map(f => (
+            <div key={f.label} className="mcs-mc-row">
+              <span className="mcs-mc-label">{f.label}</span>
+              <span className="mcs-mc-val">{f.value}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -456,14 +559,6 @@ export function Quality() {
   }
 
   /* ── Tab 2: 試驗報告 ── */
-  const TEST_RESULT_CYCLE = ['待審閱', '審閱中', '可入', '不可入'];
-  const TEST_RESULT_CFG = {
-    '待審閱': { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-    '審閱中': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    '可入':   { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-    '不可入': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-  };
-
   async function cycleTestResult(id, cur) {
     if (!supabase) return;
     const next = TEST_RESULT_CYCLE[(TEST_RESULT_CYCLE.indexOf(cur) + 1) % TEST_RESULT_CYCLE.length];
@@ -989,6 +1084,24 @@ export function Quality() {
 
       {/* Tab 1: 缺失改善管制 */}
       {tab === 1 && (
+        isMobile ? (
+          <div className="mcs-card-list">
+            {filteredIssues.length === 0 ? (
+              <div className="mcs-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <AlertTriangle size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+                <div>目前無品管缺失記錄 — 點擊「新增缺失」建立</div>
+              </div>
+            ) : filteredIssues.map(row => (
+              <MobileIssueCard key={row.id}
+                row={row}
+                selected={selected.has(row.id)}
+                onToggleSel={() => togSel(row.id)}
+                onCycleStatus={cycleIssueStatus}
+                onOpenVerify={openVerify}
+              />
+            ))}
+          </div>
+        ) : (
         <div className="mcs-tbl-wrap">
           <table className="mcs-table">
             <thead>
@@ -1079,10 +1192,28 @@ export function Quality() {
             </tbody>
           </table>
         </div>
+        )
       )}
 
       {/* Tab 2: 試驗報告管制 */}
       {tab === 2 && (
+        isMobile ? (
+          <div className="mcs-card-list">
+            {filteredTests.length === 0 ? (
+              <div className="mcs-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <FlaskConical size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+                <div>尚無試驗報告記錄 — 請至「材料管制」頁面的「檢試驗管制表」新增資料</div>
+              </div>
+            ) : filteredTests.map(row => (
+              <MobileTestCard key={row.id}
+                row={row}
+                selected={selected.has(row.id)}
+                onToggleSel={() => togSel(row.id)}
+                onCycleResult={cycleTestResult}
+              />
+            ))}
+          </div>
+        ) : (
         <div className="mcs-tbl-wrap">
           <table className="mcs-table">
             <thead>
@@ -1157,6 +1288,7 @@ export function Quality() {
             </tbody>
           </table>
         </div>
+        )
       )}
 
       <div className="mcs-footer">
@@ -1167,7 +1299,7 @@ export function Quality() {
           : <span>共 {filteredTests.length} 筆 · 可入 {testStats['可入'] || 0} · 不可入 {testStats['不可入'] || 0} · 待審閱 {testStats['待審閱'] || 0}</span>
         }
         <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: '0.7rem' }}>
-          {isMobile && tab === 0 ? '點擊卡片展開詳情' : '雙擊儲存格編輯 · 點擊狀態/結果切換'}
+          {isMobile ? '點擊卡片展開詳情' : '雙擊儲存格編輯 · 點擊狀態/結果切換'}
         </span>
       </div>
 
