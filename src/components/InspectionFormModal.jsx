@@ -497,8 +497,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <option value="">— 請選擇工項 —</option>
                 {TEMPLATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
-              {guessedCode && guessedCode !== templateCode && (
-                <span className="ifm-hint">依工項「{inspection?.work_item}」建議：{guessedCode}</span>
+              {inspection?.work_item && (
+                <span className="ifm-hint">
+                  原始工項：「{inspection.work_item}」
+                  {guessedCode && guessedCode !== templateCode && `　建議套用：${guessedCode}`}
+                </span>
               )}
             </div>
           </div>
