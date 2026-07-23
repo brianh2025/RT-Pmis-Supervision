@@ -74,7 +74,7 @@ async function getSession() {
 async function ensureServer() {
   const alive = await fetch(BASE).then((r) => r.ok).catch(() => false);
   if (alive) return null;
-  const proc = spawn('npx', ['vite', 'preview', '--port', new URL(BASE).port || '4173', '--strictPort'], { stdio: 'ignore' });
+  const proc = spawn('npx', ['vite', 'preview', '--port', new URL(BASE).port || '4173', '--strictPort'], { stdio: 'ignore', shell: true });
   for (let i = 0; i < 30; i++) {
     await new Promise((r) => setTimeout(r, 500));
     if (await fetch(BASE).then((r) => r.ok).catch(() => false)) return proc;
