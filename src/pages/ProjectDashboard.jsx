@@ -27,6 +27,9 @@ const SHORTCUTS = [
 
 const DEFAULT_ORDER = ['shortcuts', 'tasks', 'progress', 'info'];
 
+// 5000萬元門檻：projects.budget 實際存的單位是「元」（已用正式環境資料驗證）
+const SMALL_CASE_BUDGET_THRESHOLD = 50_000_000;
+
 export function ProjectDashboard() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ export function ProjectDashboard() {
     archiveCount: 0,
     inspTotal: 0, inspPending: 0, inspFail: 0,
     matUnregistered: 0, matPending: 0,
-    constrUnInspected: 0, constrUninspectedItems: [], constrItemStats: [],
+    constrItemStatsRaw: [], lastLogDate: null,
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -96,7 +99,7 @@ export function ProjectDashboard() {
       const pendingLogs = missingDates.length;
       const latestProgress = progressRes.data?.[0];
 
-      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, diaryItemsRes, matEntryCountRes, matPendingRes] = await Promise.all([
+      const [subMgmtRes, subPendingRes, qualRes, qualOpenRes, archRes, inspRes, diaryItemsRes, matEntryCountRes, matPendingRes, lastLogRes] = await Promise.all([
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('mcs_submission').select('id', { count: 'exact', head: true }).eq('project_id', projectId).neq('result', '同意備查'),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
@@ -106,6 +109,7 @@ export function ProjectDashboard() {
         supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('result', '待查驗'),
+        supabase.from('daily_logs').select('log_date').eq('project_id', projectId).order('log_date', { ascending: false }).limit(1),
       ]);
 
       const inspData = inspRes.data || [];
@@ -127,7 +131,7 @@ export function ProjectDashboard() {
       const TEMPLATE_LABEL_BY_CODE = Object.fromEntries(
         INSPECTION_TEMPLATES.map(t => [t.code, t.label])
       );
-      // 每工項施工天數（按 template code 去重 log_date）
+      // 每工項施工天數（按 template code 去重 log_date）與最近施工日期
       const workDaysByCode = {};
       for (const r of diaryItems) {
         const code = guessTemplateCode(r.item_name);
@@ -142,13 +146,14 @@ export function ProjectDashboard() {
         if (!code) continue;
         inspCountByCode[code] = (inspCountByCode[code] || 0) + 1;
       }
-      const constrItemStats = Object.entries(workDaysByCode).map(([code, dates]) => {
+      // 未套用查驗密度門檻（門檻依案件金額分級，需待 project 載入後於 render 時計算）
+      const constrItemStatsRaw = Object.entries(workDaysByCode).map(([code, dates]) => {
         const workDays = dates.size;
         const inspCount = inspCountByCode[code] || 0;
-        return { code, name: TEMPLATE_LABEL_BY_CODE[code] || code, workDays, inspCount };
-      }).filter(s => s.inspCount < Math.ceil(s.workDays / 3));
-      const constrUnInspected = constrItemStats.length > 0 ? 1 : 0;
-      const constrUninspectedItems = constrItemStats.map(s => s.name);
+        const lastDate = [...dates].sort().at(-1);
+        return { code, name: TEMPLATE_LABEL_BY_CODE[code] || code, workDays, inspCount, lastDate };
+      });
+      const lastLogDate = lastLogRes.data?.[0]?.log_date || null;
 
       setStats({
         totalLogs: logsRes.count || 0,
@@ -170,9 +175,8 @@ export function ProjectDashboard() {
         inspFail,
         matUnregistered,
         matPending: matPendingRes.count || 0,
-        constrUnInspected,
-        constrUninspectedItems,
-        constrItemStats,
+        constrItemStatsRaw,
+        lastLogDate,
       });
       setStatsLoading(false);
     }
@@ -211,6 +215,23 @@ export function ProjectDashboard() {
     const d = new Date(); d.setDate(d.getDate() + n);
     return d.toISOString().split('T')[0];
   };
+  const addDaysTo = (dateStr, n) => {
+    const d = new Date(dateStr); d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+  };
+
+  // 案件金額<5000萬者採每週查驗週期，其餘維持每3天一次
+  const isSmallCase = project.budget != null && Number(project.budget) < SMALL_CASE_BUDGET_THRESHOLD;
+  const inspectionCycleDays = isSmallCase ? 7 : 3;
+  const constrItemStats = stats.constrItemStatsRaw.filter(s => s.inspCount < Math.ceil(s.workDays / inspectionCycleDays));
+  const constrUnInspected = constrItemStats.length > 0 ? 1 : 0;
+  const constrDueDate = constrItemStats.length > 0
+    ? constrItemStats.map(s => addDaysTo(s.lastDate, inspectionCycleDays)).sort()[0]
+    : null;
+
+  const daysSinceLastLog = stats.lastLogDate
+    ? Math.floor((new Date(todayStr).getTime() - new Date(stats.lastLogDate).getTime()) / 86400000)
+    : null;
 
   const rawTasks = statsLoading ? [] : [
     stats.pendingLogs > 0 && {
@@ -275,13 +296,21 @@ export function ProjectDashboard() {
       desc: '廠商日誌已有記錄，請至材料管制頁回填進場資料',
       path: 'material', action: '前往回填',
     },
-    stats.constrUnInspected > 0 && project?.status === 'active' && {
+    constrUnInspected > 0 && project?.status === 'active' && {
       id: 'constr-uninspected', level: 'warning', icon: ShieldCheck,
-      title: `施工項目查驗不足 ${stats.constrItemStats.length} 項`,
-      desc: '以下工項查驗次數未達施工天數 1/3（每3天至少1次）',
-      itemStats: stats.constrItemStats,
+      title: `施工項目查驗不足 ${constrItemStats.length} 項`,
+      desc: `以下工項查驗次數未達施工天數 1/${inspectionCycleDays}（每${inspectionCycleDays}天至少1次）`,
+      itemStats: constrItemStats,
+      dueDate: constrDueDate,
       path: 'quality', action: '前往抽查',
-      navState: { addInsp: true, items: stats.constrItemStats.map(s => s.name) },
+      navState: { addInsp: true, items: constrItemStats.map(s => s.name) },
+    },
+    isSmallCase && project?.status === 'active' && stats.lastLogDate && daysSinceLastLog >= 5 && {
+      id: 'insp-cadence-stale', level: 'warning', icon: Clock,
+      title: `已 ${daysSinceLastLog} 天無新進度回報`,
+      desc: `本案預算未達5000萬、採每週回報，最近一筆日誌為 ${stats.lastLogDate}，逾期未回報將無法及時安排查驗，請主動確認工地進度`,
+      dueDate: addDaysTo(stats.lastLogDate, 7), due: `應於 ${addDaysTo(stats.lastLogDate, 7)} 前完成本週回報`,
+      path: 'journal', action: '前往確認日誌',
     },
   ].filter(Boolean);
 
