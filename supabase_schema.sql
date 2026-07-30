@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS projects (
                  CHECK (status IN ('active', 'completed', 'suspended')),
   start_date   date,
   end_date     date,
-  budget       numeric,          -- 單位：萬元（新台幣）
+  budget       numeric,          -- 單位：元（新台幣）
   created_at   timestamptz DEFAULT now(),
   created_by   uuid REFERENCES auth.users(id)
 );
