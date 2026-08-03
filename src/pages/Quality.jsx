@@ -4,7 +4,7 @@
    Tab 1: 缺失改善管制（quality_issues）
    ============================================================ */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FlaskConical, CheckCircle2, Camera, Printer, FileText, Upload, ScanText, Pencil } from 'lucide-react';
+import { Plus, Trash2, Loader2, ShieldCheck, AlertTriangle, ClipboardCheck, X, FileText, Upload, ScanText } from 'lucide-react';
 import InspectionFormModal from '../components/InspectionFormModal';
 import {
   renderPdfPagesToImages, recognizeInspectionImage, collectOcrParagraphs,
@@ -16,131 +16,18 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../hooks/useProject';
+import { useQualityIssueCreator } from '../hooks/useQualityIssueCreator';
+import { splitWorkItemEntry, NON_INSPECT_RE } from '../utils/workItemAutoSplit';
+import {
+  SEVERITY_CONFIG, RESOLVE_STATUS, RESOLVE_CYCLE, INSPECT_RESULT, RESULT_CYCLE,
+  TEST_RESULT_CYCLE, TEST_RESULT_CFG,
+} from './quality/qualityConfig';
+import { ConstructionInspectionTable } from './quality/ConstructionInspectionTable';
+import { QualityIssueTable } from './quality/QualityIssueTable';
+import { TestReportTable } from './quality/TestReportTable';
+import { InspectionPrintView } from './quality/InspectionPrintView';
 import './MaterialControl.css';
 import '../components/Modal.css';
-
-/* ── Config ── */
-const SEVERITY_CONFIG = {
-  critical:    { label: '重大缺失', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-  major:       { label: '一般缺失', color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
-  minor:       { label: '輕微缺失', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  observation: { label: '觀察項目', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-};
-
-const RESOLVE_STATUS = {
-  open:        { label: '待改善', color: '#ef4444' },
-  in_progress: { label: '改善中', color: '#f59e0b' },
-  resolved:    { label: '已改善', color: '#10b981' },
-  verified:    { label: '已驗收', color: '#6366f1' },
-  waived:      { label: '免改善', color: '#6b7280' },
-};
-const RESOLVE_CYCLE = ['open', 'in_progress', 'resolved', 'verified', 'waived'];
-
-const INSPECT_RESULT = {
-  '合格':  { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  '不合格': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-  '待複驗': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-};
-const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
-
-const TEST_RESULT_CYCLE = ['待審閱', '審閱中', '可入', '不可入'];
-const TEST_RESULT_CFG = {
-  '待審閱': { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-  '審閱中': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  '可入':   { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  '不可入': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-};
-
-/* 非查驗性日誌記事（休假、天候、場地管理），不列入待建立查驗 */
-const NON_INSPECT_RE = /連休|連假|休假|停工|無施工|颱風|豪雨|雨量|降雨|積水|排除|清理|整理|維持|打掃|環境|便道|善後/;
-
-/* 敘述式工項拆解：切出「位置及部位」與「施工項目」，多項活動各自一列 */
-const ACTIVITY_TERMS = [
-  '模板組立', '混凝土澆置', '鋼筋綁紮', '鋼筋加工',
-  '預力混凝土基樁打設', '預力基樁打設', '基樁打設',
-  '擋水鋼板樁打設', '擋土板樁打設', '鋼板樁打設', '鋼板樁進場',
-  '擋土板樁拔除', '板樁拔除', '擋土措施打設',
-  '土方開挖', '初步回填', '土方回填',
-  'PC襯底施作', '襯底施作', '漸變段打除',
-];
-/* 找出字串中最早出現的活動詞（同位置取較長者，避免「擋水鋼板樁打設」被「鋼板樁打設」搶匹配） */
-function findActivity(str) {
-  let idx = -1, term = '';
-  for (const t of ACTIVITY_TERMS) {
-    const i = str.indexOf(t);
-    if (i >= 0 && (idx === -1 || i < idx || (i === idx && t.length > term.length))) { idx = i; term = t; }
-  }
-  return { idx, term };
-}
-/* 拆解規則（以活動詞命中與否判別片段類型，位置與工項次序不固定亦可判別）：
- *   R1 括號內無活動詞 → 抽為位置（解「鋼筋綁紮（1F東側）」）
- *   R2 整段按 、，,及 全域斷詞（頓號多項目一律拆項）
- *   R3 逐 token：位置前綴＋活動詞→切分；活動詞開頭＋殘餘無活動詞→殘餘當位置；
- *      無活動詞→前置暫存或回填至 location 為空的項
- *   R4 整段無活動詞 → 各 token 視為自由工項各自成列
- * 測試案例：
- *   '1F東側鋼筋綁紮及模板組立'   → [{鋼筋綁紮,1F東側},{模板組立,1F東側}]
- *   '鋼筋綁紮（1F東側）'         → [{鋼筋綁紮,1F東側}]
- *   '路基整理、級配鋪設、涵管吊放' → 三項各自成列（無位置）
- *   '本日施作：1.P12～P15基樁打設 2.土方開挖（南側）' → [{基樁打設,P12～P15},{土方開挖,南側}]
- *   '鋼筋綁紮1F東側'             → [{鋼筋綁紮,1F東側}]
- *   '模板組立、混凝土澆置、2F版' → [{模板組立,2F版},{混凝土澆置,2F版}]
- */
-function splitWorkItemEntry(raw) {
-  const name = (raw || '').replace(/^本日施作[:：]?/, '').trim();
-  // 先按「1. 2.」項次或句號分段（項次前可為句首、句號或空白；(?!\d) 避免誤切小數）
-  const segs = name.split(/(?:^|[。;；\s])\s*\d+\.(?!\d)\s*/).map(s => s.replace(/[。\s]+$/, '').trim()).filter(Boolean);
-  const out = [];
-  for (const seg0 of (segs.length ? segs : [name])) {
-    // R1 括號位置抽取
-    let parenLoc = '';
-    const seg = seg0.replace(/[（(]([^（）()]*)[）)]/g, (m, inner) => {
-      if (findActivity(inner).idx >= 0) return m;
-      if (inner.trim()) parenLoc = inner.trim();
-      return '';
-    }).trim();
-    // R2 全域斷詞
-    const tokens = seg.split(/[、，,及]/).map(s => s.trim()).filter(Boolean);
-    // R3 逐 token 分類
-    const results = [];
-    const pendingTokens = [];  // 首個活動詞之前的無活動詞 token（前置位置或自由工項，段末定奪）
-    let curLoc = parenLoc;
-    for (const tok of tokens) {
-      const { idx, term } = findActivity(tok);
-      if (idx > 0) {
-        curLoc = tok.slice(0, idx).trim() || curLoc;
-        results.push({ item: tok.slice(idx), location: curLoc });
-      } else if (idx === 0) {
-        const rest = tok.slice(term.length).trim();
-        if (rest && findActivity(rest).idx === -1) {
-          // 工項在前、位置在後（如「鋼筋綁紮1F東側」）
-          results.push({ item: term, location: rest });
-          curLoc = rest;
-        } else {
-          results.push({ item: tok, location: curLoc });
-        }
-      } else if (results.length === 0) {
-        pendingTokens.push(tok);
-      } else {
-        // 尾端無活動詞 token：回填至 location 為空的項，全數已有位置則自身成列
-        const holes = results.filter(r => !r.location);
-        if (holes.length) holes.forEach(r => { r.location = tok; });
-        else results.push({ item: tok, location: curLoc });
-      }
-    }
-    // R4 段末收尾
-    if (results.length === 0) {
-      for (const tok of pendingTokens) out.push({ item: tok, location: parenLoc });
-    } else {
-      if (pendingTokens.length) {
-        const loc = pendingTokens.join('');
-        results.forEach(r => { if (!r.location) r.location = loc; });
-      }
-      out.push(...results);
-    }
-  }
-  return out.length ? out : [{ item: name, location: '' }];
-}
 
 const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
@@ -164,153 +51,6 @@ const EMPTY_QUALITY = {
   location: '', item: '', severity: 'major', description: '', responsible: '', deadline: '', remark: '',
 };
 
-/* ── Mobile Card: 施工檢驗 ── */
-function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId, selected, onToggleSel, onCycleResult, onEdit }) {
-  const [expanded, setExpanded] = useState(false);
-  const resCfg = INSPECT_RESULT[row.result] || INSPECT_RESULT['待複驗'];
-  const iss = issueByInspMap[row.id];
-  const issueCfg = iss ? (RESOLVE_STATUS[iss.status] || RESOLVE_STATUS.open) : null;
-  const issueClosed = iss && (iss.status === 'verified' || iss.status === 'waived');
-  const photoCount = inspPhotoMap[row.id] || 0;
-
-  return (
-    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
-      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
-        <input type="checkbox" checked={selected} onChange={onToggleSel} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }} />
-        <span className="mcs-mc-date">{row.inspect_date || '—'}</span>
-        <button className="mcs-photo-btn" title="照片"
-          onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/photos?src_table=construction_inspections&src_id=${row.id}&src_name=${encodeURIComponent((row.work_item || '施工抽查') + (row.location ? ' ' + row.location : ''))}`); }}>
-          <Camera size={11} />{photoCount > 0 ? photoCount : ''}
-        </button>
-        <span className="mcs-mc-name">{row.work_item || '—'}</span>
-        <span onClick={e => { e.stopPropagation(); onCycleResult(row.id, row.result); }}
-          style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-            color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
-          {row.result || '待複驗'}
-        </span>
-        <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-      {expanded && (
-        <div className="mcs-mc-body">
-          {[
-            { label: '部位', value: row.location },
-            { label: '檢驗類型', value: row.inspect_type },
-            { label: '人員', value: row.inspector },
-            { label: '缺失狀態', value: iss ? (issueClosed ? '✅ 結案' : issueCfg?.label) : (row.result === '不合格' ? '無缺失單' : null) },
-            { label: '備註', value: row.remark },
-          ].filter(f => f.value).map(f => (
-            <div key={f.label} className="mcs-mc-row">
-              <span className="mcs-mc-label">{f.label}</span>
-              <span className="mcs-mc-val">{f.value}</span>
-            </div>
-          ))}
-          {/* 編輯入口：開啟標準抽查單 Modal 編修本筆內容 */}
-          <div className="mcs-mc-row" style={{ justifyContent: 'flex-end' }}>
-            <button className="mcs-btn mcs-btn-add" onClick={e => { e.stopPropagation(); onEdit(row); }}>
-              <Pencil size={12} /> 編輯內容
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Mobile Card: 缺失改善 ── */
-function MobileIssueCard({ row, selected, onToggleSel, onCycleStatus, onOpenVerify }) {
-  const [expanded, setExpanded] = useState(false);
-  const sevCfg = SEVERITY_CONFIG[row.severity] || SEVERITY_CONFIG.major;
-  const resCfg = RESOLVE_STATUS[row.status] || RESOLVE_STATUS.open;
-  const isOverdue = row.deadline && new Date(row.deadline) < new Date()
-    && !['resolved', 'verified', 'waived'].includes(row.status);
-
-  return (
-    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
-      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
-        <input type="checkbox" checked={selected} onChange={onToggleSel} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }} />
-        <span className="mcs-mc-date">{row.inspection_date || '—'}</span>
-        <span className="mcs-mc-name">{row.item || '—'}</span>
-        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
-          color: sevCfg.color, background: sevCfg.bg, border: `1px solid ${sevCfg.color}40` }}>
-          {sevCfg.label}
-        </span>
-        <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-      {expanded && (
-        <div className="mcs-mc-body">
-          {[
-            { label: '位置', value: row.location },
-            { label: '缺失說明', value: row.description },
-            { label: '責任廠商', value: row.responsible },
-            { label: '改善期限', value: row.deadline, overdue: isOverdue },
-            { label: '改善日期', value: row.resolve_date },
-            { label: '備註', value: row.remark },
-          ].filter(f => f.value).map(f => (
-            <div key={f.label} className="mcs-mc-row">
-              <span className="mcs-mc-label">{f.label}</span>
-              <span className="mcs-mc-val" style={f.overdue ? { color: '#ef4444', fontWeight: 600 } : undefined}>{f.value}</span>
-            </div>
-          ))}
-          <div className="mcs-mc-row" style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
-            {row.status === 'resolved' && (
-              <button onClick={e => { e.stopPropagation(); onOpenVerify(row); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
-                  background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', marginRight: 'auto' }}>
-                <ClipboardCheck size={11} />申請驗收
-              </button>
-            )}
-            <span onClick={e => { e.stopPropagation(); onCycleStatus(row.id, row.status); }} title="點擊切換狀態"
-              style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                color: resCfg.color, background: `${resCfg.color}15`, border: `1px solid ${resCfg.color}40` }}>
-              {resCfg.label}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Mobile Card: 試驗報告 ── */
-function MobileTestCard({ row, selected, onToggleSel, onCycleResult }) {
-  const [expanded, setExpanded] = useState(false);
-  const resultKey = row.result || '待審閱';
-  const cfg = TEST_RESULT_CFG[resultKey] || TEST_RESULT_CFG['待審閱'];
-
-  return (
-    <div className={`mcs-mc${selected ? ' mcs-mc-sel' : ''}`}>
-      <div className="mcs-mc-head" onClick={() => setExpanded(e => !e)}>
-        <input type="checkbox" checked={selected} onChange={onToggleSel} onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }} />
-        <span className="mcs-mc-name">{row.name || '—'}</span>
-        <span onClick={e => { e.stopPropagation(); onCycleResult(row.id, resultKey); }} title="點擊切換可入判定"
-          style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-            color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40` }}>
-          {resultKey}
-        </span>
-        <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-      {expanded && (
-        <div className="mcs-mc-body">
-          {[
-            { label: '契約項次', value: row.ci },
-            { label: '抽樣頻率', value: row.freq },
-            { label: '預定進場', value: row.p_date },
-            { label: '實際進場', value: row.a_date },
-            { label: '累積進場', value: row.cum_qty },
-            { label: '累積抽樣', value: row.cum_smp },
-            { label: '備註', value: row.remark },
-          ].filter(f => f.value).map(f => (
-            <div key={f.label} className="mcs-mc-row">
-              <span className="mcs-mc-label">{f.label}</span>
-              <span className="mcs-mc-val">{f.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── Main Component ── */
 export function Quality() {
   const { id: projectId } = useParams();
@@ -318,6 +58,7 @@ export function Quality() {
   const navigate = useNavigate();
   const location = useLocation();
   const { project } = useProject(projectId);
+  const { createIssueFromInspection } = useQualityIssueCreator();
   const [printRow, setPrintRow] = useState(null);
   const [formRow,  setFormRow]  = useState(null);
   const [tab, setTab] = useState(0);
@@ -470,32 +211,25 @@ export function Quality() {
         setInspections(prev => [data, ...prev]);
         if (inspForm.result === '不合格') {
           const today = new Date().toISOString().split('T')[0];
-          const issuePayload = {
-            project_id: projectId, created_by: user?.id,
-            inspection_date: inspForm.inspect_date || today,
-            location: inspForm.location || null,
-            item: inspForm.work_item,
-            severity: 'major',
+          const issueBase = {
+            projectId, userId: user?.id, sourceRecordId: data.id,
+            inspectionDate: inspForm.inspect_date || today,
+            location: inspForm.location, item: inspForm.work_item,
             description: inspForm.remark || null,
-            source_table: 'construction_inspections', source_record_id: data.id,
           };
           if (fail_action === 'improved') {
             // 當日已改善完成：缺失單直接以「已改善」建檔留存軌跡，改善日期即檢驗日期
-            const { data: issue } = await supabase.from('quality_issues').insert([{
-              ...issuePayload, status: 'resolved',
-              resolve_date: inspForm.inspect_date || today,
+            const issue = await createIssueFromInspection({
+              ...issueBase, status: 'resolved',
+              resolveDate: inspForm.inspect_date || today,
               remark: '當日已改善完成',
-            }]).select().single();
+            });
             if (issue) setIssues(prev => [issue, ...prev]);
           } else if (fail_action === 'issue') {
-            const { data: issue } = await supabase.from('quality_issues').insert([{
-              ...issuePayload, status: 'open',
-            }]).select().single();
+            const issue = await createIssueFromInspection({ ...issueBase, status: 'open' });
             if (issue) setIssues(prev => [issue, ...prev]);
           } else if (confirm(`此抽查結果為「不合格」，是否立即建立缺失改善單？\n\n工項：${inspForm.work_item}\n位置：${inspForm.location || '（未填）'}`)) {
-            const { data: issue } = await supabase.from('quality_issues').insert([{
-              ...issuePayload, status: 'open',
-            }]).select().single();
+            const issue = await createIssueFromInspection({ ...issueBase, status: 'open' });
             if (issue) setIssues(prev => [issue, ...prev]);
           }
         }
@@ -518,14 +252,11 @@ export function Quality() {
       const row = inspections.find(r => r.id === id);
       const today = new Date().toISOString().split('T')[0];
       if (row && confirm(`抽查結果改為「不合格」，是否建立缺失改善單？\n\n工項：${row.work_item}\n位置：${row.location || '（未填）'}`)) {
-        const { data: issue } = await supabase.from('quality_issues').insert([{
-          project_id: projectId, created_by: user?.id,
-          inspection_date: row.inspect_date || today,
-          location: row.location || null,
-          item: row.work_item,
-          severity: 'major', status: 'open',
-          source_table: 'construction_inspections', source_record_id: id,
-        }]).select().single();
+        const issue = await createIssueFromInspection({
+          projectId, userId: user?.id, sourceRecordId: id,
+          inspectionDate: row.inspect_date || today,
+          location: row.location, item: row.work_item, status: 'open',
+        });
         if (issue) setIssues(prev => [issue, ...prev]);
       }
     }
@@ -837,13 +568,10 @@ export function Quality() {
     setInspections(prev => [data, ...prev]);
     if (quickForm.result === '不合格') {
       if (window.confirm(`「${quickForm.work_item}」不合格，是否自動建立缺失改善單？`)) {
-        await supabase.from('quality_issues').insert([{
-          project_id: projectId, created_by: user?.id,
-          inspection_date: today,
-          item: quickForm.work_item, location: quickForm.location,
-          severity: 'major', status: 'open',
-          source_table: 'construction_inspections', source_record_id: data.id,
-        }]);
+        await createIssueFromInspection({
+          projectId, userId: user?.id, sourceRecordId: data.id,
+          inspectionDate: today, item: quickForm.work_item, location: quickForm.location, status: 'open',
+        });
         const [ins, iss] = await Promise.all([loadInspections(), loadIssues()]);
         setInspections(ins); setIssues(iss);
       }
@@ -951,345 +679,51 @@ export function Quality() {
 
       {/* Tab 0: 施工檢驗管制 */}
       {tab === 0 && (
-        isMobile ? (
-          <div className="mcs-card-list">
-            {filteredInsp.length === 0 ? (
-              <div className="mcs-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <ShieldCheck size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                <div>尚無施工檢驗記錄 — 點擊「新增檢驗」建立</div>
-              </div>
-            ) : filteredInsp.map(row => (
-              <MobileInspCard key={row.id}
-                row={row}
-                inspPhotoMap={inspPhotoMap}
-                issueByInspMap={issueByInspMap}
-                navigate={navigate}
-                projectId={projectId}
-                selected={selected.has(row.id)}
-                onToggleSel={() => togSel(row.id)}
-                onCycleResult={cycleInspResult}
-                onEdit={setFormRow}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="mcs-tbl-wrap">
-            <table className="mcs-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 28 }}>
-                    <input type="checkbox"
-                      checked={filteredInsp.length > 0 && selected.size === filteredInsp.length}
-                      onChange={() => setSelected(selected.size === filteredInsp.length ? new Set() : new Set(filteredInsp.map(r => r.id)))} />
-                  </th>
-                  <th style={{ width: 90 }}>檢驗日期</th>
-                  <th>工程項目</th>
-                  <th style={{ width: 120 }}>部位</th>
-                  <th style={{ width: 100 }}>檢驗類型</th>
-                  <th style={{ width: 90 }}>人員</th>
-                  <th style={{ width: 80 }}>結果</th>
-                  <th style={{ width: 90 }}>缺失狀態</th>
-                  <th style={{ width: 52 }}>照片</th>
-                  <th style={{ width: 96 }}></th>
-                  <th style={{ width: 120 }}>備註</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInsp.length === 0 ? (
-                  <tr><td colSpan={11} className="mcs-empty">
-                    <ShieldCheck size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                    <div>尚無施工檢驗記錄 — 點擊「新增檢驗」建立</div>
-                  </td></tr>
-                ) : filteredInsp.map(row => {
-                  const resCfg = INSPECT_RESULT[row.result] || INSPECT_RESULT['待複驗'];
-                  return (
-                    <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}>
-                      <td style={{ textAlign: 'center' }}>
-                        <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'inspect_date', table: 'construction_inspections', val: row.inspect_date, type: 'date' })}
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'work_item', table: 'construction_inspections', val: row.work_item })}
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'location', table: 'construction_inspections', val: row.location })}
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {row.inspect_category === '材料檢驗' && (
-                            <span style={{ flexShrink: 0, padding: '1px 4px', borderRadius: 3, fontSize: '10px', fontWeight: 700,
-                              color: '#10b981', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)' }}>材</span>
-                          )}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            {EditableCell({ id: row.id, field: 'inspect_type', table: 'construction_inspections', val: row.inspect_type })}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'inspector', table: 'construction_inspections', val: row.inspector })}
-                      </td>
-                      <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                        <span onClick={() => cycleInspResult(row.id, row.result)} title="點擊切換結果"
-                          style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 600,
-                            color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
-                          {row.result || '待複驗'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                        {(() => {
-                          const iss = issueByInspMap[row.id];
-                          if (!iss) return row.result === '不合格' ? <span style={{ fontSize: '10px', color: '#94a3b8' }}>無缺失單</span> : null;
-                          const cfg = RESOLVE_STATUS[iss.status] || RESOLVE_STATUS.open;
-                          const closed = iss.status === 'verified' || iss.status === 'waived';
-                          return (
-                            <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 600,
-                              color: cfg.color, background: `${cfg.color}15`, border: `1px solid ${cfg.color}40` }}>
-                              {closed ? '✅ 結案' : cfg.label}
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                        <button className="mcs-photo-btn" title="點擊查看/上傳照片記錄"
-                          onClick={() => navigate(`/projects/${projectId}/photos?src_table=construction_inspections&src_id=${row.id}&src_name=${encodeURIComponent((row.work_item || '施工抽查') + (row.location ? ' ' + row.location : ''))}`)}>
-                          <Camera size={11} />
-                          {inspPhotoMap[row.id] > 0 ? inspPhotoMap[row.id] : ''}
-                        </button>
-                      </td>
-                      <td style={{ padding: '2px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button className="mcs-photo-btn" title="填寫標準抽查單" onClick={() => setFormRow(row)}>
-                          <FileText size={11} />
-                        </button>
-                        <button className="mcs-photo-btn" title="列印抽查單" onClick={() => setPrintRow(row)}>
-                          <Printer size={11} />
-                        </button>
-                        <button className="mcs-photo-btn" title="刪除這筆記錄" style={{ color: '#ef4444' }}
-                          onClick={() => deleteOneInsp(row)}>
-                          <Trash2 size={11} />
-                        </button>
-                      </td>
-                      <td style={{ padding: '2px 4px' }}>
-                        {EditableCell({ id: row.id, field: 'remark', table: 'construction_inspections', val: row.remark })}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
+        <ConstructionInspectionTable
+          isMobile={isMobile}
+          filteredInsp={filteredInsp}
+          inspPhotoMap={inspPhotoMap}
+          issueByInspMap={issueByInspMap}
+          navigate={navigate}
+          projectId={projectId}
+          selected={selected}
+          togSel={togSel}
+          setSelected={setSelected}
+          cycleInspResult={cycleInspResult}
+          setFormRow={setFormRow}
+          setPrintRow={setPrintRow}
+          deleteOneInsp={deleteOneInsp}
+          EditableCell={EditableCell}
+        />
       )}
 
       {/* Tab 1: 缺失改善管制 */}
       {tab === 1 && (
-        isMobile ? (
-          <div className="mcs-card-list">
-            {filteredIssues.length === 0 ? (
-              <div className="mcs-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <AlertTriangle size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                <div>目前無品管缺失記錄 — 點擊「新增缺失」建立</div>
-              </div>
-            ) : filteredIssues.map(row => (
-              <MobileIssueCard key={row.id}
-                row={row}
-                selected={selected.has(row.id)}
-                onToggleSel={() => togSel(row.id)}
-                onCycleStatus={cycleIssueStatus}
-                onOpenVerify={openVerify}
-              />
-            ))}
-          </div>
-        ) : (
-        <div className="mcs-tbl-wrap">
-          <table className="mcs-table">
-            <thead>
-              <tr>
-                <th style={{ width: 28 }}>
-                  <input type="checkbox"
-                    checked={filteredIssues.length > 0 && selected.size === filteredIssues.length}
-                    onChange={() => setSelected(selected.size === filteredIssues.length ? new Set() : new Set(filteredIssues.map(r => r.id)))} />
-                </th>
-                <th style={{ width: 90 }}>查驗日期</th>
-                <th style={{ width: 100 }}>位置</th>
-                <th style={{ width: 160 }}>缺失項目</th>
-                <th style={{ width: 80 }}>嚴重度</th>
-                <th style={{ width: 200 }}>缺失說明</th>
-                <th style={{ width: 80 }}>責任廠商</th>
-                <th style={{ width: 90 }}>改善期限</th>
-                <th style={{ width: 90 }}>狀態</th>
-                <th style={{ width: 90 }}>改善日期</th>
-                <th>備註</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredIssues.length === 0 ? (
-                <tr><td colSpan={11} className="mcs-empty">
-                  <AlertTriangle size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                  <div>目前無品管缺失記錄 — 點擊「新增缺失」建立</div>
-                </td></tr>
-              ) : filteredIssues.map(row => {
-                const sevCfg = SEVERITY_CONFIG[row.severity] || SEVERITY_CONFIG.major;
-                const resCfg = RESOLVE_STATUS[row.status] || RESOLVE_STATUS.open;
-                const isOverdue = row.deadline && new Date(row.deadline) < new Date()
-                  && !['resolved', 'verified', 'waived'].includes(row.status);
-                return (
-                  <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}
-                    style={isOverdue ? { background: 'rgba(239,68,68,0.03)' } : {}}>
-                    <td style={{ textAlign: 'center' }}>
-                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'inspection_date', table: 'quality_issues', val: row.inspection_date, type: 'date' })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'location', table: 'quality_issues', val: row.location })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'item', table: 'quality_issues', val: row.item })}
-                    </td>
-                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px',
-                        background: sevCfg.bg, color: sevCfg.color, border: `1px solid ${sevCfg.color}40` }}>
-                        {sevCfg.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'description', table: 'quality_issues', val: row.description })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'responsible', table: 'quality_issues', val: row.responsible })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'deadline', table: 'quality_issues', val: row.deadline, type: 'date' })}
-                    </td>
-                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                        <span onClick={() => cycleIssueStatus(row.id, row.status)} title="點擊切換狀態"
-                          style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer',
-                            color: resCfg.color, border: `1px solid ${resCfg.color}40`, background: `${resCfg.color}10` }}>
-                          {resCfg.label}
-                        </span>
-                        {row.status === 'resolved' && (
-                          <button onClick={() => openVerify(row)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '1px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 600,
-                              background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer' }}>
-                            <ClipboardCheck size={9} />申請驗收
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'resolve_date', table: 'quality_issues', val: row.resolve_date, type: 'date' })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'remark', table: 'quality_issues', val: row.remark })}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        )
+        <QualityIssueTable
+          isMobile={isMobile}
+          filteredIssues={filteredIssues}
+          selected={selected}
+          togSel={togSel}
+          setSelected={setSelected}
+          cycleIssueStatus={cycleIssueStatus}
+          openVerify={openVerify}
+          EditableCell={EditableCell}
+        />
       )}
 
       {/* Tab 2: 試驗報告管制 */}
       {tab === 2 && (
-        isMobile ? (
-          <div className="mcs-card-list">
-            {filteredTests.length === 0 ? (
-              <div className="mcs-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <FlaskConical size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                <div>尚無試驗報告記錄 — 請至「材料管制」頁面的「檢試驗管制表」新增資料</div>
-              </div>
-            ) : filteredTests.map(row => (
-              <MobileTestCard key={row.id}
-                row={row}
-                selected={selected.has(row.id)}
-                onToggleSel={() => togSel(row.id)}
-                onCycleResult={cycleTestResult}
-              />
-            ))}
-          </div>
-        ) : (
-        <div className="mcs-tbl-wrap">
-          <table className="mcs-table">
-            <thead>
-              <tr>
-                <th style={{ width: 28 }}>
-                  <input type="checkbox"
-                    checked={filteredTests.length > 0 && selected.size === filteredTests.length}
-                    onChange={() => setSelected(selected.size === filteredTests.length ? new Set() : new Set(filteredTests.map(r => r.id)))} />
-                </th>
-                <th style={{ width: 36 }}>#</th>
-                <th style={{ width: 88 }}>契約項次</th>
-                <th style={{ width: 180 }}>材料/設備名稱</th>
-                <th style={{ width: 200 }}>抽樣頻率</th>
-                <th style={{ width: 82 }}>預定進場</th>
-                <th style={{ width: 82 }}>實際進場</th>
-                <th style={{ width: 76 }}>累積進場</th>
-                <th style={{ width: 72 }}>累積抽樣</th>
-                <th style={{ width: 80 }}>可入判定</th>
-                <th>備註</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTests.length === 0 ? (
-                <tr><td colSpan={11} className="mcs-empty">
-                  <FlaskConical size={28} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
-                  <div>尚無試驗報告記錄 — 請至「材料管制」頁面的「檢試驗管制表」新增資料</div>
-                </td></tr>
-              ) : filteredTests.map(row => {
-                const resultKey = row.result || '待審閱';
-                const cfg = TEST_RESULT_CFG[resultKey] || TEST_RESULT_CFG['待審閱'];
-                return (
-                  <tr key={row.id} className={selected.has(row.id) ? 'sel' : ''}>
-                    <td style={{ textAlign: 'center' }}>
-                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => togSel(row.id)} />
-                    </td>
-                    <td style={{ padding: '2px 6px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-text-muted)' }}>{row.no || '—'}</td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'ci', table: 'mcs_test', val: row.ci })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'name', table: 'mcs_test', val: row.name })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'freq', table: 'mcs_test', val: row.freq })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'p_date', table: 'mcs_test', val: row.p_date })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'a_date', table: 'mcs_test', val: row.a_date })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'cum_qty', table: 'mcs_test', val: row.cum_qty })}
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'cum_smp', table: 'mcs_test', val: row.cum_smp })}
-                    </td>
-                    <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                      <span onClick={() => cycleTestResult(row.id, resultKey)} title="點擊切換可入判定"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 600,
-                          color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}40` }}>
-                        {resultKey === '可入' && <CheckCircle2 size={10} />}
-                        {resultKey}
-                      </span>
-                    </td>
-                    <td style={{ padding: '2px 4px' }}>
-                      {EditableCell({ id: row.id, field: 'remark', table: 'mcs_test', val: row.remark })}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        )
+        <TestReportTable
+          isMobile={isMobile}
+          filteredTests={filteredTests}
+          selected={selected}
+          togSel={togSel}
+          setSelected={setSelected}
+          cycleTestResult={cycleTestResult}
+          EditableCell={EditableCell}
+        />
       )}
+
 
       <div className="mcs-footer">
         {tab === 0
@@ -1640,114 +1074,6 @@ export function Quality() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ── 施工抽查記錄表列印元件 ── */
-function InspectionPrintView({ row, project, issue, onClose }) {
-  const resCfg = INSPECT_RESULT[row.result] || INSPECT_RESULT['待複驗'];
-  const issueCfg = issue ? (RESOLVE_STATUS[issue.status] || RESOLVE_STATUS.open) : null;
-  const docNo = `Q-${(row.inspect_date || '').replace(/-/g, '')}-${String(row.id).slice(-4).padStart(4, '0')}`;
-
-  function doPrint() { window.print(); }
-
-  return (
-    <div className="insp-print-overlay">
-      <div className="insp-print-toolbar">
-        <span style={{ fontWeight: 600, fontSize: '14px' }}>施工抽查記錄表預覽</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="mcs-btn mcs-btn-add" onClick={doPrint}><Printer size={13} /> 列印 / 存 PDF</button>
-          <button className="mcs-btn" onClick={onClose}><X size={13} /> 關閉</button>
-        </div>
-      </div>
-
-      <div className="insp-print-page">
-        {/* 表頭 */}
-        <table className="insp-pt-header-tbl">
-          <tbody>
-            <tr>
-              <td colSpan={4} className="insp-pt-title">施工抽查記錄表</td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">工程名稱</td>
-              <td colSpan={3} className="insp-pt-val">{project?.name || '—'}</td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">承包廠商</td>
-              <td className="insp-pt-val">{project?.contractor || '—'}</td>
-              <td className="insp-pt-label">記錄編號</td>
-              <td className="insp-pt-val insp-pt-mono">{docNo}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* 抽查內容 */}
-        <table className="insp-pt-body-tbl">
-          <tbody>
-            <tr>
-              <td className="insp-pt-label">檢驗日期</td>
-              <td className="insp-pt-val">{row.inspect_date || '—'}</td>
-              <td className="insp-pt-label">檢驗類型</td>
-              <td className="insp-pt-val">{row.inspect_type || '—'}</td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">工程項目</td>
-              <td colSpan={3} className="insp-pt-val">{row.work_item || '—'}</td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">部位 / 位置</td>
-              <td colSpan={3} className="insp-pt-val">{row.location || '—'}</td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">檢驗人員</td>
-              <td className="insp-pt-val">{row.inspector || '—'}</td>
-              <td className="insp-pt-label">檢驗結果</td>
-              <td className="insp-pt-val">
-                <span style={{ fontWeight: 700, color: resCfg.color }}>{row.result || '待複驗'}</span>
-              </td>
-            </tr>
-            <tr>
-              <td className="insp-pt-label">備註說明</td>
-              <td colSpan={3} className="insp-pt-val insp-pt-remark">{row.remark || '—'}</td>
-            </tr>
-            {issue && (
-              <tr>
-                <td className="insp-pt-label">缺失改善</td>
-                <td colSpan={3} className="insp-pt-val">
-                  <span style={{ fontWeight: 600, color: issueCfg?.color }}>{issueCfg?.label}</span>
-                  {issue.deadline ? `  ／  改善期限：${issue.deadline}` : ''}
-                  {issue.responsible ? `  ／  責任廠商：${issue.responsible}` : ''}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {/* 簽名欄 */}
-        <table className="insp-pt-sign-tbl">
-          <tbody>
-            <tr>
-              <td className="insp-pt-sign-label">監造人員</td>
-              <td className="insp-pt-sign-field"></td>
-              <td className="insp-pt-sign-label">承包廠商</td>
-              <td className="insp-pt-sign-field"></td>
-              <td className="insp-pt-sign-label">業主代表</td>
-              <td className="insp-pt-sign-field"></td>
-            </tr>
-            <tr>
-              <td className="insp-pt-sign-label">簽章日期</td>
-              <td className="insp-pt-sign-field"></td>
-              <td className="insp-pt-sign-label">簽章日期</td>
-              <td className="insp-pt-sign-field"></td>
-              <td className="insp-pt-sign-label">簽章日期</td>
-              <td className="insp-pt-sign-field"></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="insp-pt-footer">本表單由 RT-PMIS 監造管理系統自動產生 · 列印日期：{new Date().toLocaleDateString('zh-TW')}</div>
-      </div>
     </div>
   );
 }
