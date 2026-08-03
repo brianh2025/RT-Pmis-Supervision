@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ClipboardCheck, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useQualityIssueCreator } from '../hooks/useQualityIssueCreator';
 import './Modal.css';
 
 const RESULT_OPTIONS = [
@@ -19,6 +20,7 @@ const SEVERITY_OPTIONS = [
 
 export function InspectionQuickModal({ projectId, inspectDate, existing, onClose, onSuccess }) {
   const { user } = useAuth();
+  const { createIssueFromInspection } = useQualityIssueCreator();
   const [workItem,    setWorkItem]    = useState(existing?.work_item   || '');
   const [location,    setLocation]    = useState(existing?.location    || '');
   const [inspectType, setInspectType] = useState(existing?.inspect_type || '查驗');
@@ -71,15 +73,13 @@ export function InspectionQuickModal({ projectId, inspectDate, existing, onClose
         `此抽查結果為「不合格」，是否立即建立缺失改善單？\n\n工項：${workItem}\n位置：${location || '（未填）'}`
       );
       if (confirmed) {
-        await supabase.from('quality_issues').insert({
-          project_id:      projectId,
-          inspection_date: inspectDate,
-          location:        location.trim() || null,
-          item:            workItem.trim(),
-          severity:        'major',
-          description:     remark.trim() || null,
-          status:          'open',
-          created_by:      user?.id,
+        await createIssueFromInspection({
+          projectId, userId: user?.id, sourceRecordId: insId,
+          inspectionDate: inspectDate,
+          location: location.trim() || null,
+          item: workItem.trim(),
+          description: remark.trim() || null,
+          status: 'open',
         });
       }
     }
