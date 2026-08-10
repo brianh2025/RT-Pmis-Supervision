@@ -1,4 +1,5 @@
-/* 依施工日誌敘述自動拆解「位置及部位」與「施工項目」，供 Quality.jsx 自動建立待複驗查驗使用 */
+/* 依施工日誌敘述自動拆解「工程位置及部位」與「施工項目」，供 Quality.jsx 自動建立待複驗查驗使用 */
+import { guessTemplateCode, getTemplateByCode } from '../config/inspectionFormTemplates';
 
 /* 非查驗性日誌記事（休假、天候、場地管理），不列入待建立查驗 */
 export const NON_INSPECT_RE = /連休|連假|休假|停工|無施工|颱風|豪雨|雨量|降雨|積水|排除|清理|整理|維持|打掃|環境|便道|善後/;
@@ -88,4 +89,24 @@ export function splitWorkItemEntry(raw) {
     }
   }
   return out.length ? out : [{ item: name, location: '' }];
+}
+
+/* 位置語彙抽出：樁位里程（1K+683、1K+683~1K+844）與橋名段落一律歸「工程位置及部位」 */
+const LOCATION_RES = [
+  /\d+K\+\d+\s*[~～至－-]\s*\d*K?\+?\d+K?/g,
+  /\d+K\+\d+/g,
+  /[一-龥 ]{1,6}橋(?:上游|下游)?段?/g,
+];
+export function extractLocation(text) {
+  const found = [];
+  let rest = text || '';
+  for (const re of LOCATION_RES) rest = rest.replace(re, m => { found.push(m.trim()); return ''; });
+  rest = rest.replace(/^[\s、，,．.]+|[\s、，,．.]+$/g, '');
+  return { rest, loc: found.join('') };
+}
+
+/* 分項工程歸類：對應施工抽查表的分項工程項目（回填工程、鋼筋工程…），無法對應時保留原敘述 */
+export function classifyWorkItem(text) {
+  const t = getTemplateByCode(guessTemplateCode(text));
+  return t ? t.label : text;
 }

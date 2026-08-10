@@ -31,7 +31,7 @@ function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId
       {expanded && (
         <div className="mcs-mc-body">
           {[
-            { label: '部位', value: row.location },
+            { label: '工程位置及部位', value: row.location },
             { label: '檢驗類型', value: row.inspect_type },
             { label: '人員', value: row.inspector },
             { label: '缺失狀態', value: iss ? (issueClosed ? '✅ 結案' : issueCfg?.label) : (row.result === '不合格' ? '無缺失單' : null) },
@@ -95,7 +95,7 @@ export function ConstructionInspectionTable({
             </th>
             <th style={{ width: 90 }}>檢驗日期</th>
             <th>工程項目</th>
-            <th style={{ width: 120 }}>部位</th>
+            <th style={{ width: 150 }}>工程位置及部位</th>
             <th style={{ width: 100 }}>檢驗類型</th>
             <th style={{ width: 90 }}>人員</th>
             <th style={{ width: 80 }}>結果</th>

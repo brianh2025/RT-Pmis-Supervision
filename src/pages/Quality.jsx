@@ -11,13 +11,13 @@ import {
   parseInspectionHeader, extractItemsFromParagraphs,
 } from '../utils/inspectionOcr';
 import { InspectionImportModal } from '../components/InspectionImportModal';
-import { guessTemplateCode, getTemplateByCode } from '../config/inspectionFormTemplates';
+import { guessTemplateCode, getTemplateByCode, INSPECTION_TEMPLATES } from '../config/inspectionFormTemplates';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../hooks/useProject';
 import { useQualityIssueCreator } from '../hooks/useQualityIssueCreator';
-import { splitWorkItemEntry, NON_INSPECT_RE } from '../utils/workItemAutoSplit';
+import { splitWorkItemEntry, NON_INSPECT_RE, extractLocation, classifyWorkItem } from '../utils/workItemAutoSplit';
 import {
   SEVERITY_CONFIG, RESOLVE_STATUS, RESOLVE_CYCLE, INSPECT_RESULT, RESULT_CYCLE,
   TEST_RESULT_CYCLE, TEST_RESULT_CFG,
@@ -31,11 +31,8 @@ import '../components/Modal.css';
 
 const TNAMES = ['施工檢驗管制', '缺失改善管制', '試驗報告管制'];
 
-const WORK_ITEMS_PRESET = [
-  '基礎開挖', '鋼筋綁紮', '模板安裝', '混凝土澆置', '土方回填',
-  '瀝青鋪設', '基樁施工', '植筋工程', '防水工程', '安全設施',
-  '鋼筋進場', '混凝土進場', '材料進場驗收',
-];
+/* 分項工程項目：與施工抽查紀錄表的工項分類一致 */
+const WORK_ITEMS_PRESET = INSPECTION_TEMPLATES.map(t => t.label);
 
 const INSPECT_TYPE_CHOICES = ['檢驗停留點', '不定期抽查'];
 const INSPECT_CATEGORY_CHOICES = ['施工檢驗', '材料檢驗'];
@@ -446,9 +443,13 @@ export function Quality() {
         if (!piece.item || NON_INSPECT_RE.test(piece.item)) continue;
         // 工項含「進場」視為材料進場，建立時歸類材料檢驗
         const src = /進場/.test(piece.item) ? '材料進場' : '施工';
-        const key = `${r.log_date}|${piece.item}|${piece.location}|${src}`;
-        if (map.has(key) || hasInsp(r.log_date, piece.item)) continue;
-        map.set(key, { date: r.log_date, name: piece.item, location: piece.location, source: src });
+        // 樁位里程歸入工程位置及部位，工項再依分項工程歸類
+        const { rest, loc } = extractLocation(piece.item);
+        const name = classifyWorkItem(rest || piece.item);
+        const location = `${piece.location || ''}${loc}`;
+        const key = `${r.log_date}|${name}|${location}|${src}`;
+        if (map.has(key) || hasInsp(r.log_date, name)) continue;
+        map.set(key, { date: r.log_date, name, location, source: src });
       }
     }
     for (const m of matEntries) {
@@ -805,8 +806,8 @@ export function Quality() {
                   </div>
                 </div>
                 {[
-                  { label: '工程項目', field: 'work_item', type: 'text', placeholder: '例：混凝土澆置', full: true, list: 'work-items-list' },
-                  { label: '部位/位置', field: 'location', type: 'text', placeholder: '例：B2F 柱位 A3' },
+                  { label: '工程項目', field: 'work_item', type: 'text', placeholder: '例：混凝土工程', full: true, list: 'work-items-list' },
+                  { label: '工程位置及部位', field: 'location', type: 'text', placeholder: '例：南岸1K+683~1K+844' },
                   { label: '檢驗人員', field: 'inspector', type: 'text', placeholder: '姓名' },
                   { label: '備註', field: 'remark', type: 'text', placeholder: '備註說明', full: true },
                 ].map(({ label, field, type, placeholder, full, list }) => (
@@ -1048,9 +1049,9 @@ export function Quality() {
                 </select>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>查驗部位</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>工程位置及部位</div>
                 <input value={quickForm.location} onChange={e => setQuickForm(f => ({ ...f, location: e.target.value }))}
-                  placeholder="如：B1 柱位 C3" style={{ width: '100%', padding: '7px 8px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, boxSizing: 'border-box' }} />
+                  placeholder="如：南岸1K+683~1K+844" style={{ width: '100%', padding: '7px 8px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>查驗結果</div>

@@ -54,7 +54,7 @@ export function InspectionPrintView({ row, project, issue, onClose }) {
               <td colSpan={3} className="insp-pt-val">{row.work_item || '—'}</td>
             </tr>
             <tr>
-              <td className="insp-pt-label">部位 / 位置</td>
+              <td className="insp-pt-label">工程位置及部位</td>
               <td colSpan={3} className="insp-pt-val">{row.location || '—'}</td>
             </tr>
             <tr>
