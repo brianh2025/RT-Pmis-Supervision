@@ -249,7 +249,7 @@ const KEYWORD_MAP = [
   { keywords: ['回填', '土方'],      code: 'EC' },
   { keywords: ['鋼筋'],             code: 'ED' },
   { keywords: ['模板'],             code: 'EE' },
-  { keywords: ['混凝土澆置', '混凝土'],code: 'EF' },
+  { keywords: ['混凝土澆置', '混凝土', '護岸', '牆身', '擋土牆'], code: 'EF' },
   { keywords: ['擋土'],             code: 'EG' },
   { keywords: ['基樁', '樁'],       code: 'EH' },
   { keywords: ['排水', '抽移'],     code: 'EI' },
