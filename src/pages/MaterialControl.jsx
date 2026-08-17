@@ -65,12 +65,23 @@ const TST_COLS = [
 const TNAMES = ['材料進場紀錄', '檢試驗管制表'];
 const VER_COLORS = ['#1565C0', '#0a8a4a', '#c2410c', '#6d28d9', '#0f766e', '#b45309'];
 
-const RESULT_CYCLE = ['待查驗', '合格', '不合格', ''];
+/* 空字串即「待查驗」，資料表 result 僅允許合格／不合格／空值 */
+const RESULT_CYCLE = ['合格', '不合格', ''];
 const RESULT_CFG = {
-  '待查驗': { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
   '合格':  { color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
   '不合格': { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
 };
+
+/* 送審核定狀態：未核定前不得查驗亦不得使用（監造計畫表5.3-1）
+   approved＝已同意備查、pending＝送審中或退件、none＝送審表查無此材料 */
+function submissionStatusOf(name, subRows) {
+  if (!name || !subRows.length) return 'none';
+  const key = name.trim().slice(0, 4);
+  if (!key) return 'none';
+  const matched = subRows.find(s => s.name && (s.name.includes(key) || name.includes(s.name.trim().slice(0, 4))));
+  if (!matched) return 'none';
+  return matched.result === '同意備查' ? 'approved' : 'pending';
+}
 const ISSUE_STATUS_CFG = {
   open:        { label: '待改善', color: '#ef4444' },
   in_progress: { label: '改善中', color: '#f59e0b' },
@@ -121,8 +132,19 @@ function VerBadge({ val, color, onDblClick, onCycleColor }) {
   );
 }
 
+/* ── 未核定標籤：送審尚未同意備查，不得查驗亦不得使用 ── */
+function UnapprovedBadge({ status }) {
+  if (status !== 'pending') return null;
+  return (
+    <span className="mcs-result-badge" title="材料設備送審尚未核定，不得查驗亦不得使用"
+      style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)' }}>
+      未核定
+    </span>
+  );
+}
+
 /* ── 行動版材料進場卡片 ── */
-function MobileEntryCard({ row, photoCountMap, photoNavMap, issueStatusMap, navigate, projectId, selected, onToggleSel }) {
+function MobileEntryCard({ row, photoCountMap, photoNavMap, issueStatusMap, subStatus, navigate, projectId, selected, onToggleSel }) {
   const [expanded, setExpanded] = useState(false);
   const count = photoCountMap[row.id] || 0;
   const nav = (photoNavMap || {})[row.id] || 'none';
@@ -145,6 +167,7 @@ function MobileEntryCard({ row, photoCountMap, photoNavMap, issueStatusMap, navi
           <Camera size={11} />{count > 0 ? count : ''}
         </button>
         <span className="mcs-mc-name">{row.name || '—'}</span>
+        <UnapprovedBadge status={subStatus} />
         {row.result === '不合格' && issueStatus
           ? <span className="mcs-result-badge" style={isVerified ? { color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' } : { color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               {isVerified ? '✅' : '⚠️'}
@@ -200,6 +223,9 @@ export function MaterialControl() {
   const [photoNavMap,   setPhotoNavMap]   = useState({}); // 'linked' | 'date' | 'none'
   const [issueStatusMap, setIssueStatusMap] = useState({});
 
+  // 送審管制（表5.3-1）：未核定前不得查驗亦不得使用
+  const [subRows, setSubRows] = useState([]);
+
   // 試驗管制材料提示 toast
   const [tstToast, setTstToast] = useState(null);
   // { type: 'match'|'nomatch', matched: tstRow|null, entry: entryRow }
@@ -236,6 +262,13 @@ export function MaterialControl() {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
     if (error) { console.error(error); return []; }
+    return data || [];
+  }, [projectId]);
+
+  const loadSubmissions = useCallback(async () => {
+    if (!supabase) return [];
+    const { data } = await supabase.from('mcs_submission').select('id, name, result')
+      .eq('project_id', projectId);
     return data || [];
   }, [projectId]);
 
@@ -297,12 +330,13 @@ export function MaterialControl() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      const [e, t, is, sv] = await Promise.all([
-        loadEntries(), loadTst(), loadIssueStatusMap(), loadSupervisor(),
+      const [e, t, is, sv, sub] = await Promise.all([
+        loadEntries(), loadTst(), loadIssueStatusMap(), loadSupervisor(), loadSubmissions(),
       ]);
       const { countMap, navMap } = await loadPhotoMaps(e);
       setEntries(e);
       setTstRows(t);
+      setSubRows(sub);
       setPhotoCountMap(countMap);
       setPhotoNavMap(navMap);
       setIssueStatusMap(is);
@@ -310,7 +344,7 @@ export function MaterialControl() {
       setLoading(false);
     }
     if (projectId) init();
-  }, [projectId, loadEntries, loadTst, loadSupervisor]);
+  }, [projectId, loadEntries, loadTst, loadSupervisor, loadSubmissions]);
 
   useEffect(() => {
     if (editCell) setTimeout(() => { editInputRef.current?.focus(); editInputRef.current?.select?.(); }, 10);
@@ -484,6 +518,12 @@ export function MaterialControl() {
   async function handleMaterialResult(row) {
     const cur = row.result || '';
     const next = RESULT_CYCLE[(RESULT_CYCLE.indexOf(cur) + 1) % RESULT_CYCLE.length];
+
+    // 切換到「合格」時，先查送審核定：未核定前不得查驗亦不得使用
+    if (next === '合格' && row.name && submissionStatusOf(row.name, subRows) === 'pending') {
+      alert(`「${row.name}」的材料設備送審尚未核定。\n\n依監造計畫，未核定前不得查驗亦不得使用，請先完成書面審查。`);
+      return;
+    }
 
     // 切換到「合格」時，檢查試驗報告判讀狀態
     if (next === '合格' && row.name) {
@@ -674,6 +714,20 @@ export function MaterialControl() {
       );
     }
 
+    // 材料名稱欄併呈送審核定狀態
+    if (tab === 0 && col.k === 'name') {
+      return (
+        <td key={col.k} style={{ width: col.w, minWidth: col.w, padding: '1px 2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div className="mcs-cv" style={{ flex: 1, minWidth: 0 }} onDoubleClick={() => startEdit(row.id, col.k, val)} title={val}>
+              {val || <span className="mcs-placeholder">·</span>}
+            </div>
+            <UnapprovedBadge status={submissionStatusOf(row.name, subRows)} />
+          </div>
+        </td>
+      );
+    }
+
     return (
       <td key={col.k} style={{ width: col.w, minWidth: col.w, padding: '1px 2px' }}>
         <div className={`mcs-cv${col.wrap ? ' mcs-cv-wrap' : ''}`} onDoubleClick={() => startEdit(row.id, col.k, val)} title={val}>
@@ -688,6 +742,7 @@ export function MaterialControl() {
   const hasHidden = hiddenCols[tkey].size > 0;
   const failCount = entries.filter(r => r.result === '不合格').length;
   const okCount = entries.filter(r => r.result === '合格').length;
+  const unapprovedCount = entries.filter(r => submissionStatusOf(r.name, subRows) === 'pending').length;
 
   if (loading) return (
     <div className="mcs-loading"><Loader2 size={28} className="animate-spin" /><span>載入材料管制資料中…</span></div>
@@ -702,6 +757,7 @@ export function MaterialControl() {
           { val: okCount, label: '判定合格', cls: 'mcs-stat-ok' },
           { val: failCount, label: '判定不合格', cls: failCount > 0 ? 'mcs-stat-warn' : '' },
           { val: entries.filter(r => !r.result).length, label: '待判定', cls: '' },
+          { val: unapprovedCount, label: '送審未核定', cls: unapprovedCount > 0 ? 'mcs-stat-warn' : '' },
         ] : [
           { val: entries.length, label: '進場紀錄', cls: '' },
           { val: tstRows.length, label: '試驗項目', cls: '' },
@@ -720,6 +776,15 @@ export function MaterialControl() {
           </span>
         </div>
       </div>
+
+      {/* 送審核定檢核未啟用提示：表5.3-1 尚未匯入時，無從比對材料是否已核定 */}
+      {tab === 0 && subRows.length === 0 && entries.length > 0 && (
+        <div className="mcs-sub-gate-hint">
+          <ClipboardList size={13} />
+          <span>尚未匯入「表5.3-1 材料設備送審管制總表」，送審核定檢核未啟用</span>
+          <button onClick={() => navigate(`/projects/${projectId}/submission`)}>前往送審管理</button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="mcs-toolbar">
@@ -782,7 +847,8 @@ export function MaterialControl() {
             </div>
           ) : rows.map(row => (
             <MobileEntryCard key={row.id} row={row} photoCountMap={photoCountMap} photoNavMap={photoNavMap}
-              issueStatusMap={issueStatusMap} navigate={navigate} projectId={projectId}
+              issueStatusMap={issueStatusMap} subStatus={submissionStatusOf(row.name, subRows)}
+              navigate={navigate} projectId={projectId}
               selected={selected.has(row.id)} onToggleSel={togSel} />
           ))}
         </div>

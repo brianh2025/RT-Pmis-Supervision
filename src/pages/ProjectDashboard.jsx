@@ -110,7 +110,7 @@ export function ProjectDashboard() {
         supabase.from('construction_inspections').select('result, work_item, form_status, planned_date, inspect_date').eq('project_id', projectId),
         supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('result', '待查驗'),
+        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).is('result', null),
         supabase.from('daily_logs').select('log_date').eq('project_id', projectId).order('log_date', { ascending: false }).limit(1),
       ]);
 
@@ -311,7 +311,7 @@ export function ProjectDashboard() {
     stats.matPending > 0 && {
       id: 'mat-pending', level: 'warning', icon: Package,
       title: `材料待查驗 ${stats.matPending} 件`,
-      desc: '廠商已申請查驗，請至材料管制頁確認並填寫查驗結果',
+      desc: '已登錄進場但尚未填寫判定結果，請至材料管制頁確認',
       dueDate: addDays(5), due: `請於 ${addDays(5)} 前查驗`,
       path: 'material', action: '前往查驗',
     },
