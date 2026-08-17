@@ -175,6 +175,17 @@
   border-radius: var(--radius-sm); object-fit: contain;
 }
 
+/* ── 已發出待回收提示 ── */
+.ifm-issued-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-bottom: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--color-warning); font-size: var(--fs-sm);
+}
+.ifm-issued-banner svg { flex-shrink: 0; }
+
 /* ── 響應式 ── */
 @media (max-width: 600px) {
   .ifm-grid-2, .ifm-grid-3, .ifm-grid-4 { grid-template-columns: 1fr; }

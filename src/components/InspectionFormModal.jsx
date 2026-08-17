@@ -2,7 +2,7 @@
    InspectionFormModal.jsx — 施工抽查紀錄表填寫 Modal
    ============================================================ */
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save, Trash2, Camera, ScanText } from 'lucide-react';
+import { X, Upload, Printer, Cloud, Loader2, CheckSquare, Save, Trash2, Camera, ScanText, FileOutput, Clock } from 'lucide-react';
 import {
   INSPECTION_TEMPLATES, TEMPLATE_OPTIONS, INSPECT_TYPE_OPTIONS,
   FLOW_OPTIONS, RESULT_SYMBOL, guessTemplateCode,
@@ -231,10 +231,15 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
   const [header, setHeader] = useState({
     location:    inspection?.location    || '',
     date:        inspection?.inspect_date || new Date().toISOString().split('T')[0],
+    plannedDate: inspection?.planned_date || inspection?.inspect_date || new Date().toISOString().split('T')[0],
     inspectType: inspection?.inspect_type || '',
     flow:        '',
     inspector:   inspection?.inspector   || '',
   });
+
+  /* 表單流轉狀態：issued＝已發出待回收（列印建檔後尚未填回結果） */
+  const [formStatus, setFormStatus] = useState(inspection?.form_status || null);
+  const [issuedId,   setIssuedId]   = useState(inspection?.id || null);
 
   /* 各子項目結果 { [itemName]: { result: 'pass'|'fail'|'na'|'', actual: '' } } */
   const [items, setItems] = useState({});
@@ -382,6 +387,46 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
     w.onload = () => { w.focus(); w.print(); };
   }
 
+  /* 列印並建檔：印出結果欄留白的抽查單，同時建立「已發出待回收」紀錄 */
+  async function handleIssue() {
+    if (!template) return alert('請先選擇工項');
+    if (!supabase) return alert('資料庫未連線');
+    setSavingDb(true);
+    try {
+      const now = new Date().toISOString();
+      const fields = {
+        inspect_date:  header.plannedDate,
+        planned_date:  header.plannedDate,
+        work_item:     template.label,
+        template_code: template.code,
+        location:      header.location || null,
+        inspect_type:  header.inspectType || null,
+        inspector:     header.inspector || null,
+        form_status:   'issued',
+        issued_at:     now,
+        result:        null,
+      };
+      const { data, error } = issuedId
+        ? await supabase.from('construction_inspections').update(fields).eq('id', issuedId).select().single()
+        : await supabase.from('construction_inspections').insert([{ project_id: project?.id, created_by: user?.id, ...fields }]).select().single();
+      if (error) throw error;
+      setIssuedId(data.id);
+      setFormStatus('issued');
+      onSave?.(data);
+
+      const html = buildFormHtml({
+        template, header, items: {}, defect: { resolved: false, unresolved: false, date: '', reviewer: '', reviewSign: '' },
+        signImgSrc: null, supervisorImgSrc: null,
+        projectName: project?.name, contractor: project?.contractor,
+      });
+      const w = window.open('', '_blank', 'width=900,height=800');
+      w.document.write(html);
+      w.document.close();
+      w.onload = () => { w.focus(); w.print(); };
+    } catch (e) { alert(`建檔失敗：${e.message}`); }
+    finally { setSavingDb(false); }
+  }
+
   /* 上傳 Drive */
   async function handleUploadDrive() {
     if (!template) return alert('請先選擇工項');
@@ -397,6 +442,9 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
       const filename = `${template.code}_${template.label}_${header.date || 'nodate'}.html`;
       const result = await uploadHtmlToDrive(blob, filename, token, `${template.code} ${template.label}`, header.date);
       setDriveLink(result.webViewLink || '');
+      if (issuedId && result.webViewLink && supabase) {
+        await supabase.from('construction_inspections').update({ drive_link: result.webViewLink }).eq('id', issuedId);
+      }
       alert('已上傳至 Google Drive！');
     } catch (e) { alert(`上傳失敗：${e.message}`); }
     finally { setSaving(false); }
@@ -412,18 +460,23 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
       const overallResult = results.includes('fail') ? '不合格'
         : results.length > 0 && results.every(r => r === 'pass') ? '合格'
         : '待複驗';
-      const isEdit = !!inspection?.id;
+      const targetId = inspection?.id || issuedId;
+      const isEdit = !!targetId;
       const fields = {
-        inspect_date: header.date,
-        work_item:    template.label,
-        location:     header.location || null,
-        inspect_type: header.inspectType || null,
-        inspector:    header.inspector || null,
-        result:       overallResult,
-        remark:       defect.resolved ? '已立即完成改善' : defect.unresolved ? '未完成改善，需追蹤' : null,
+        inspect_date:  header.date,
+        planned_date:  header.plannedDate || null,
+        work_item:     template.label,
+        template_code: template.code,
+        location:      header.location || null,
+        inspect_type:  header.inspectType || null,
+        inspector:     header.inspector || null,
+        result:        overallResult,
+        remark:        defect.resolved ? '已立即完成改善' : defect.unresolved ? '未完成改善，需追蹤' : null,
+        form_status:   'returned',
+        returned_at:   new Date().toISOString(),
       };
       const { data, error } = isEdit
-        ? await supabase.from('construction_inspections').update(fields).eq('id', inspection.id).select().single()
+        ? await supabase.from('construction_inspections').update(fields).eq('id', targetId).select().single()
         : await supabase.from('construction_inspections').insert([{ project_id: project?.id, created_by: user?.id, ...fields }]).select().single();
       if (error) throw error;
       alert(`已${isEdit ? '更新' : '儲存至'}施工檢驗管制表（結果：${overallResult}）`);
@@ -473,6 +526,10 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                 <Trash2 size={13} />刪除
               </button>
             )}
+            <button className="ifm-btn" onClick={handleIssue} disabled={savingDb}
+              title="印出結果欄留白的抽查單帶到現場手寫，同時建立待回收紀錄">
+              <FileOutput size={13} />列印並建檔（發出）
+            </button>
             <button className="ifm-btn" onClick={handlePrint}><Printer size={13} />列印 / PDF</button>
             <button className="ifm-btn" onClick={handleUploadDrive} disabled={saving}>
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Cloud size={13} />}
@@ -488,6 +545,14 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
         </div>
 
         <div className="ifm-body">
+
+          {/* 已發出待回收提示 */}
+          {formStatus === 'issued' && (
+            <div className="ifm-issued-banner">
+              <Clock size={14} />
+              <span>本張抽查單已於 {header.plannedDate} 發出，尚未回收。填入抽查結果後按「儲存至管制表」即完成回收。</span>
+            </div>
+          )}
 
           {/* 選擇工項 */}
           <div className="ifm-section">
@@ -531,6 +596,11 @@ export default function InspectionFormModal({ inspection, project, onClose, onSa
                     導入照片
                   </button>
                 </div>
+              </div>
+              <div>
+                <label className="ifm-label">預定查驗日期</label>
+                <input className="ifm-input" type="date" value={header.plannedDate}
+                  onChange={e => setHeader(h => ({ ...h, plannedDate: e.target.value }))} />
               </div>
               <div>
                 <label className="ifm-label">檢查日期</label>

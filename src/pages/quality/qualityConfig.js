@@ -23,6 +23,14 @@ export const INSPECT_RESULT = {
 };
 export const RESULT_CYCLE = ['合格', '不合格', '待複驗'];
 
+/* 抽查單流轉狀態：issued＝已列印發出、現場手寫中，尚未填回結果 */
+export const FORM_STATUS = {
+  issued:   { label: '待回收', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  returned: { label: '已回收', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+};
+/* 已發出超過此天數未回收即轉為紅字警告 */
+export const ISSUE_OVERDUE_DAYS = 3;
+
 export const TEST_RESULT_CYCLE = ['待審閱', '審閱中', '可入', '不可入'];
 export const TEST_RESULT_CFG = {
   '待審閱': { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },

@@ -20,7 +20,7 @@ import { useQualityIssueCreator } from '../hooks/useQualityIssueCreator';
 import { splitWorkItemEntry, NON_INSPECT_RE, extractLocation, classifyWorkItem } from '../utils/workItemAutoSplit';
 import {
   SEVERITY_CONFIG, RESOLVE_STATUS, RESOLVE_CYCLE, INSPECT_RESULT, RESULT_CYCLE,
-  TEST_RESULT_CYCLE, TEST_RESULT_CFG,
+  TEST_RESULT_CYCLE, TEST_RESULT_CFG, FORM_STATUS,
 } from './quality/qualityConfig';
 import { ConstructionInspectionTable } from './quality/ConstructionInspectionTable';
 import { QualityIssueTable } from './quality/QualityIssueTable';
@@ -401,10 +401,17 @@ export function Quality() {
   }
 
   /* ── Stats ── */
-  const inspStats = RESULT_CYCLE.reduce((acc, r) => { acc[r] = inspections.filter(i => i.result === r).length; return acc; }, {});
+  const inspStats = RESULT_CYCLE.reduce((acc, r) => {
+    acc[r] = inspections.filter(i => i.form_status !== 'issued' && i.result === r).length; return acc;
+  }, {});
+  const issuedInsp = inspections.filter(i => i.form_status === 'issued');
   const issueStats = RESOLVE_CYCLE.reduce((acc, s) => { acc[s] = issues.filter(i => i.status === s).length; return acc; }, {});
   const filteredInsp = inspections
-    .filter(r => inspFilter === 'all' || r.result === inspFilter);
+    .filter(r => inspFilter === 'all'
+      ? true
+      : inspFilter === 'issued'
+      ? r.form_status === 'issued'
+      : r.form_status !== 'issued' && r.result === inspFilter);
   const filteredIssues = issueFilter === 'all' ? issues : issues.filter(r => r.status === issueFilter);
 
   /* 施工抽查 — 依工項分組統計（帶最近檢驗日期，依日期新→舊排序） */
@@ -592,15 +599,22 @@ export function Quality() {
       {/* Stats bar */}
       <div className="mcs-stats">
         {tab === 0 ? (
-          RESULT_CYCLE.map(r => {
-            const cfg = INSPECT_RESULT[r];
-            return (
-              <div key={r} className="mcs-stat" style={{ cursor: 'pointer' }} onClick={() => setInspFilter(f => f === r ? 'all' : r)}>
-                <span className="mcs-stat-val" style={{ color: cfg.color }}>{inspStats[r] || 0}</span>
-                <span className="mcs-stat-label">{r}</span>
-              </div>
-            );
-          })
+          <>
+            {RESULT_CYCLE.map(r => {
+              const cfg = INSPECT_RESULT[r];
+              return (
+                <div key={r} className="mcs-stat" style={{ cursor: 'pointer' }} onClick={() => setInspFilter(f => f === r ? 'all' : r)}>
+                  <span className="mcs-stat-val" style={{ color: cfg.color }}>{inspStats[r] || 0}</span>
+                  <span className="mcs-stat-label">{r}</span>
+                </div>
+              );
+            })}
+            <div className="mcs-stat" style={{ cursor: 'pointer' }} onClick={() => setInspFilter(f => f === 'issued' ? 'all' : 'issued')}
+              title="已列印發出、現場手寫中、尚未填回結果的抽查單">
+              <span className="mcs-stat-val" style={{ color: FORM_STATUS.issued.color }}>{issuedInsp.length}</span>
+              <span className="mcs-stat-label">待回收</span>
+            </div>
+          </>
         ) : tab === 1 ? (
           RESOLVE_CYCLE.map(s => {
             const cfg = RESOLVE_STATUS[s];
@@ -728,7 +742,7 @@ export function Quality() {
 
       <div className="mcs-footer">
         {tab === 0
-          ? <span>共 {filteredInsp.length} 筆 · 合格 {inspStats['合格'] || 0} · 不合格 {inspStats['不合格'] || 0} · 待複驗 {inspStats['待複驗'] || 0}</span>
+          ? <span>共 {filteredInsp.length} 筆 · 合格 {inspStats['合格'] || 0} · 不合格 {inspStats['不合格'] || 0} · 待複驗 {inspStats['待複驗'] || 0} · 待回收 {issuedInsp.length}</span>
           : tab === 1
           ? <span>共 {filteredIssues.length} 筆 · 待改善 {openIssues} 筆</span>
           : <span>共 {filteredTests.length} 筆 · 可入 {testStats['可入'] || 0} · 不可入 {testStats['不可入'] || 0} · 待審閱 {testStats['待審閱'] || 0}</span>

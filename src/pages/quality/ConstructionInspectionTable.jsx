@@ -1,6 +1,28 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Camera, FileText, Printer, Trash2, Pencil } from 'lucide-react';
-import { INSPECT_RESULT, RESOLVE_STATUS } from './qualityConfig';
+import { INSPECT_RESULT, RESOLVE_STATUS, FORM_STATUS, ISSUE_OVERDUE_DAYS } from './qualityConfig';
+
+/* 已發出未回收天數：逾 ISSUE_OVERDUE_DAYS 天轉紅 */
+function issuedDays(row) {
+  const base = row.planned_date || row.inspect_date;
+  if (!base) return 0;
+  return Math.floor((Date.now() - new Date(base).getTime()) / 86400000);
+}
+
+/* 待回收狀態標籤（已回收的紀錄不顯示，維持原有版面密度） */
+function FormStatusBadge({ row }) {
+  if (row.form_status !== 'issued') return null;
+  const days = issuedDays(row);
+  const overdue = days >= ISSUE_OVERDUE_DAYS;
+  const color = overdue ? '#ef4444' : FORM_STATUS.issued.color;
+  return (
+    <span title={`發出後已 ${days} 天未回收`}
+      style={{ display: 'inline-block', padding: '1px 5px', borderRadius: 3, fontSize: '10px', fontWeight: 700,
+        color, background: `${color}1a`, border: `1px solid ${color}59`, whiteSpace: 'nowrap' }}>
+      待回收{days > 0 ? ` ${days}天` : ''}
+    </span>
+  );
+}
 
 /* ── Mobile Card: 施工檢驗 ── */
 function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId, selected, onToggleSel, onCycleResult, onEdit }) {
@@ -21,11 +43,15 @@ function MobileInspCard({ row, inspPhotoMap, issueByInspMap, navigate, projectId
           <Camera size={11} />{photoCount > 0 ? photoCount : ''}
         </button>
         <span className="mcs-mc-name">{row.work_item || '—'}</span>
-        <span onClick={e => { e.stopPropagation(); onCycleResult(row.id, row.result); }}
-          style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-            color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
-          {row.result || '待複驗'}
-        </span>
+        {row.form_status === 'issued' ? (
+          <FormStatusBadge row={row} />
+        ) : (
+          <span onClick={e => { e.stopPropagation(); onCycleResult(row.id, row.result); }}
+            style={{ flexShrink: 0, padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+              color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
+            {row.result || '待複驗'}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', fontSize: '14px', color: 'var(--color-text-muted)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
       </div>
       {expanded && (
@@ -142,11 +168,15 @@ export function ConstructionInspectionTable({
                   {EditableCell({ id: row.id, field: 'inspector', table: 'construction_inspections', val: row.inspector })}
                 </td>
                 <td style={{ padding: '2px 4px', textAlign: 'center' }}>
-                  <span onClick={() => cycleInspResult(row.id, row.result)} title="點擊切換結果"
-                    style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 600,
-                      color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
-                    {row.result || '待複驗'}
-                  </span>
+                  {row.form_status === 'issued' ? (
+                    <FormStatusBadge row={row} />
+                  ) : (
+                    <span onClick={() => cycleInspResult(row.id, row.result)} title="點擊切換結果"
+                      style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 600,
+                        color: resCfg.color, background: resCfg.bg, border: `1px solid ${resCfg.color}40` }}>
+                      {row.result || '待複驗'}
+                    </span>
+                  )}
                 </td>
                 <td style={{ padding: '2px 4px', textAlign: 'center' }}>
                   {(() => {
