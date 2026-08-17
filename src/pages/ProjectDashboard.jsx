@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Calendar, Loader2,
   AlertTriangle, CheckCircle2, ChevronRight, AlertCircle, Clock,
-  BookOpen, Camera, Package,
+  BookOpen, Camera, Package, FileOutput,
   Shield, ShieldCheck, Archive, BarChart2,
   Pencil, X, GripVertical, HelpCircle,
 } from 'lucide-react';
@@ -29,6 +29,8 @@ const DEFAULT_ORDER = ['shortcuts', 'tasks', 'progress', 'info'];
 
 // 5000萬元門檻：projects.budget 實際存的單位是「元」（已用正式環境資料驗證）
 const SMALL_CASE_BUDGET_THRESHOLD = 50_000_000;
+/* 抽查單發出後逾此天數未回收即轉紅字警告 */
+const ISSUED_OVERDUE_DAYS = 3;
 
 export function ProjectDashboard() {
   const { id: projectId } = useParams();
@@ -47,7 +49,7 @@ export function ProjectDashboard() {
     submissionCount: 0, submissionPending: 0,
     qualityCount: 0, qualityOpen: 0,
     archiveCount: 0,
-    inspTotal: 0, inspPending: 0, inspFail: 0,
+    inspTotal: 0, inspPending: 0, inspFail: 0, issuedCount: 0, issuedOldest: null,
     matUnregistered: 0, matPending: 0,
     constrItemStatsRaw: [], lastLogDate: null,
   });
@@ -105,16 +107,21 @@ export function ProjectDashboard() {
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
         supabase.from('quality_issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
         supabase.from('archive_docs').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('construction_inspections').select('result, work_item').eq('project_id', projectId),
+        supabase.from('construction_inspections').select('result, work_item, form_status, planned_date, inspect_date').eq('project_id', projectId),
         supabase.from('daily_report_items').select('item_name, log_date').eq('project_id', projectId),
         supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('result', '待查驗'),
+        supabase.from('material_entries').select('id', { count: 'exact', head: true }).eq('project_id', projectId).is('result', null),
         supabase.from('daily_logs').select('log_date').eq('project_id', projectId).order('log_date', { ascending: false }).limit(1),
       ]);
 
-      const inspData = inspRes.data || [];
+      // 已發出未回收的抽查單尚無結果，不納入合格率與查驗密度統計
+      const allInsp    = inspRes.data || [];
+      const issuedInsp = allInsp.filter(r => r.form_status === 'issued');
+      const inspData   = allInsp.filter(r => r.form_status !== 'issued');
       const inspPending = inspData.filter(r => r.result === '待複驗').length;
       const inspFail    = inspData.filter(r => r.result === '不合格').length;
+      const issuedOldest = issuedInsp
+        .map(r => r.planned_date || r.inspect_date).filter(Boolean).sort()[0] || null;
 
       // 日報工項（全量，後續以 guessTemplateCode 分類）
       const diaryItems = diaryItemsRes.data || [];
@@ -173,6 +180,8 @@ export function ProjectDashboard() {
         inspTotal: inspData.length,
         inspPending,
         inspFail,
+        issuedCount: issuedInsp.length,
+        issuedOldest,
         matUnregistered,
         matPending: matPendingRes.count || 0,
         constrItemStatsRaw,
@@ -229,6 +238,10 @@ export function ProjectDashboard() {
     ? constrItemStats.map(s => addDaysTo(s.lastDate, inspectionCycleDays)).sort()[0]
     : null;
 
+  const issuedOldestDays = stats.issuedOldest
+    ? Math.floor((new Date(todayStr).getTime() - new Date(stats.issuedOldest).getTime()) / 86400000)
+    : null;
+
   const daysSinceLastLog = stats.lastLogDate
     ? Math.floor((new Date(todayStr).getTime() - new Date(stats.lastLogDate).getTime()) / 86400000)
     : null;
@@ -269,6 +282,18 @@ export function ProjectDashboard() {
       dueDate: project.end_date, due: project.end_date,
       path: 'progress', action: '查看進度',
     },
+    stats.issuedCount > 0 && {
+      id: 'insp-issued',
+      level: issuedOldestDays >= ISSUED_OVERDUE_DAYS ? 'urgent' : 'warning',
+      icon: FileOutput,
+      title: `抽查單已發出未回收 ${stats.issuedCount} 張`,
+      desc: issuedOldestDays != null
+        ? `最舊一張已發出 ${issuedOldestDays} 天，請填回抽查結果完成回收`
+        : '請填回抽查結果完成回收',
+      dueDate: stats.issuedOldest ? addDaysTo(stats.issuedOldest, ISSUED_OVERDUE_DAYS) : addDays(ISSUED_OVERDUE_DAYS),
+      due: `限發出後 ${ISSUED_OVERDUE_DAYS} 天內回收`,
+      path: 'quality', action: '前往回收',
+    },
     stats.inspFail > 0 && {
       id: 'insp-fail', level: 'urgent', icon: AlertCircle,
       title: `施工檢驗不合格 ${stats.inspFail} 項，需複驗`,
@@ -286,7 +311,7 @@ export function ProjectDashboard() {
     stats.matPending > 0 && {
       id: 'mat-pending', level: 'warning', icon: Package,
       title: `材料待查驗 ${stats.matPending} 件`,
-      desc: '廠商已申請查驗，請至材料管制頁確認並填寫查驗結果',
+      desc: '已登錄進場但尚未填寫判定結果，請至材料管制頁確認',
       dueDate: addDays(5), due: `請於 ${addDays(5)} 前查驗`,
       path: 'material', action: '前往查驗',
     },
