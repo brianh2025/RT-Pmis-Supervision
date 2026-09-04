@@ -15,7 +15,6 @@ updated: 2026-09-04
 | `/` | Navbar + Hero + Footer（WelcomePage） |
 | `/login` | `src/pages/Login.jsx` |
 | `/dashboard` | `src/pages/Dashboard.jsx` |
-| `/check` | `src/pages/ReportCheck.jsx` |
 | `/projects/:id`（導向 dashboard） | `src/components/ProjectLayout.jsx` |
 | `/projects/:id/dashboard` | `src/pages/ProjectDashboard.jsx` |
 | `/projects/:id/supervision` | `src/pages/DiaryLog.jsx` |
@@ -36,7 +35,6 @@ updated: 2026-09-04
 |---|---|---|
 | `/login` | `Login.jsx` | 登入頁 |
 | `/dashboard` | `Dashboard.jsx` | 全域工程總覽（工程卡片、拖曳排序、Excel 匯入、今日簡報卡） |
-| `/check` | `ReportCheck.jsx` | 跨工程提送管制（施工日誌建檔缺漏檢核、監造月報提送/發文狀態，單月檢核＋年度總表） |
 | `dashboard` | `ProjectDashboard.jsx` | 單一專案儀表板（Bento Grid 任務燈號、彙整各表統計） |
 | `supervision` | `DiaryLog.jsx` | 監造/施工日誌列表與編輯 |
 | `supervision/print/:logDate` | `DiaryPrintView.jsx` | 單日日誌列印檢視 |
@@ -148,7 +146,7 @@ updated: 2026-09-04
 | `components/Navbar.css`、`Hero.css`、`Footer.css`、`InfoTicker.css`、`CardContextMenu.css`、`TutorialModals.css`、`ReportReminderBanner.css` | 各自對應同名元件 |
 
 ### 頁面專用樣式
-`pages/` 下：`Login.css`、`Dashboard.css`、`ReportCheck.css`、`ProjectDashboard.css`、`DiaryLog.css`、`DiaryJournal.css`、`DiaryPrintView.css`、`MaterialControl.css`、`PhotoTable.css` — 各自對應同名頁面。
+`pages/` 下：`Login.css`、`Dashboard.css`、`ProjectDashboard.css`、`DiaryLog.css`、`DiaryJournal.css`、`DiaryPrintView.css`、`MaterialControl.css`、`PhotoTable.css` — 各自對應同名頁面。
 
 其餘頁面（Analytics/Archive/Quality/Submission/ProgressManagement）與 DailyReport 子模組主要採 inline styles + `utils.jsx` 的 `C` 色票，無獨立 CSS 檔。
 
@@ -173,11 +171,11 @@ projects                    專案主檔
 | 資料表 | 主要使用位置 |
 |---|---|
 | `projects` | useProjects、useProject、Dashboard、Add/EditProjectModal、ExcelImportModal、ProjectDashboard、DiaryPrintView |
-| `daily_logs` | ReportCheck、DiaryLog、DiaryJournal、ProjectDashboard、Analytics、DailyReportContext、QuickDiaryModal、EmergencyStopModal、DiaryImportModal、DiaryPrintView |
+| `daily_logs` | DiaryLog、DiaryJournal、ProjectDashboard、Analytics、DailyReportContext、QuickDiaryModal、EmergencyStopModal、DiaryImportModal、DiaryPrintView |
 | `daily_report_items` | DiaryLog、DiaryJournal、DailyReportContext、Dashboard、Quality、DiaryImportModal |
 | `progress_records` | ProgressManagement、Analytics、DailyReportContext、DiaryJournal、ProjectDashboard、ProgressFormModal、ProgressExcelImportModal、DiaryImportModal |
 | `schedule_items` | ProgressManagement、DiaryJournal、ScheduleImportModal |
-| `supervision_reports` | DiaryLog、Dashboard、ReportCheck、useReportReminder、ReportReminderBanner |
+| `supervision_reports` | DiaryLog、Dashboard、useReportReminder、ReportReminderBanner、獨立應用 apps/check |
 | `construction_inspections` | Quality、MaterialControl、Analytics、DiaryJournal、ProjectDashboard、DailyReportContext、InspectionFormModal、InspectionImportModal、InspectionQuickModal |
 | `quality_issues` | Quality、MaterialControl、Analytics、ProjectDashboard、Dashboard、EmergencyStopModal、InspectionQuickModal |
 | `material_entries` | MaterialControl、DailyReportContext、DiaryJournal、ProjectDashboard、Dashboard、Quality、MaterialInspectionModal |
@@ -235,3 +233,27 @@ projects                    專案主檔
 
 ### overrides
 `uuid`（^11.1.1，消除 exceljs 間接漏洞）
+
+## 12. 獨立應用（apps/）
+
+主系統之外的獨立前端應用，各自有 `package.json` 與建置流程，與主系統共用同一個 Supabase 專案與帳號，但不共用程式碼。
+
+### apps/check — 提送管制
+
+跨工程檢核「施工日誌是否建齊」與「監造月報是否提送、是否發文」。詳細說明見 `apps/check/README.md`。
+
+| 檔案 | 用途 |
+|---|---|
+| `src/App.jsx` | 路由：`/login` 登入頁、`/` 檢核主畫面（未登入導向 `/login`） |
+| `src/pages/ReportCheck.jsx` / `.css` | 檢核主畫面（單月檢核表、年度總表矩陣、檢核彈窗） |
+| `src/pages/Login.jsx` / `.css` | 登入頁（Google OAuth + 電子郵件密碼） |
+| `src/context/AuthContext.jsx` | 認證 Provider（Supabase Auth） |
+| `src/context/ThemeContext.jsx` | 深/淺主題 Provider，存 localStorage `theme` |
+| `src/lib/supabaseClient.js` | Supabase client，另匯出 `PMIS_BASE_URL`（主系統連結） |
+| `src/index.css` | 設計 token（與主系統 `src/index.css` 同一套）＋動效與捲軸 |
+
+讀取 `projects`、`daily_logs`；讀寫 `supervision_reports`（以 `project_id + report_month` upsert，與主系統日誌頁「月報稽核」同一筆）。
+
+環境變數：`VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_PMIS_BASE_URL`。
+
+部署：獨立 Vercel 專案，Root Directory 設為 `apps/check`。

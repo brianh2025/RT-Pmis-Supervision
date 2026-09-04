@@ -1,11 +1,11 @@
-/* ─── 提送管制：施工日誌與監造報表跨工程檢核 ─────────────── */
+/* ─── 提送管制：施工日誌與監造月報跨工程檢核 ─────────────── */
 
-.rc-page {
+.rc-app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 14px 18px;
+  padding: 0 14px 18px;
   background-color: var(--color-background-base);
   color: var(--color-text-main);
 }
@@ -18,27 +18,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: -10px -14px 0;
-  padding: 8px 14px;
+  margin: 0 -14px;
+  padding: 9px 14px;
   background: var(--color-surface-translucent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-surface-border);
 }
 
-.rc-menu-btn {
-  display: none;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
-  background: var(--color-bg2);
-  color: var(--color-text1);
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rc-title-accent {
+.rc-accent {
   display: block;
   width: 3px;
   height: 20px;
@@ -57,7 +45,6 @@
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
   color: var(--color-text-main);
-  margin: 0;
   white-space: nowrap;
 }
 
@@ -74,7 +61,7 @@
   align-items: center;
   gap: 6px;
   flex: 1;
-  max-width: 320px;
+  max-width: 300px;
   margin-left: auto;
   padding: 0 10px;
   height: 34px;
@@ -126,6 +113,39 @@
   background: var(--color-primary);
   color: #FFFFFF;
 }
+
+.rc-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--color-border);
+}
+
+.rc-user {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg2);
+  color: var(--color-text1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rc-icon-btn:hover { background: var(--color-surface-hover); border-color: var(--color-primary-light); }
 
 /* ─── 期間工具列 ─────────────────────────────────────── */
 .rc-toolbar {
@@ -220,7 +240,7 @@
 .rc-stat-warning .rc-stat-value { color: var(--color-warning); }
 .rc-stat-danger  .rc-stat-value { color: var(--color-danger); }
 
-/* ─── 載入 / 空狀態 ──────────────────────────────────── */
+/* ─── 載入 / 空狀態 / 錯誤 ───────────────────────────── */
 .rc-loading,
 .rc-empty {
   display: flex;
@@ -230,6 +250,15 @@
   padding: 40px 0;
   font-size: var(--fs-base);
   color: var(--color-text-muted);
+}
+
+.rc-error {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  font-size: var(--fs-base);
 }
 
 /* ─── 表格共用容器 ───────────────────────────────────── */
@@ -301,6 +330,8 @@
 .rc-status-completed,
 .rc-status-accepted  { color: var(--color-success); }
 
+[data-theme="light"] .rc-status-active { color: var(--color-primary); }
+
 /* ─── 狀態徽章 ───────────────────────────────────────── */
 .rc-badge {
   display: inline-flex;
@@ -360,6 +391,8 @@
   font-family: inherit;
   font-size: var(--fs-base);
   font-weight: var(--fw-medium);
+  text-decoration: none;
+  cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
@@ -374,7 +407,7 @@
 
 .rc-row-btn-main:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
 
-/* ─── 年度總表（專案 × 月份矩陣） ────────────────────── */
+/* ─── 年度總表（工程 × 月份矩陣） ────────────────────── */
 .rc-matrix {
   border-collapse: separate;
   border-spacing: 0;
@@ -384,8 +417,8 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  min-width: 104px;
-  padding: 10px 8px;
+  min-width: 100px;
+  padding: 10px 6px;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semi);
   color: var(--color-text2);
@@ -396,13 +429,15 @@
 
 .rc-matrix thead th.rc-matrix-current { color: var(--color-primary-light); }
 
+[data-theme="light"] .rc-matrix thead th.rc-matrix-current { color: var(--color-primary); }
+
 .rc-matrix .rc-matrix-head-name {
   position: sticky;
   left: 0;
   z-index: 3;
-  min-width: 210px;
-  max-width: 210px;
-  padding: 8px 12px;
+  min-width: 190px;
+  max-width: 190px;
+  padding: 8px 10px;
   text-align: left;
   font-weight: var(--fw-normal);
   background: var(--color-background-base);
@@ -419,7 +454,6 @@
 }
 
 .rc-cell {
-  display: table-cell;
   padding: 6px 8px;
   text-align: center;
   border-bottom: 1px solid var(--color-border);
@@ -500,6 +534,8 @@
   min-width: 0;
   color: var(--color-primary-light);
 }
+
+[data-theme="light"] .rc-modal-title-group { color: var(--color-primary); }
 
 .rc-modal-title {
   font-size: var(--fs-lg);
@@ -592,6 +628,7 @@
   color: var(--color-text1);
   font-family: inherit;
   font-size: var(--fs-base);
+  text-decoration: none;
 }
 
 .rc-link-btn:hover { background: var(--color-surface-hover); border-color: var(--color-primary-light); }
@@ -697,22 +734,26 @@
 .rc-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ─── 行動版 ─────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .rc-subtitle { display: none; }
+  .rc-user { display: none; }
+}
+
 @media (max-width: 1024px) {
   .rc-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .rc-subtitle { display: none; }
 }
 
 @media (max-width: 768px) {
-  .rc-page { padding: 8px 10px 16px; }
+  .rc-app { padding: 0 10px 16px; }
   .rc-header {
     flex-wrap: wrap;
-    margin: -8px -10px 0;
+    margin: 0 -10px;
     padding: 8px 10px;
   }
-  .rc-menu-btn { display: flex; }
-  .rc-title { font-size: var(--fs-lg); white-space: normal; }
+  .rc-title { font-size: var(--fs-lg); }
   .rc-search { order: 3; max-width: none; width: 100%; margin-left: 0; }
   .rc-view-tabs { order: 2; margin-left: auto; }
+  .rc-account { order: 4; margin-left: auto; padding-left: 0; border-left: none; }
   .rc-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rc-check-toggle { margin-left: 0; }
   .rc-col-contractor { display: none; }
