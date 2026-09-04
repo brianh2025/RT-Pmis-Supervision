@@ -1,7 +1,7 @@
 ---
 name: RT-PMIS 架構索引
 description: 專案完整檔案結構、頁面/元件用途、路由表、資料表、CSS 分布、Edge Functions、環境變數一覽，維護時直接查詢，避免重複翻找檔案
-updated: 2026-07-12
+updated: 2026-09-04
 ---
 
 # RT-PMIS 架構索引
@@ -175,7 +175,7 @@ projects                    專案主檔
 | `daily_report_items` | DiaryLog、DiaryJournal、DailyReportContext、Dashboard、Quality、DiaryImportModal |
 | `progress_records` | ProgressManagement、Analytics、DailyReportContext、DiaryJournal、ProjectDashboard、ProgressFormModal、ProgressExcelImportModal、DiaryImportModal |
 | `schedule_items` | ProgressManagement、DiaryJournal、ScheduleImportModal |
-| `supervision_reports` | DiaryLog、Dashboard、useReportReminder、ReportReminderBanner |
+| `supervision_reports` | DiaryLog、Dashboard、useReportReminder、ReportReminderBanner、獨立應用 apps/check |
 | `construction_inspections` | Quality、MaterialControl、Analytics、DiaryJournal、ProjectDashboard、DailyReportContext、InspectionFormModal、InspectionImportModal、InspectionQuickModal |
 | `quality_issues` | Quality、MaterialControl、Analytics、ProjectDashboard、Dashboard、EmergencyStopModal、InspectionQuickModal |
 | `material_entries` | MaterialControl、DailyReportContext、DiaryJournal、ProjectDashboard、Dashboard、Quality、MaterialInspectionModal |
@@ -233,3 +233,27 @@ projects                    專案主檔
 
 ### overrides
 `uuid`（^11.1.1，消除 exceljs 間接漏洞）
+
+## 12. 獨立應用（apps/）
+
+主系統之外的獨立前端應用，各自有 `package.json` 與建置流程，與主系統共用同一個 Supabase 專案與帳號，但不共用程式碼。
+
+### apps/check — 提送管制
+
+跨工程檢核「施工日誌是否建齊」與「監造月報是否提送、是否發文」。詳細說明見 `apps/check/README.md`。
+
+| 檔案 | 用途 |
+|---|---|
+| `src/App.jsx` | 路由：`/login` 登入頁、`/` 檢核主畫面（未登入導向 `/login`） |
+| `src/pages/ReportCheck.jsx` / `.css` | 檢核主畫面（單月檢核表、年度總表矩陣、檢核彈窗） |
+| `src/pages/Login.jsx` / `.css` | 登入頁（Google OAuth + 電子郵件密碼） |
+| `src/context/AuthContext.jsx` | 認證 Provider（Supabase Auth） |
+| `src/context/ThemeContext.jsx` | 深/淺主題 Provider，存 localStorage `theme` |
+| `src/lib/supabaseClient.js` | Supabase client，另匯出 `PMIS_BASE_URL`（主系統連結） |
+| `src/index.css` | 設計 token（與主系統 `src/index.css` 同一套）＋動效與捲軸 |
+
+讀取 `projects`、`daily_logs`；讀寫 `supervision_reports`（以 `project_id + report_month` upsert，與主系統日誌頁「月報稽核」同一筆）。
+
+環境變數：`VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_PMIS_BASE_URL`。
+
+部署：獨立 Vercel 專案，Root Directory 設為 `apps/check`。
