@@ -12,6 +12,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const ProjectDashboard = React.lazy(() => import('./pages/ProjectDashboard').then(m => ({ default: m.ProjectDashboard })));
+const ReportCheck = React.lazy(() => import('./pages/ReportCheck').then(m => ({ default: m.ReportCheck })));
 const Submission = React.lazy(() => import('./pages/Submission').then(m => ({ default: m.Submission })));
 const Quality = React.lazy(() => import('./pages/Quality').then(m => ({ default: m.Quality })));
 const Archive = React.lazy(() => import('./pages/Archive').then(m => ({ default: m.Archive })));
@@ -58,6 +59,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/check"
+                  element={
+                    <ProtectedRoute>
+                      <ReportCheck />
                     </ProtectedRoute>
                   }
                 />

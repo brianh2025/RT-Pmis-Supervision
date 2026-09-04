@@ -100,6 +100,7 @@ await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [st
 
 const routes = [
   ['/dashboard', '總覽 Dashboard'],
+  ['/check', '提送管制'],
   [`/projects/${projectId}/dashboard`, '專案儀表板'],
   [`/projects/${projectId}/supervision`, '施工日誌'],
   [`/projects/${projectId}/journal`, '監造報表'],

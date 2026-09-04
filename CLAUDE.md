@@ -81,15 +81,16 @@ GitLab（備援，push 自動同步）：https://gitlab.com/BrianH3/rt-pmis-supe
 - CSS 總計: ~184 KB
 - 建置時間: ~1 s
 - Lint: 0 誤報（剩餘 react-refresh only-export-components 與 react-hooks 類提示為已知可接受）
-- 煙霧測試: `npm run build && npm run test:smoke`（12 項：11 個受保護頁面渲染 + 未登入防護）
+- 煙霧測試: `npm run build && npm run test:smoke`（13 項：12 個受保護頁面渲染 + 未登入防護）
 
 ## 已知技術債
 （無 xlsx CVE，已於 2026-04-25 完成 exceljs 遷移）
 
-## 目前開發狀態（2026-07-13 更新）
+## 目前開發狀態（2026-09-04 更新）
 
 - 九大模組全數上線，完成度 90–100%（模組基準見 `/pmis-maintenance`）
 - Drive 同步 Edge Function 目前為 v54（故障模式與除錯見 `/drive-sync-debug`）
+- 2026-09-04 新增 `/check` 提送管制頁：跨工程檢核施工日誌建檔缺漏與監造月報提送／發文狀態（單月檢核＋年度總表），入口在總覽側邊欄
 - 2026-07-13 完成五頁 UI 調整批次（總覽/儀表板/照片/進度/品質）；品質頁查驗改為依日誌自動建檔（刪除以 localStorage tombstone 防重建）；版面慣例見 `docs/design.md` 第 7 節
 - 歷史開發明細一律記錄於 `docs/CHANGELOG.md`，不在本檔累積
 

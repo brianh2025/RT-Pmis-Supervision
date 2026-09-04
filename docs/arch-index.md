@@ -1,7 +1,7 @@
 ---
 name: RT-PMIS 架構索引
 description: 專案完整檔案結構、頁面/元件用途、路由表、資料表、CSS 分布、Edge Functions、環境變數一覽，維護時直接查詢，避免重複翻找檔案
-updated: 2026-07-12
+updated: 2026-09-04
 ---
 
 # RT-PMIS 架構索引
@@ -15,6 +15,7 @@ updated: 2026-07-12
 | `/` | Navbar + Hero + Footer（WelcomePage） |
 | `/login` | `src/pages/Login.jsx` |
 | `/dashboard` | `src/pages/Dashboard.jsx` |
+| `/check` | `src/pages/ReportCheck.jsx` |
 | `/projects/:id`（導向 dashboard） | `src/components/ProjectLayout.jsx` |
 | `/projects/:id/dashboard` | `src/pages/ProjectDashboard.jsx` |
 | `/projects/:id/supervision` | `src/pages/DiaryLog.jsx` |
@@ -35,6 +36,7 @@ updated: 2026-07-12
 |---|---|---|
 | `/login` | `Login.jsx` | 登入頁 |
 | `/dashboard` | `Dashboard.jsx` | 全域工程總覽（工程卡片、拖曳排序、Excel 匯入、今日簡報卡） |
+| `/check` | `ReportCheck.jsx` | 跨工程提送管制（施工日誌建檔缺漏檢核、監造月報提送/發文狀態，單月檢核＋年度總表） |
 | `dashboard` | `ProjectDashboard.jsx` | 單一專案儀表板（Bento Grid 任務燈號、彙整各表統計） |
 | `supervision` | `DiaryLog.jsx` | 監造/施工日誌列表與編輯 |
 | `supervision/print/:logDate` | `DiaryPrintView.jsx` | 單日日誌列印檢視 |
@@ -146,7 +148,7 @@ updated: 2026-07-12
 | `components/Navbar.css`、`Hero.css`、`Footer.css`、`InfoTicker.css`、`CardContextMenu.css`、`TutorialModals.css`、`ReportReminderBanner.css` | 各自對應同名元件 |
 
 ### 頁面專用樣式
-`pages/` 下：`Login.css`、`Dashboard.css`、`ProjectDashboard.css`、`DiaryLog.css`、`DiaryJournal.css`、`DiaryPrintView.css`、`MaterialControl.css`、`PhotoTable.css` — 各自對應同名頁面。
+`pages/` 下：`Login.css`、`Dashboard.css`、`ReportCheck.css`、`ProjectDashboard.css`、`DiaryLog.css`、`DiaryJournal.css`、`DiaryPrintView.css`、`MaterialControl.css`、`PhotoTable.css` — 各自對應同名頁面。
 
 其餘頁面（Analytics/Archive/Quality/Submission/ProgressManagement）與 DailyReport 子模組主要採 inline styles + `utils.jsx` 的 `C` 色票，無獨立 CSS 檔。
 
@@ -171,11 +173,11 @@ projects                    專案主檔
 | 資料表 | 主要使用位置 |
 |---|---|
 | `projects` | useProjects、useProject、Dashboard、Add/EditProjectModal、ExcelImportModal、ProjectDashboard、DiaryPrintView |
-| `daily_logs` | DiaryLog、DiaryJournal、ProjectDashboard、Analytics、DailyReportContext、QuickDiaryModal、EmergencyStopModal、DiaryImportModal、DiaryPrintView |
+| `daily_logs` | ReportCheck、DiaryLog、DiaryJournal、ProjectDashboard、Analytics、DailyReportContext、QuickDiaryModal、EmergencyStopModal、DiaryImportModal、DiaryPrintView |
 | `daily_report_items` | DiaryLog、DiaryJournal、DailyReportContext、Dashboard、Quality、DiaryImportModal |
 | `progress_records` | ProgressManagement、Analytics、DailyReportContext、DiaryJournal、ProjectDashboard、ProgressFormModal、ProgressExcelImportModal、DiaryImportModal |
 | `schedule_items` | ProgressManagement、DiaryJournal、ScheduleImportModal |
-| `supervision_reports` | DiaryLog、Dashboard、useReportReminder、ReportReminderBanner |
+| `supervision_reports` | DiaryLog、Dashboard、ReportCheck、useReportReminder、ReportReminderBanner |
 | `construction_inspections` | Quality、MaterialControl、Analytics、DiaryJournal、ProjectDashboard、DailyReportContext、InspectionFormModal、InspectionImportModal、InspectionQuickModal |
 | `quality_issues` | Quality、MaterialControl、Analytics、ProjectDashboard、Dashboard、EmergencyStopModal、InspectionQuickModal |
 | `material_entries` | MaterialControl、DailyReportContext、DiaryJournal、ProjectDashboard、Dashboard、Quality、MaterialInspectionModal |

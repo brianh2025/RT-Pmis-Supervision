@@ -159,6 +159,18 @@ export function Sidebar({
                   </div>
                 )}
               </div>
+
+              {/* 跨工程提送管制 */}
+              <Link
+                to="/check"
+                onClick={() => setIsMobileOpen(false)}
+                className={`pl-nav-link ${location.pathname === '/check' ? 'active' : ''}`}
+                title={isCollapsed ? '提送管制' : ''}
+              >
+                <ClipboardCheck size={18} className="pl-nav-icon" />
+                {!isCollapsed && <span className="pl-nav-label">提送管制</span>}
+                {isCollapsed && <div className="pl-nav-tooltip">提送管制</div>}
+              </Link>
             </div>
           </div>
         )}
